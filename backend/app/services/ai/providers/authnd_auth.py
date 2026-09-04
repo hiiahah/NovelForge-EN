@@ -26,6 +26,7 @@ import requests
 
 BUILD_BASE_URL = "https://build.nvidia.com"
 API_BASE_URL = "https://api.ngc.nvidia.com"
+PREDICT_API_BASE_URL = "https://buildapi.ngc.nvidia.com"
 DEFAULT_ORG_ID = "qc69jvmznzxy"
 DEFAULT_HCAPTCHA_SITEKEY = "0c6a1e45-75d7-43cc-b836-a0c9d886b8ee"
 DEFAULT_MODEL = "moonshotai/kimi-k3"
@@ -1377,8 +1378,11 @@ def _log_non_stream_summary(
 
 
 def _raise_for_status(response: requests.Response) -> None:
-    if response.status_code < 400:
+    if 200 <= response.status_code < 300:
         return
+    location = response.headers.get("location") or ""
+    if 300 <= response.status_code < 400:
+        raise RuntimeError(f"AuthND HTTP {response.status_code}: redirected to {location or 'an unknown location'}")
     nv_error = response.headers.get("x-nv-error-msg") or response.headers.get("x-nv-error-code") or ""
     body = (response.text or "").strip()
     detail = _http_error_detail(response.status_code, response.reason, nv_error, body)
@@ -1424,7 +1428,7 @@ def _post_prediction(
     org_id = metadata.get("namespace") or DEFAULT_ORG_ID
     endpoint_id = metadata.get("endpoint_id") or model_id
     payload_model = metadata.get("payload_model") or _payload_model_name(model_path)
-    url = f"{API_BASE_URL}/v2/predict/models/{org_id}/{endpoint_id}"
+    url = f"{PREDICT_API_BASE_URL}/v2/predict/models/{org_id}/{endpoint_id}"
     payload: Dict[str, Any] = {
         "messages": messages,
         "model": payload_model,
@@ -1476,7 +1480,7 @@ def _post_prediction(
         "accept-encoding": "identity",
         "origin": BUILD_BASE_URL,
         "referer": page_url,
-        "host": "api.ngc.nvidia.com",
+        "host": "buildapi.ngc.nvidia.com",
         "nv-captcha-token": captcha_token,
         "user-agent": USER_AGENT,
     }
@@ -1533,7 +1537,7 @@ def _post_prediction(
                         f"🔎 AuthND debug response: status={response.status_code}, content_type={response.headers.get('content-type', '')}, transport=httpx",
                         debug_only=True,
                     )
-                    if response.status_code >= 400:
+                    if not 200 <= response.status_code < 300:
                         exc = _httpx_status_error(response)
                         _log(log_fn, f"⚠️ AuthND HTTP failure: {_short_error(exc)}")
                         raise exc
@@ -1568,13 +1572,14 @@ def _post_prediction(
         json=payload,
         timeout=request_timeout,
         stream=stream,
+        allow_redirects=False,
     )
     _log(
         log_fn,
         f"🔎 AuthND debug response: status={response.status_code}, content_type={response.headers.get('content-type', '')}",
         debug_only=True,
     )
-    if response.status_code >= 400:
+    if not 200 <= response.status_code < 300:
         nv_error = response.headers.get("x-nv-error-msg") or response.headers.get("x-nv-error-code") or ""
         body = (response.text or "").strip()
         detail = _http_error_detail(response.status_code, response.reason, nv_error, body)
