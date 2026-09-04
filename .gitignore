@@ -13,9 +13,7 @@ env/
 .venv/
 .env/
 
-# Alembic相关
-backend/alembic/versions/*.py
-!backend/alembic/versions/__init__.py
+# Alembic migrations are source code and must be committed.
 
 # 忽略所有md文档，除了README
 *.md
@@ -64,12 +62,17 @@ backend/build
 *.spec
 *.sh
 *.mako
+!backend/alembic/script.py.mako
 
 # Node modules
 node_modules/
 
 # Cookies and scratch files
 *genspark_cookies*
+# User-supplied reference material and local scratch (never committed)
+.hoplite/attachments/
+.hoplite/scratch/
+*.epub
 books/
 story_progress.json
 generate_master_bible.py

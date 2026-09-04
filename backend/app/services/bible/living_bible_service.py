@@ -286,25 +286,41 @@ class LivingBibleService:
 
     # ------------------------------------------------------------------- apply
     def decide(self, review_id: int, decisions: List[ChangeDecision]) -> BibleUpdateApplyResult:
+        """Apply a batch of decisions atomically.
+
+        Either every decision in the batch is persisted together with the
+        card changes it produced, or nothing is (the transaction is rolled
+        back and the error re-raised). A change that was already accepted or
+        rejected is skipped so retrying the same request cannot duplicate
+        cards or history entries; postponed changes may be re-decided.
+        """
         review = self.get_review(review_id)
         if not review:
             raise ValueError("Review not found")
+        if review.status == "applied":
+            raise ValueError("This review is already fully applied")
+        if review.status == "dismissed":
+            raise ValueError("This review was dismissed")
         proposal = BibleUpdateProposal.model_validate(review.proposal_json or {})
         by_id = {c.id: c for c in proposal.changes}
         stored: Dict[str, Any] = dict(review.decisions_json or {})
 
-        applied = rejected = postponed = 0
+        applied = rejected = postponed = skipped = 0
         created: List[int] = []
         updated: List[int] = []
         errors: List[str] = []
 
-        for decision in decisions:
-            change = by_id.get(decision.change_id)
-            if not change:
-                errors.append(f"Unknown change id: {decision.change_id}")
-                continue
-            record = {"action": decision.action, "note": decision.note, "decided_at": _now_iso()}
-            try:
+        try:
+            for decision in decisions:
+                change = by_id.get(decision.change_id)
+                if not change:
+                    errors.append(f"Unknown change id: {decision.change_id}")
+                    continue
+                prior = stored.get(decision.change_id)
+                if isinstance(prior, dict) and prior.get("action") not in (None, "postpone") and not prior.get("error"):
+                    skipped += 1
+                    continue
+                record = {"action": decision.action, "note": decision.note, "decided_at": _now_iso()}
                 if decision.action == "reject":
                     rejected += 1
                 elif decision.action == "postpone":
@@ -315,22 +331,22 @@ class LivingBibleService:
                         (created if is_new else updated).append(card_id)
                         record["card_id"] = card_id
                     applied += 1
-            except Exception as exc:  # keep going; report per-change failures
-                logger.exception(f"[LivingBible] failed to apply change {change.id}")
-                errors.append(f"{change.summary}: {exc}")
-                record["error"] = str(exc)
-            stored[decision.change_id] = record
+                stored[decision.change_id] = record
 
-        review.decisions_json = stored
-        flag_modified(review, "decisions_json")
-        decided_ids = {cid for cid, rec in stored.items() if rec.get("action") != "postpone"}
-        if decided_ids >= set(by_id.keys()):
-            review.status = "applied"
-        elif stored:
-            review.status = "partially_applied"
-        review.updated_at = datetime.now()
-        self.session.add(review)
-        self.session.commit()
+            review.decisions_json = stored
+            flag_modified(review, "decisions_json")
+            decided_ids = {cid for cid, rec in stored.items() if rec.get("action") != "postpone"}
+            if decided_ids >= set(by_id.keys()):
+                review.status = "applied"
+            elif stored:
+                review.status = "partially_applied"
+            review.updated_at = datetime.now()
+            self.session.add(review)
+            self.session.commit()
+        except Exception as exc:
+            self.session.rollback()
+            logger.exception(f"[LivingBible] decide failed for review {review_id}; rolled back")
+            raise RuntimeError(f"Living Bible apply failed and was rolled back: {exc}") from exc
 
         return BibleUpdateApplyResult(
             review_id=review_id,
@@ -340,6 +356,7 @@ class LivingBibleService:
             created_cards=created,
             updated_cards=updated,
             errors=errors,
+            skipped=skipped,
             status=review.status,
         )
 
@@ -513,7 +530,7 @@ class LivingBibleService:
             content["history"] = [HistoryEntry(field="(card)", previous=None, new="created", chapter_number=(change.evidence[0].chapter_number if change.evidence else None), reason=change.summary, changed_at=_now_iso(), accepted_by="user").model_dump(mode="json")]
         title = change.target_title or self._title_for_new_card(change, content)
         service = CardService(self.session)
-        card = service.create(CardCreate(title=title, content=content, card_type_id=card_type.id, parent_id=None), project_id)
+        card = service.create(CardCreate(title=title, content=content, card_type_id=card_type.id, parent_id=None), project_id, commit=False)
         return card
 
     @staticmethod

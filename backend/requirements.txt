@@ -13,3 +13,10 @@ langchain-openai
 langchain-google-genai
 langchain-anthropic
 langchain_qwq
+# HTTP transports used by the AuthND / Genspark browser-backed providers
+requests
+httpx
+curl_cffi
+# AuthND hCaptcha token minting (Qt WebEngine). Optional at import time; the
+# provider reports status "missing_dependency" when absent.
+PySide6

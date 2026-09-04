@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from sqlmodel import Session, select, delete
 from loguru import logger
-from app.db.models import WorkflowRun, Workflow
+from app.db.models import NodeExecutionState, WorkflowRun, Workflow
 from app.core.config import settings
 
 def cleanup_expired_runs(session: Session):
@@ -30,6 +30,9 @@ def cleanup_expired_runs(session: Session):
         transient_ids = session.exec(stmt_transient).all()
         
         if transient_ids:
+            # Bulk deletes bypass ORM cascades: remove node states first so the
+            # FK from nodeexecutionstate -> workflowrun holds.
+            session.exec(delete(NodeExecutionState).where(NodeExecutionState.run_id.in_(transient_ids)))
             stmt_del = delete(WorkflowRun).where(WorkflowRun.id.in_(transient_ids))
             result = session.exec(stmt_del)
             deleted_count += result.rowcount if hasattr(result, 'rowcount') else len(transient_ids)
@@ -49,6 +52,7 @@ def cleanup_expired_runs(session: Session):
         persistent_ids = session.exec(stmt_persistent).all()
         
         if persistent_ids:
+            session.exec(delete(NodeExecutionState).where(NodeExecutionState.run_id.in_(persistent_ids)))
             stmt_del = delete(WorkflowRun).where(WorkflowRun.id.in_(persistent_ids))
             result = session.exec(stmt_del)
             count = result.rowcount if hasattr(result, 'rowcount') else len(persistent_ids)

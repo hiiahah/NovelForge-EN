@@ -10,28 +10,20 @@ import os
 import sys
 
 import pytest
-from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-os.environ.setdefault("NOVELFORGE_DB_PATH", os.path.join(os.path.dirname(__file__), "_test_bible.db"))
 
 
 @pytest.fixture(scope="module")
-def client():
-    db_path = os.environ["NOVELFORGE_DB_PATH"]
-    if os.path.exists(db_path):
-        os.remove(db_path)
-    from main import app  # noqa: WPS433
-
-    with TestClient(app) as c:
-        yield c
-    if os.path.exists(db_path):
-        os.remove(db_path)
+def client(app_client):
+    return app_client
 
 
 @pytest.fixture(scope="module")
 def project(client):
-    r = client.post("/api/projects/", json={"name": "Bible E2E", "description": "", "template": "bible"})
+    import uuid
+
+    r = client.post("/api/projects/", json={"name": f"Bible E2E {uuid.uuid4().hex[:6]}", "description": "", "template": "bible"})
     assert r.status_code in (200, 201), r.text
     return r.json()["data"]
 
@@ -203,10 +195,11 @@ def test_manuscript_import_wizard(client, project):
     assert r.status_code == 200, r.text
     prev = r.json()
     assert prev["pattern_name"] == "chapter_word"
-    titles = [c["title"] for c in prev["chapters"]]
+    titles = [c["title"] for c in prev["chapters"] if c["included"]]
+    assert prev["chapters"][0]["section_type"] == "front_matter" and not prev["chapters"][0]["included"]
     assert titles[:3] == ["Chapter 1 The Gate", "Chapter 2 The Crown", "Chapter 4 The Ridge"]
     assert any("Missing chapter numbers: [3]" in w for w in prev["warnings"])
-    assert "afterword" in prev["chapters"][-1]["flags"]
+    assert "afterword" in prev["chapters"][-1]["flags"] and prev["chapters"][-1]["section_type"] == "afterword"
     assert prev["included_chapters"] == 3
 
     r = client.post("/api/lab/manuscript/import", json={**payload, "project_id": pid, "book_title": "Test Book"})

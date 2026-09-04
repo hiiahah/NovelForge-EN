@@ -143,6 +143,7 @@ class BibleUpdateApplyResult(BaseModel):
     created_cards: List[int] = Field(default_factory=list)
     updated_cards: List[int] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
+    skipped: int = Field(default=0, description="Changes already decided earlier (idempotent retry)")
     status: str
 
 

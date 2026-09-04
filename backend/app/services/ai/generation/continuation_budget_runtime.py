@@ -7,7 +7,7 @@ from typing import Optional
 from app.schemas.ai import ContinuationRequest
 
 
-_SENTENCE_ENDINGS = "。！？!?…\n"
+_SENTENCE_ENDINGS = ".。！？!?…\n"
 _OUTLINE_BOUNDARY_HINT = (
     "- Outline boundary takes priority over the word-count target: if this chapter's outline content is finished before the word count is reached, "
     "appropriately enrich details, actions, dialogue, and inner monologue within the scope of this chapter's outline; never spill into the next chapter's content to pad the word count."
@@ -141,7 +141,7 @@ def build_budget_hint_text(
     *,
     include_outline_boundary: bool = True,
 ) -> str:
-    lines: list[str] = ["【Continuation budget】", f"- Current total word count: {plan.current_word_count} words"]
+    lines: list[str] = ["[Continuation budget]", f"- Current total word count: {plan.current_word_count} words"]
 
     if plan.target_word_count is not None:
         lines.append(f"- Target total word count: {plan.target_word_count} words")
