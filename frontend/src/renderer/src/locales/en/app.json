@@ -37,18 +37,6 @@
       "sessionDeleted": "Session deleted",
       "deleteSessionFailed": "Failed to delete session",
       "confirmDeleteSession": "Are you sure you want to delete this conversation?",
-      "confirmDeleteTitle": "Confirm Delete"
-    },
-    "llm": {
-      "fetchConfigsFailed": "Failed to load LLM config list"
-    },
-    "prompt": {
-      "fetchPromptsFailed": "Failed to load prompt list"
-    },
-    "assistant": {
-      "sessionDeleted": "Session deleted",
-      "deleteSessionFailed": "Failed to delete session",
-      "confirmDeleteSession": "Are you sure you want to delete this conversation?",
       "confirmDeleteTitle": "Confirm Delete",
       "newConversation": "New Conversation",
       "justNow": "Just now",
@@ -60,7 +48,16 @@
       "executionFailed": "Execution failed",
       "taskCompleted": "Task Completed",
       "callingTool": "Calling tool: {name}",
-      "tool": "tool"
+      "tool": "tool",
+      "toolCallRetrying": "Tool call failed: {reason}, retrying ({current}/{max})...",
+      "toolCallError": "Tool call failed: {message}",
+      "errorPrefix": "[Error]"
+    },
+    "llm": {
+      "fetchConfigsFailed": "Failed to load LLM config list"
+    },
+    "prompt": {
+      "fetchPromptsFailed": "Failed to load prompt list"
     },
     "layout": {
       "section": "Section",

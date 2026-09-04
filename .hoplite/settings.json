@@ -4,16 +4,16 @@
   "scripts": {
     "setup": {
       "enabled": true,
-      "command": "cd backend && (test -d venv || python3 -m venv venv) && ./venv/bin/pip install -q -r requirements.txt pytest && cd ../frontend && npm ci --ignore-scripts --no-audit --no-fund"
+      "command": "cd backend && (test -d venv || python3 -m venv venv) && ./venv/bin/pip install -q -r requirements.txt pytest pytest-timeout && cd ../frontend && npm ci --ignore-scripts --no-audit --no-fund"
     },
     "run": {
       "enabled": true,
-      "command": "cd backend && (./venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 54321 &) && cd ../frontend && npm run dev:web -- --host 0.0.0.0 --port 3000"
+      "command": "cd backend && (QT_QPA_PLATFORM=offscreen ./venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 54321 &) && cd ../frontend && npm run dev:web -- --host 0.0.0.0 --port 3000"
     },
     "archive": {"enabled": true, "command": null},
     "check": {
       "enabled": true,
-      "command": "cd backend && ./venv/bin/python -m pytest tests -q -p no:warnings && cd ../frontend && npm run typecheck:web"
+      "command": "cd backend && ./venv/bin/python -m pytest tests -q -p no:warnings --timeout 180 && cd ../frontend && npm run typecheck && npm test"
     }
   },
   "mcpServers": []

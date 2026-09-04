@@ -349,6 +349,7 @@ class RunManager:
                     "status": ns.status,
                     "progress": int(ns.progress) if ns.progress is not None else 0,
                     "error": ns.error_message,
+                    "checkpoint": ns.checkpoint_json,
                     "outputs_json": ns.outputs_json
                 }
                 for ns in node_states

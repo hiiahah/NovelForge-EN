@@ -72,24 +72,47 @@ def get_authnd_models():
     return ApiResponse(data=models_data)
 
 
+def compute_authnd_status(*, probe_network: bool = True) -> Dict[str, Any]:
+    """Truthful readiness: ready | degraded | unavailable | missing_dependency | token_helper_unavailable."""
+    helper = authnd_auth.token_helper_status()
+    checks: Dict[str, Any] = {"token_helper": helper}
+    status = "ready"
+    if not helper.get("available"):
+        status = "missing_dependency" if "PySide6" in str(helper.get("detail", "")) else "token_helper_unavailable"
+    if probe_network and status == "ready":
+        try:
+            import requests as _requests
+
+            resp = _requests.get(authnd_auth.BUILD_BASE_URL, timeout=8, allow_redirects=True, stream=True)
+            resp.close()
+            checks["build_reachable"] = 200 <= resp.status_code < 400
+            if not checks["build_reachable"]:
+                status = "degraded"
+        except Exception as exc:
+            checks["build_reachable"] = False
+            checks["network_error"] = str(exc)[:200]
+            status = "unavailable"
+    return {
+        "status": status,
+        "provider": "authnd",
+        "base_url": authnd_auth.BUILD_BASE_URL,
+        "api_url": authnd_auth.API_BASE_URL,
+        "predict_api_url": authnd_auth.PREDICT_API_BASE_URL,
+        "default_model": authnd_auth.DEFAULT_MODEL,
+        "models_count": len(authnd_auth.AUTHND_PRESET_MODELS),
+        "preset_models": authnd_auth.AUTHND_PRESET_MODELS,
+        "checks": checks,
+    }
+
+
 @router.get("/status", response_model=ApiResponse[Dict[str, Any]], summary="AuthND service status")
-def get_authnd_status():
-    """Check AuthND configuration and available models."""
-    return ApiResponse(
-        data={
-            "status": "ready",
-            "provider": "authnd",
-            "base_url": authnd_auth.BUILD_BASE_URL,
-            "api_url": authnd_auth.API_BASE_URL,
-            "default_model": authnd_auth.DEFAULT_MODEL,
-            "models_count": len(authnd_auth.AUTHND_PRESET_MODELS),
-            "preset_models": authnd_auth.AUTHND_PRESET_MODELS,
-        }
-    )
+def get_authnd_status(probe: bool = Query(default=True, description="Also probe network reachability of build.nvidia.com")):
+    """Report real AuthND readiness (dependencies, token helper, network)."""
+    return ApiResponse(data=compute_authnd_status(probe_network=probe))
 
 
 @router.post("/predict", summary="Direct prompt prediction via AuthND")
-async def direct_predict(payload: DirectPredictRequest):
+async def direct_predict(payload: DirectPredictRequest, request: Request):
     """Simple prediction endpoint taking a prompt and optional system instructions."""
     messages = []
     if payload.system:
@@ -108,20 +131,21 @@ async def direct_predict(payload: DirectPredictRequest):
         reasoning_enabled=payload.reasoning_enabled,
         reasoning_effort=payload.reasoning_effort,
     )
-    return await chat_completions(req)
+    return await chat_completions(req, request)
 
 
 @router.post("/v1/chat/completions", summary="OpenAI-compatible Chat Completion endpoint for AuthND")
-async def chat_completions(payload: ChatCompletionRequest):
+async def chat_completions(payload: ChatCompletionRequest, request: Request):
     """OpenAI-compatible chat completions route supporting both JSON and SSE streaming."""
     dict_messages = [{"role": m.role, "content": m.content} for m in payload.messages]
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
     created_ts = int(time.time())
+    control = authnd_auth.RequestControl(label=completion_id)
 
     if not payload.stream:
-        try:
-            result = await asyncio.to_thread(
-                authnd_auth.send_chat_completion,
+        task = asyncio.get_running_loop().run_in_executor(
+            None,
+            lambda: authnd_auth.send_chat_completion(
                 messages=dict_messages,
                 model=payload.model,
                 temperature=payload.temperature if payload.temperature is not None else 0.3,
@@ -135,9 +159,19 @@ async def chat_completions(payload: ChatCompletionRequest):
                 reasoning_enabled=payload.reasoning_enabled,
                 reasoning_effort=payload.reasoning_effort,
                 stream=False,
-            )
+                control=control,
+            ),
+        )
+        try:
+            result = await task
+        except asyncio.CancelledError:
+            control.cancel()
+            raise
+        except authnd_auth.AuthNDDependencyError as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"AuthND completion failed: {exc}")
+            status_code = 499 if "cancelled" in str(exc).lower() else 502
+            raise HTTPException(status_code=status_code, detail=f"AuthND completion failed: {exc}")
 
         content = result.get("content") or ""
         reasoning = result.get("reasoning_content")
@@ -167,18 +201,20 @@ async def chat_completions(payload: ChatCompletionRequest):
             "usage": usage,
         }
 
-    # Streaming mode via SSE
+    # Streaming mode via SSE. Exactly one terminal outcome is emitted:
+    # a finish_reason chunk ("stop"/"length") on success, or an error chunk on
+    # failure/cancellation, always followed by "data: [DONE]".
     async def sse_generator():
-        chunk_queue = asyncio.Queue()
-        done_event = asyncio.Event()
+        chunk_queue: asyncio.Queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
+        outcome: Dict[str, Any] = {}
 
         def _on_chunk(delta_text: str, delta_reasoning: Optional[str] = None):
-            loop.call_soon_threadsafe(chunk_queue.put_nowait, (delta_text, delta_reasoning))
+            loop.call_soon_threadsafe(chunk_queue.put_nowait, ("chunk", delta_text, delta_reasoning))
 
         def _run_stream():
             try:
-                authnd_auth.send_chat_completion(
+                result = authnd_auth.send_chat_completion(
                     messages=dict_messages,
                     model=payload.model,
                     temperature=payload.temperature if payload.temperature is not None else 0.3,
@@ -193,70 +229,72 @@ async def chat_completions(payload: ChatCompletionRequest):
                     reasoning_effort=payload.reasoning_effort,
                     stream=True,
                     chunk_callback=_on_chunk,
+                    control=control,
                 )
+                loop.call_soon_threadsafe(chunk_queue.put_nowait, ("done", result, None))
             except Exception as e:
-                loop.call_soon_threadsafe(chunk_queue.put_nowait, ("__ERROR__", str(e)))
-            finally:
-                loop.call_soon_threadsafe(done_event.set)
+                loop.call_soon_threadsafe(chunk_queue.put_nowait, ("error", str(e), None))
 
-        worker = threading.Thread(target=_run_stream, daemon=True)
+        worker = threading.Thread(target=_run_stream, daemon=True, name=f"authnd-sse-{completion_id}")
         worker.start()
 
-        # Send initial role chunk
-        init_chunk = {
-            "id": completion_id,
-            "object": "chat.completion.chunk",
-            "created": created_ts,
-            "model": payload.model,
-            "choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": None}],
-        }
-        yield f"data: {json.dumps(init_chunk, ensure_ascii=False)}\n\n"
+        def _chunk(delta: Dict[str, Any], finish_reason: Optional[str]) -> str:
+            body = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created_ts,
+                "model": payload.model,
+                "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
+            }
+            return f"data: {json.dumps(body, ensure_ascii=False)}\n\n"
 
-        while True:
-            if chunk_queue.empty() and done_event.is_set():
-                break
-
-            try:
-                chunk_data = await asyncio.wait_for(chunk_queue.get(), timeout=0.1)
-                text, reasoning = chunk_data
-                if text == "__ERROR__":
-                    err_chunk = {
-                        "id": completion_id,
-                        "object": "chat.completion.chunk",
-                        "created": created_ts,
-                        "model": payload.model,
-                        "choices": [{"index": 0, "delta": {"content": f"\n[Error: {reasoning}]"}, "finish_reason": "error"}],
-                    }
-                    yield f"data: {json.dumps(err_chunk, ensure_ascii=False)}\n\n"
+        yield _chunk({"role": "assistant"}, None)
+        try:
+            while True:
+                if request is not None:
+                    try:
+                        disconnected = await request.is_disconnected()
+                    except Exception:
+                        disconnected = False
+                    if disconnected:
+                        control.cancel()
+                        outcome["type"] = "cancelled"
+                        break
+                try:
+                    kind, a, b = await asyncio.wait_for(chunk_queue.get(), timeout=0.25)
+                except asyncio.TimeoutError:
+                    continue
+                if kind == "chunk":
+                    delta: Dict[str, Any] = {}
+                    if a:
+                        delta["content"] = a
+                    if b:
+                        delta["reasoning_content"] = b
+                    if delta:
+                        yield _chunk(delta, None)
+                elif kind == "done":
+                    outcome["type"] = "done"
+                    outcome["result"] = a
                     break
+                else:
+                    outcome["type"] = "error"
+                    outcome["error"] = a
+                    break
+        except (asyncio.CancelledError, GeneratorExit):
+            control.cancel()
+            raise
+        finally:
+            if outcome.get("type") != "done":
+                control.cancel()
 
-                delta_payload: Dict[str, Any] = {}
-                if text:
-                    delta_payload["content"] = text
-                if reasoning:
-                    delta_payload["reasoning_content"] = reasoning
-
-                if delta_payload:
-                    chunk = {
-                        "id": completion_id,
-                        "object": "chat.completion.chunk",
-                        "created": created_ts,
-                        "model": payload.model,
-                        "choices": [{"index": 0, "delta": delta_payload, "finish_reason": None}],
-                    }
-                    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
-            except asyncio.TimeoutError:
-                continue
-
-        # Final terminal chunk
-        final_chunk = {
-            "id": completion_id,
-            "object": "chat.completion.chunk",
-            "created": created_ts,
-            "model": payload.model,
-            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
-        }
-        yield f"data: {json.dumps(final_chunk, ensure_ascii=False)}\n\n"
+        if outcome.get("type") == "done":
+            result = outcome.get("result") or {}
+            finish = result.get("finish_reason") or "stop"
+            yield _chunk({}, finish if finish in ("stop", "length", "content_filter") else "stop")
+        elif outcome.get("type") == "cancelled":
+            yield _chunk({"content": "\n[Error: request cancelled by client]"}, "error")
+        else:
+            yield _chunk({"content": f"\n[Error: {outcome.get('error')}]"}, "error")
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(sse_generator(), media_type="text/event-stream")

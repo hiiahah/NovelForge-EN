@@ -39,7 +39,10 @@ def get_project_endpoint(project_id: int, session: Session = Depends(get_session
 
 @router.put("/{project_id}", response_model=ApiResponse[ProjectRead])
 def update_project_endpoint(project_id: int, project_in: ProjectUpdate, session: Session = Depends(get_session)):
-    project = project_service.update_project(session=session, project_id=project_id, project_in=project_in)
+    try:
+        project = project_service.update_project(session=session, project_id=project_id, project_in=project_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return ApiResponse(data=project)

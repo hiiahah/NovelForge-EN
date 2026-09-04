@@ -21,7 +21,7 @@ export interface UpdateCheckResult {
   releaseInfo?: ReleaseInfo
 }
 
-const GITHUB_REPO = 'RhythmicWave/NovelForge'
+const GITHUB_REPO = 'sigma123388/NovelForge-EN'
 const GITHUB_API_BASE = 'https://api.github.com'
 const REQUEST_TIMEOUT = 10000 // 10s timeout
 

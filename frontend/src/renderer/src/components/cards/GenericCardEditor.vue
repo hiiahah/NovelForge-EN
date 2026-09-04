@@ -594,30 +594,30 @@ function formatFactsFromContext(ctx: any | null | undefined): string {
     const factsStruct: any = (ctx as any)?.facts_structured || {}
     const lines: string[] = []
     if (Array.isArray(factsStruct.fact_summaries) && factsStruct.fact_summaries.length) {
-      lines.push('关键事实:')
+      lines.push('Key facts:')
       for (const s of factsStruct.fact_summaries) lines.push(`- ${s}`)
     }
     if (Array.isArray(factsStruct.relation_summaries) && factsStruct.relation_summaries.length) {
-      lines.push('关系摘要:')
+      lines.push('Relationships:')
       for (const r of factsStruct.relation_summaries) {
         lines.push(`- ${r.a} ↔ ${r.b}（${r.kind}）`)
         if (r.description) lines.push(`  · ${r.description}`)
         if (r.a_to_b_addressing || r.b_to_a_addressing) {
           const addressingParts: string[] = []
-          if (r.a_to_b_addressing) addressingParts.push(`A称B：${r.a_to_b_addressing}`)
-          if (r.b_to_a_addressing) addressingParts.push(`B称A：${r.b_to_a_addressing}`)
+          if (r.a_to_b_addressing) addressingParts.push(`A→B: ${r.a_to_b_addressing}`)
+          if (r.b_to_a_addressing) addressingParts.push(`B→A: ${r.b_to_a_addressing}`)
           lines.push(`  · ${addressingParts.join(' / ')}`)
         }
         if (Array.isArray(r.recent_dialogues) && r.recent_dialogues.length) {
-          lines.push('  · 对话样例：')
+          lines.push('  · Dialogue samples:')
           for (const d of r.recent_dialogues) lines.push(`    - ${d}`)
         }
         if (Array.isArray(r.recent_event_summaries) && r.recent_event_summaries.length) {
-          lines.push('  · 近期事件：')
+          lines.push('  · Recent events:')
           for (const ev of r.recent_event_summaries) {
             const tags: string[] = []
-            if (ev.volume_number != null) tags.push(`卷${ev.volume_number}`)
-            if (ev.chapter_number != null) tags.push(`章${ev.chapter_number}`)
+            if (ev.volume_number != null) tags.push(`Vol ${ev.volume_number}`)
+            if (ev.chapter_number != null) tags.push(`Ch ${ev.chapter_number}`)
             lines.push(`    - ${ev.summary}${tags.length ? `（${tags.join(' ')}）` : ''}`)
           }
         }
@@ -1392,7 +1392,7 @@ async function handleAssistantFinalize(summary: string) {
     if (!p?.llm_config_id) { ElMessage.error(t('card.setValidModelIdFirst')); return }
     // Merge the conversation summary with the context as input text (no longer appending the card prompt template)
     const resolvedContextText = getResolvedContextByKind(generationContextKind.value)
-    const inputText = `${resolvedContextText}\n\n[对话要点]\n${summary}`
+    const inputText = `${resolvedContextText}\n\n[Dialogue highlights]\n${summary}`
     // Read the effective Schema
     const { getCardSchema } = await import('@renderer/api/setting')
     const resp = await getCardSchema(props.card.id)

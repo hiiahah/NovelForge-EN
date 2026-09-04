@@ -168,6 +168,128 @@ def _build_relation_item(
     }
 
 
+# In-process alias table per project. Both providers share it so alias
+# resolution behaves identically regardless of the storage backend.
+_ALIAS_TABLES: Dict[int, Dict[str, str]] = {}
+
+
+def _register_aliases(project_id: int, mapping: Dict[str, List[str]]) -> None:
+    table = _ALIAS_TABLES.setdefault(int(project_id), {})
+    for canonical, aliases in (mapping or {}).items():
+        canon = str(canonical or "").strip()
+        if not canon:
+            continue
+        table[canon.lower()] = canon
+        for alias in aliases or []:
+            a = str(alias or "").strip()
+            if a:
+                table[a.lower()] = canon
+
+
+def _alias_table(project_id: int) -> Dict[str, str]:
+    return dict(_ALIAS_TABLES.get(int(project_id), {}))
+
+
+def _resolve_name(project_id: int, name: Any) -> str:
+    key = str(name or "").strip()
+    return _ALIAS_TABLES.get(int(project_id), {}).get(key.lower(), key)
+
+
+def _relation_max_chapter(item: Dict[str, Any]) -> Optional[int]:
+    chapters = [
+        ev.get("chapter_number")
+        for ev in (item.get("recent_event_summaries") or [])
+        if isinstance(ev, dict) and isinstance(ev.get("chapter_number"), int)
+    ]
+    return max(chapters) if chapters else None
+
+
+def build_subgraph(
+    project_id: int,
+    relation_items: List[Dict[str, Any]],
+    participants: List[str],
+    *,
+    radius: int = 2,
+    edge_type_whitelist: Optional[List[str]] = None,
+    top_k: int = 50,
+    max_chapter_id: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Provider-independent subgraph semantics.
+
+    - participant names are alias-resolved and matched case-insensitively
+    - ``radius`` is a real BFS over relation endpoints starting at the participants
+    - ``edge_type_whitelist`` filters by ``kind_en`` or ``kind_cn``
+    - ``max_chapter_id`` drops relations whose events all lie after the cutoff
+      and trims later events from the ones that remain
+    - ``top_k`` caps the returned edges/facts
+    """
+    limit = max(1, int(top_k))
+    seeds = {_resolve_name(project_id, p).lower() for p in participants if str(p or "").strip()}
+    if not seeds:
+        return {"nodes": [], "edges": [], "alias_table": _alias_table(project_id), "fact_summaries": [], "relation_summaries": []}
+
+    whitelist = None
+    if edge_type_whitelist:
+        whitelist = {str(k).strip().lower() for k in edge_type_whitelist if str(k).strip()}
+        whitelist |= {str(EN_TO_CN_KIND.get(k, k)).lower() for k in list(whitelist)}
+
+    prepared: List[Dict[str, Any]] = []
+    for raw in relation_items:
+        item = dict(raw)
+        item["source"] = _resolve_name(project_id, item.get("source") or item.get("a"))
+        item["target"] = _resolve_name(project_id, item.get("target") or item.get("b"))
+        item["a"], item["b"] = item["source"], item["target"]
+        if whitelist is not None:
+            kinds = {str(item.get("kind_en") or "").lower(), str(item.get("kind_cn") or item.get("kind") or "").lower()}
+            if not (kinds & whitelist):
+                continue
+        if max_chapter_id is not None:
+            all_events = [ev for ev in (item.get("recent_event_summaries") or []) if isinstance(ev, dict)]
+            events = [ev for ev in all_events if not (isinstance(ev.get("chapter_number"), int) and ev["chapter_number"] > max_chapter_id)]
+            if all_events and not events:
+                continue
+            item["recent_event_summaries"] = events
+        prepared.append(item)
+
+    frontier = set(seeds)
+    reached = set(seeds)
+    selected: List[Dict[str, Any]] = []
+    seen_keys = set()
+    for _ in range(max(1, int(radius))):
+        next_frontier = set()
+        for item in prepared:
+            a, b = item["source"].lower(), item["target"].lower()
+            if a in frontier or b in frontier:
+                key = (item["source"], item["target"], str(item.get("kind_en") or ""))
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    selected.append(item)
+                for n in (a, b):
+                    if n not in reached:
+                        next_frontier.add(n)
+        reached |= next_frontier
+        frontier = next_frontier
+        if not frontier:
+            break
+
+    selected.sort(key=lambda it: str(it.get("updated_at") or ""), reverse=True)
+    selected = selected[:limit]
+    nodes = sorted({it["source"] for it in selected} | {it["target"] for it in selected} | {_resolve_name(project_id, p) for p in participants if str(p or "").strip()})
+    edges = [
+        {"source": it["source"], "target": it["target"], "type": "relates_to", "fact": it.get("fact") or f"{it['source']} relates_to {it['target']}", "kind": it.get("kind") or it.get("kind_cn") or DEFAULT_KIND_CN}
+        for it in selected
+    ]
+    fact_summaries = [str(e["fact"]) for e in edges]
+    relation_summaries = []
+    for it in selected:
+        rel = {"a": it["source"], "b": it["target"], "kind": it.get("kind") or it.get("kind_cn") or DEFAULT_KIND_CN}
+        for k in ("a_to_b_addressing", "b_to_a_addressing", "recent_dialogues", "recent_event_summaries", "stance"):
+            if it.get(k) not in (None, [], ""):
+                rel[k] = it[k]
+        relation_summaries.append(rel)
+    return {"nodes": [{"name": n} for n in nodes], "edges": edges, "alias_table": _alias_table(project_id), "fact_summaries": fact_summaries, "relation_summaries": relation_summaries}
+
+
 class KnowledgeGraphProvider(Protocol):
     def ingest_aliases(self, project_id: int, mapping: Dict[str, List[str]]) -> None: ...
 
@@ -293,7 +415,7 @@ class Neo4jKGProvider:
             return self._parse_relation_item(rec["source"], rec["target"], rec["props"] or {})
 
     def ingest_aliases(self, project_id: int, mapping: Dict[str, List[str]]) -> None:
-        return None
+        _register_aliases(project_id, mapping)
 
     def ingest_triples_with_attributes(self, project_id: int, triples: List[Tuple[str, str, str, Dict[str, Any]]]) -> None:
         for source, kind_en, target, attrs in triples or []:
@@ -323,45 +445,20 @@ class Neo4jKGProvider:
         top_k: int = 50,
         max_chapter_id: Optional[int] = None,
     ) -> Dict[str, Any]:
-        group = self._group(project_id)
         parts = [p for p in (participants or []) if isinstance(p, str) and p.strip()]
         if not parts:
-            return {"nodes": [], "edges": [], "alias_table": {}, "fact_summaries": [], "relation_summaries": []}
-
+            return build_subgraph(project_id, [], [], radius=radius, edge_type_whitelist=edge_type_whitelist, top_k=top_k, max_chapter_id=max_chapter_id)
+        group = self._group(project_id)
         cypher = (
             "MATCH (a:Entity {group_id:$group})-[r:RELATES_TO]->(b:Entity {group_id:$group}) "
-            "WHERE a.name IN $parts AND b.name IN $parts AND (r.group_id = $group OR r.group_id IS NULL) "
-            "RETURN a.name AS source, b.name AS target, r {.*} AS props LIMIT $limit"
+            "WHERE (r.group_id = $group OR r.group_id IS NULL) "
+            "RETURN a.name AS source, b.name AS target, r {.*} AS props"
         )
-
-        fact_summaries: List[str] = []
-        rel_items: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
-        edges: List[Dict[str, Any]] = []
+        items: List[Dict[str, Any]] = []
         with self._driver.session() as sess:
-            for rec in sess.run(cypher, group=group, parts=parts, limit=max(1, int(top_k))):
-                source = rec["source"]
-                target = rec["target"]
-                item = self._parse_relation_item(source, target, rec["props"] or {})
-                key = (source, target, str(item.get("kind") or DEFAULT_KIND_CN))
-                rel_items[key] = {"a": source, "b": target, "kind": item.get("kind") or DEFAULT_KIND_CN}
-                if item.get("a_to_b_addressing"):
-                    rel_items[key]["a_to_b_addressing"] = item["a_to_b_addressing"]
-                if item.get("b_to_a_addressing"):
-                    rel_items[key]["b_to_a_addressing"] = item["b_to_a_addressing"]
-                if item.get("recent_dialogues"):
-                    rel_items[key]["recent_dialogues"] = item["recent_dialogues"]
-                if item.get("recent_event_summaries"):
-                    rel_items[key]["recent_event_summaries"] = item["recent_event_summaries"]
-                if item.get("stance") is not None:
-                    rel_items[key]["stance"] = item["stance"]
-
-                fact = str(item.get("fact") or f"{source} relates_to {target}")
-                if len(fact_summaries) < top_k:
-                    fact_summaries.append(fact)
-                if len(edges) < top_k:
-                    edges.append({"source": source, "target": target, "type": "relates_to", "fact": fact, "kind": item.get("kind") or DEFAULT_KIND_CN})
-
-        return {"nodes": [], "edges": edges, "alias_table": {}, "fact_summaries": fact_summaries, "relation_summaries": list(rel_items.values())}
+            for rec in sess.run(cypher, group=group):
+                items.append(self._parse_relation_item(rec["source"], rec["target"], rec["props"] or {}))
+        return build_subgraph(project_id, items, parts, radius=radius, edge_type_whitelist=edge_type_whitelist, top_k=top_k, max_chapter_id=max_chapter_id)
 
     def list_relations(
         self,
@@ -507,9 +604,14 @@ class Neo4jKGProvider:
 
     def delete_project_graph(self, project_id: int) -> None:
         group = self._group(project_id)
+
+        def _tx(tx):
+            tx.run("MATCH (n:Entity {group_id:$group})-[r]-() DELETE r", group=group)
+            tx.run("MATCH (n:Entity {group_id:$group}) DELETE n", group=group)
+
         with self._driver.session() as sess:
-            sess.run("MATCH (n:Entity {group_id:$group})-[r]-() DELETE r", group=group)
-            sess.run("MATCH (n:Entity {group_id:$group}) DELETE n", group=group)
+            sess.execute_write(_tx)
+        _ALIAS_TABLES.pop(int(project_id), None)
 
 class SQLModelKGProvider:
     def __init__(self, engine: Any = None) -> None:
@@ -547,7 +649,7 @@ class SQLModelKGProvider:
         )
 
     def ingest_aliases(self, project_id: int, mapping: Dict[str, List[str]]) -> None:
-        return None
+        _register_aliases(project_id, mapping)
 
     def ingest_triples_with_attributes(self, project_id: int, triples: List[Tuple[str, str, str, Dict[str, Any]]]) -> None:
         for source, kind_en, target, attrs in triples or []:
@@ -579,50 +681,14 @@ class SQLModelKGProvider:
     ) -> Dict[str, Any]:
         parts = [p for p in (participants or []) if isinstance(p, str) and p.strip()]
         if not parts:
-            return self._empty_result()
+            return build_subgraph(project_id, [], [], radius=radius, edge_type_whitelist=edge_type_whitelist, top_k=top_k, max_chapter_id=max_chapter_id)
 
         from app.db.models import KGRelation
 
-        limit = max(1, int(top_k))
-        fact_summaries: List[str] = []
-        rel_items: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
-        edges: List[Dict[str, Any]] = []
-
         with Session(self._engine) as session:
-            stmt = (
-                select(KGRelation)
-                .where(
-                    KGRelation.project_id == project_id,
-                    KGRelation.source.in_(parts),
-                    KGRelation.target.in_(parts),
-                )
-                .order_by(KGRelation.updated_at.desc(), KGRelation.id.desc())
-                .limit(limit)
-            )
-            relations = session.exec(stmt).all()
-
-            for relation in relations:
-                item = self._relation_model_to_item(relation)
-                key = (relation.source, relation.target, str(item.get("kind") or DEFAULT_KIND_CN))
-                rel_items[key] = {"a": relation.source, "b": relation.target, "kind": item.get("kind") or DEFAULT_KIND_CN}
-                if item.get("a_to_b_addressing"):
-                    rel_items[key]["a_to_b_addressing"] = item["a_to_b_addressing"]
-                if item.get("b_to_a_addressing"):
-                    rel_items[key]["b_to_a_addressing"] = item["b_to_a_addressing"]
-                if item.get("recent_dialogues"):
-                    rel_items[key]["recent_dialogues"] = item["recent_dialogues"]
-                if item.get("recent_event_summaries"):
-                    rel_items[key]["recent_event_summaries"] = item["recent_event_summaries"]
-                if item.get("stance") is not None:
-                    rel_items[key]["stance"] = item["stance"]
-
-                fact = str(item.get("fact") or f"{relation.source} relates_to {relation.target}")
-                if len(fact_summaries) < limit:
-                    fact_summaries.append(fact)
-                if len(edges) < limit:
-                    edges.append({"source": relation.source, "target": relation.target, "type": "relates_to", "fact": fact, "kind": item.get("kind") or DEFAULT_KIND_CN})
-
-        return {"nodes": [], "edges": edges, "alias_table": {}, "fact_summaries": fact_summaries, "relation_summaries": list(rel_items.values())}
+            stmt = select(KGRelation).where(KGRelation.project_id == project_id).order_by(KGRelation.updated_at.desc(), KGRelation.id.desc())
+            items = [self._relation_model_to_item(r) for r in session.exec(stmt).all()]
+        return build_subgraph(project_id, items, parts, radius=radius, edge_type_whitelist=edge_type_whitelist, top_k=top_k, max_chapter_id=max_chapter_id)
 
     def list_relations(
         self,
@@ -836,6 +902,7 @@ class SQLModelKGProvider:
         with Session(self._engine) as session:
             session.exec(delete(KGRelation).where(KGRelation.project_id == project_id))
             session.commit()
+        _ALIAS_TABLES.pop(int(project_id), None)
 
 
 def get_provider(engine: Any = None) -> KnowledgeGraphProvider:

@@ -77,7 +77,9 @@ def fn_lab_analysis_records(results: Any) -> List[Dict[str, Any]]:
         record["card_id"] = meta.get("card_id")
         record["analysis_status"] = "done"
         # Must match the title produced by ManuscriptImportService.store_manuscript.
-        record["card_title"] = f"Ch {record['chapter_number']:04d} · {record['title']}"[:200]
+        # Use the imported title (not the AI-rewritten one) so the upsert updates
+        # the existing chapter card instead of creating a duplicate.
+        record["card_title"] = f"Ch {record['chapter_number']:04d} · {meta.get('title') or record['title']}"[:200]
         emo = _as_dict(record.get("emotion"))
         if emo and not emo.get("chapter_number"):
             emo["chapter_number"] = record["chapter_number"]

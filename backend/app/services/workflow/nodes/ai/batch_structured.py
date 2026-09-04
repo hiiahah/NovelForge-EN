@@ -82,6 +82,7 @@ class BatchStructuredNode(BaseNode[BatchStructuredInput, BatchStructuredOutput])
         # Initialize the result list
         results = [None] * len(items)
         errors = []
+        failed_indices: set = set()
         total = len(items)
         
         # Recover saved results
@@ -181,11 +182,15 @@ class BatchStructuredNode(BaseNode[BatchStructuredInput, BatchStructuredOutput])
                 logger.error(f"[BatchStructured] Item {index} processing failed: {e}")
                 errors.append({"index": index, "item": item, "error": str(e)})
                 results[index] = {"error": str(e), "meta": item}
-            
-            finally:
-                # Notify progress
-                processed_indices.add(index)
+                # A failed item is NOT a completed checkpoint: it must be retried
+                # on resume instead of being skipped as "processed".
+                failed_indices.add(index)
                 await progress_queue.put(index)
+                return
+
+            # Only a validated, successfully persisted result counts as processed.
+            processed_indices.add(index)
+            await progress_queue.put(index)
         
         # === 4. Batch processing function (single task) ===
         async def process_all_batches():
@@ -221,13 +226,14 @@ class BatchStructuredNode(BaseNode[BatchStructuredInput, BatchStructuredOutput])
                 
                 # Report progress
                 percent = (len(processed_indices) / total) * 100
-                current_results = [r for r in results if r is not None]
+                current_results = [results[i] for i in sorted(processed_indices) if results[i] is not None]
                 
                 yield ProgressEvent(
                     percent=percent,
-                    message=f"Processed {len(processed_indices)}/{total} items",
+                    message=f"Processed {len(processed_indices)}/{total} items" + (f", {len(failed_indices)} failed (will retry on resume)" if failed_indices else ""),
                     data={
-                        'processed_indices': list(processed_indices),
+                        'processed_indices': sorted(processed_indices),
+                        'failed_indices': sorted(failed_indices),
                         'partial_results': current_results
                     }
                 )
@@ -243,6 +249,14 @@ class BatchStructuredNode(BaseNode[BatchStructuredInput, BatchStructuredOutput])
         )
         
         # === 6. Return the final result ===
+        if errors and not inputs.fail_soft:
+            # Fail the node so the run pauses with a visible, resumable error.
+            # Successful items stay in the checkpoint; only failures rerun.
+            first = errors[0]
+            raise RuntimeError(
+                f"{len(errors)}/{total} items failed (first: index {first.get('index')}: {str(first.get('error'))[:300]}). "
+                f"Resume the run to retry the failed items."
+            )
         yield BatchStructuredOutput(
             results=[r for r in results if r is not None],
             errors=errors

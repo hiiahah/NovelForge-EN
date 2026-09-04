@@ -85,7 +85,7 @@
       "subtitle": "Nothing is written to the Bible until you decide. Every change carries evidence, confidence and a truth status.",
       "pending": "pending",
       "partially_applied": "partially applied",
-      "applied": "applied",
+      "applied": "Applied {applied}, rejected {rejected}, postponed {postponed}",
       "chapter": "Chapter {n}",
       "changes": "{n} proposed changes",
       "open": "Review",
@@ -94,7 +94,6 @@
       "acceptLowRisk": "Accept all low-risk",
       "rejectAll": "Reject all",
       "apply": "Apply decisions",
-      "applied": "Applied {applied}, rejected {rejected}, postponed {postponed}",
       "errors": "Some changes failed",
       "decision": {
         "accept": "Accept",
@@ -181,7 +180,9 @@
         "front_matter": "front matter",
         "afterword": "afterword",
         "duplicate_title": "duplicate title",
-        "very_short": "very short"
+        "very_short": "very short",
+        "excluded": "已排除",
+        "side_story": "番外"
       },
       "actions": {
         "exclude": "Exclude",
@@ -193,16 +194,53 @@
       "splitPrompt": "Paste the first words of the new chapter (the split happens at their first occurrence)",
       "import": "Import {n} chapters",
       "importing": "Importing…",
-      "imported": "Imported {n} chapters ({words} words). Now run the Lab workflow.",
+      "imported": "已导入 {n} 章（{words} 字），排除 {excluded} 个部分。现在可以开始分析。",
       "importFailed": "Import failed",
       "manuscript": "Imported manuscript",
       "noManuscript": "No manuscript imported yet.",
       "analysisStatus": "Analysis",
-      "runWorkflow": "Open the Lab workflow",
-      "runWorkflowHint": "Select this project and a model in the 'Narrative Reverse-Engineering Lab' workflow, then execute. Results appear in the Analysis section.",
+      "runWorkflow": "运行实验室工作流",
+      "runWorkflowHint": "选择模型（默认预选 AuthND）并启动叙事逆向工程实验室。此处显示进度、错误、取消与恢复；结果显示在“分析”部分。",
       "legacy": "The legacy Book Teardown Workflow is still available for comparison.",
       "replaceExisting": "Replace previously imported chapters",
-      "genomeHint": "Once the Narrative Genome card exists, open it and use the 'Lab - Originality Transformation' prompt with an 'Originality Transformation' card to derive original premises."
+      "genomeHint": "Once the Narrative Genome card exists, open it and use the 'Lab - Originality Transformation' prompt with an 'Originality Transformation' card to derive original premises.",
+      "minChapterWords": "最小章节字数",
+      "mainEnding": "检测到主线结局位于第 {index} 节：{title}",
+      "excludedSummary": "已排除：{side} 篇番外、{bonus} 篇特典/额外篇、{other} 个其他部分（{words} 字）。如有需要可在下方手动调整。",
+      "uncertain": "{n} 个部分无法自动分类，已暂时排除，请人工确认。",
+      "filterAll": "全部",
+      "filterIncluded": "已包含",
+      "filterExcluded": "已排除",
+      "undoCorrection": "撤销上一次修正（{n}）",
+      "sectionType": "部分类型",
+      "included": "包含",
+      "manual": "手动",
+      "concurrency": "分析并发数",
+      "next": "下一步",
+      "runStarted": "已启动实验室工作流（运行 #{id}）",
+      "excludedStored": "已排除 {n} 个部分（{words} 字）",
+      "types": {
+        "front_matter": "前言页",
+        "preface": "序",
+        "prologue": "序章",
+        "main_chapter": "正文章节",
+        "main_interlude": "幕间（主线）",
+        "main_epilogue": "尾声（主线）",
+        "afterword": "后记",
+        "appendix": "附录",
+        "side_story": "番外",
+        "bonus_story": "特典",
+        "extra": "额外篇",
+        "unknown": "未知"
+      },
+      "run": {
+        "title": "实验室运行 #{id}",
+        "cancel": "取消",
+        "resume": "恢复 / 重试",
+        "currentNode": "当前步骤：{node}",
+        "chapters": "章节 {done}/{total} 已分析，{failed} 失败",
+        "nodes": "{n} 个工作流步骤"
+      }
     }
   }
 }

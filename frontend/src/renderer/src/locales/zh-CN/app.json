@@ -37,18 +37,6 @@
       "sessionDeleted": "已删除会话",
       "deleteSessionFailed": "删除会话失败",
       "confirmDeleteSession": "确定要删除这个对话吗？",
-      "confirmDeleteTitle": "确认删除"
-    },
-    "llm": {
-      "fetchConfigsFailed": "获取LLM配置列表失败"
-    },
-    "prompt": {
-      "fetchPromptsFailed": "获取提示词列表失败"
-    },
-    "assistant": {
-      "sessionDeleted": "已删除会话",
-      "deleteSessionFailed": "删除会话失败",
-      "confirmDeleteSession": "确定要删除这个对话吗？",
       "confirmDeleteTitle": "确认删除",
       "newConversation": "新对话",
       "justNow": "刚刚",
@@ -60,7 +48,16 @@
       "executionFailed": "执行失败",
       "taskCompleted": "任务已完成",
       "callingTool": "正在调用工具: {name}",
-      "tool": "工具"
+      "tool": "工具",
+      "toolCallRetrying": "工具调用失败，{reason}，正在重试 ({current}/{max})...",
+      "toolCallError": "工具调用失败: {message}",
+      "errorPrefix": "[错误]"
+    },
+    "llm": {
+      "fetchConfigsFailed": "获取LLM配置列表失败"
+    },
+    "prompt": {
+      "fetchPromptsFailed": "获取提示词列表失败"
     },
     "layout": {
       "section": "分区",

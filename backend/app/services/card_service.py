@@ -171,7 +171,7 @@ class CardService:
     def get_by_id(self, card_id: int) -> Optional[Card]:
         return self.db.get(Card, card_id)
 
-    def create(self, card_create: CardCreate, project_id: int) -> Card:
+    def create(self, card_create: CardCreate, project_id: int, *, commit: bool = True) -> Card:
 
         card_type = self.db.get(CardType, card_create.card_type_id)
         if not card_type:
@@ -215,8 +215,12 @@ class CardService:
         
         card = Card(**card_params)
         self.db.add(card)
-        self.db.commit()
-        self.db.refresh(card)
+        if commit:
+            self.db.commit()
+            self.db.refresh(card)
+        else:
+            self.db.flush()
+
         return card
 
     @staticmethod

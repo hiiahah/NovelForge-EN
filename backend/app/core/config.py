@@ -100,7 +100,7 @@ class BootstrapSettings(BaseSettings):
     """Startup initialization configuration"""
     
     # Whether to overwrite built-in data (prompts, knowledge bases, etc.)
-    overwrite: bool = Field(default=True, alias="BOOTSTRAP_OVERWRITE")
+    overwrite: bool = Field(default=False, alias="BOOTSTRAP_OVERWRITE")
     # Whether to overwrite built-in card type schemas
     overwrite_card_schemas: bool = Field(default=False, alias="BOOTSTRAP_OVERWRITE_CARD_SCHEMAS")
     
@@ -151,7 +151,7 @@ class AppSettings(BaseSettings):
     app_name: str = Field(default="NovelForge", alias="APP_NAME")
     
     # Application version
-    app_version: str = Field(default="1.0.0", alias="APP_VERSION")
+    app_version: str = Field(default="0.10.0", alias="APP_VERSION")
     
     # Whether to enable debug mode
     debug: bool = Field(default=False, alias="DEBUG")
@@ -179,6 +179,21 @@ class AppSettings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
+class ContextSettings(BaseSettings):
+    """Context assembly budgets (characters) and graph traversal defaults."""
+
+    facts_quota_chars: int = Field(default=5000, alias="CONTEXT_FACTS_QUOTA_CHARS")
+    bible_quota_chars: int = Field(default=6000, alias="CONTEXT_BIBLE_QUOTA_CHARS")
+    relation_radius: int = Field(default=1, alias="CONTEXT_RELATION_RADIUS")
+    recent_chapters_window: int = Field(default=3, alias="CONTEXT_RECENT_CHAPTERS_WINDOW")
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+        extra = "ignore"
+
+
 class WorkflowSettings(BaseSettings):
     """Workflow configuration"""
     
@@ -202,6 +217,7 @@ class Settings:
         self.ai = AISettings()
         self.bootstrap = BootstrapSettings()
         self.workflow = WorkflowSettings()
+        self.context = ContextSettings()
         self.app = AppSettings()
     
     def __repr__(self) -> str:

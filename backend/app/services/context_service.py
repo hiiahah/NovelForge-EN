@@ -22,6 +22,16 @@ class ContextAssembleParams:
 	current_draft_tail: Optional[str]
 	recent_chapters_window: Optional[int] = None
 	chapter_id: Optional[int] = None
+	pov: Optional[str] = None
+	facts_quota_chars: Optional[int] = None
+	bible_quota_chars: Optional[int] = None
+	relation_radius: Optional[int] = None
+	edge_type_whitelist: Optional[List[str]] = None
+	max_chapter_id: Optional[int] = None
+
+
+class ContextAssemblyError(RuntimeError):
+	"""Raised when a context provider fails; callers must not treat it as empty context."""
 
 
 @dataclass
@@ -152,52 +162,119 @@ def _build_concept_summaries(session: Session, project_id: Optional[int], partic
 	return summaries
 
 
-def assemble_context(session: Session, params: ContextAssembleParams) -> AssembledContext:
-	facts_quota = 5000
-	bible_quota = 6000
+def _character_alias_map(session: Session, project_id: Optional[int]) -> Dict[str, str]:
+	"""alias/name (lowercase) -> canonical display name, from Character Cards."""
+	if not project_id:
+		return {}
+	mapping: Dict[str, str] = {}
+	cards = session.exec(select(Card).where(Card.project_id == project_id)).all()
+	for card in cards:
+		if _clean_text(getattr(card.card_type, "name", "")) != "Character Card":
+			continue
+		content = card.content if isinstance(card.content, dict) else {}
+		canonical = _clean_text(content.get("name")) or _clean_text(card.title)
+		if not canonical:
+			continue
+		mapping.setdefault(canonical.lower(), canonical)
+		for alias in _clean_list(content.get("aliases")):
+			mapping.setdefault(alias.lower(), canonical)
+	return mapping
 
-	eff_participants: List[str] = list(params.participants or [])
-	participant_set = {name for name in eff_participants if name}
+
+def _resolve_participants(session: Session, params: ContextAssembleParams) -> tuple[List[str], Optional[str], Dict[str, str]]:
+	alias_map = _character_alias_map(session, params.project_id)
+
+	def canon(name: Any) -> str:
+		key = _clean_text(name)
+		return alias_map.get(key.lower(), key)
+
+	resolved: List[str] = []
+	seen = set()
+	for raw in params.participants or []:
+		name = canon(raw)
+		if name and name.lower() not in seen:
+			seen.add(name.lower())
+			resolved.append(name)
+	pov = canon(params.pov) if params.pov else None
+	if pov and pov.lower() not in seen:
+		# The POV character is always part of its own chapter.
+		resolved.insert(0, pov)
+		seen.add(pov.lower())
+	return resolved, pov, alias_map
+
+
+def assemble_context(session: Session, params: ContextAssembleParams) -> AssembledContext:
+	from app.core.config import settings
+
+	cfg = settings.context
+	facts_quota = int(params.facts_quota_chars or cfg.facts_quota_chars)
+	bible_quota = int(params.bible_quota_chars or cfg.bible_quota_chars)
+	radius = int(params.relation_radius or cfg.relation_radius)
+
+	eff_participants, pov, alias_map = _resolve_participants(session, params)
+	participant_set = {name.lower() for name in eff_participants}
 
 	facts_text = _compose_facts_subgraph_stub()
 	facts_structured: Optional[Dict[str, Any]] = None
 	item_summaries = _build_item_summaries(session, params.project_id, eff_participants)
 	concept_summaries = _build_concept_summaries(session, params.project_id, eff_participants)
+	filtered_relation_items: List[Dict[str, Any]] = []
+	fact_summaries: List[str] = []
 
-	try:
-		provider = get_provider()
-		edge_whitelist = None
-		est_top_k = max(5, min(100, facts_quota // 100))
-		sub_struct = provider.query_subgraph(
-			project_id=params.project_id or -1,
-			participants=eff_participants,
-			radius=2,
-			edge_type_whitelist=edge_whitelist,
-			top_k=est_top_k,
-			max_chapter_id=None,
-		)
+	if eff_participants:
+		try:
+			provider = get_provider()
+			if alias_map:
+				grouped: Dict[str, List[str]] = {}
+				for alias, canonical in alias_map.items():
+					if alias != canonical.lower():
+						grouped.setdefault(canonical, []).append(alias)
+				if grouped:
+					provider.ingest_aliases(params.project_id or -1, grouped)
+			est_top_k = max(5, min(100, facts_quota // 100))
+			sub_struct = provider.query_subgraph(
+				project_id=params.project_id or -1,
+				participants=eff_participants,
+				radius=radius,
+				edge_type_whitelist=params.edge_type_whitelist,
+				top_k=est_top_k,
+				max_chapter_id=params.max_chapter_id,
+			)
+		except Exception as exc:
+			logger.error("[Context] knowledge graph query failed: {}", exc)
+			raise ContextAssemblyError(f"Knowledge graph query failed: {exc}") from exc
+
 		raw_relation_items = [it for it in (sub_struct.get("relation_summaries") or []) if isinstance(it, dict)]
-		filtered_relation_items = [
-			it for it in raw_relation_items
-			if (str(it.get("a")) in participant_set and str(it.get("b")) in participant_set)
-		]
+		if len(eff_participants) == 1:
+			# A single participant still needs their adjacent relationships.
+			filtered_relation_items = [
+				it for it in raw_relation_items
+				if str(it.get("a", "")).lower() in participant_set or str(it.get("b", "")).lower() in participant_set
+			]
+		else:
+			filtered_relation_items = [
+				it for it in raw_relation_items
+				if str(it.get("a", "")).lower() in participant_set and str(it.get("b", "")).lower() in participant_set
+			]
+		fact_summaries = [str(f) for f in (sub_struct.get("fact_summaries") or [])]
 		if filtered_relation_items:
 			lines: List[str] = ["Key facts:"]
 			for it in filtered_relation_items:
-				a = str(it.get("a"))
-				b = str(it.get("b"))
 				kind_cn = str(it.get("kind") or "Other")
 				pred_en = CN_TO_EN_KIND.get(kind_cn, kind_cn)
-				lines.append(f"- {a} {pred_en} {b}")
+				lines.append(f"- {it.get('a')} {pred_en} {it.get('b')}")
 			facts_text = "\n".join(lines)
-		else:
-			txt = "\n".join([f"- {f}" for f in (sub_struct.get("fact_summaries") or [])])
-			if txt:
-				facts_text = "Key facts:\n" + txt
+		elif fact_summaries:
+			facts_text = "Key facts:\n" + "\n".join(f"- {f}" for f in fact_summaries)
 
+	facts = truncate_text(facts_text, facts_quota, suffix="\n...[truncated]")
+
+	# Structured facts share the facts budget: trim relation/fact lists until the
+	# serialized structure fits rather than bypassing the limit.
+	def _structured(rel_items: List[Dict[str, Any]], facts_list: List[str]) -> Dict[str, Any]:
 		try:
-			fs_model = FactsStructured(
-				fact_summaries=list(sub_struct.get("fact_summaries") or []),
+			return FactsStructured(
+				fact_summaries=facts_list,
 				relation_summaries=[
 					{
 						"a": it.get("a"),
@@ -210,29 +287,31 @@ def assemble_context(session: Session, params: ContextAssembleParams) -> Assembl
 						"recent_event_summaries": it.get("recent_event_summaries") or [],
 						"stance": it.get("stance"),
 					}
-					for it in filtered_relation_items
+					for it in rel_items
 				],
 				item_summaries=item_summaries,
 				concept_summaries=concept_summaries,
-			)
-			facts_structured = fs_model.model_dump()
+			).model_dump()
 		except Exception:
-			facts_structured = {
-				"fact_summaries": sub_struct.get("fact_summaries") or [],
-				"relation_summaries": filtered_relation_items,
-				"item_summaries": item_summaries,
-				"concept_summaries": concept_summaries,
-			}
-	except Exception:
-		if item_summaries or concept_summaries:
-			facts_structured = {
-				"fact_summaries": [],
-				"relation_summaries": [],
+			return {
+				"fact_summaries": facts_list,
+				"relation_summaries": rel_items,
 				"item_summaries": item_summaries,
 				"concept_summaries": concept_summaries,
 			}
 
-	facts = truncate_text(facts_text, facts_quota, suffix="\n...[truncated]")
+	import json as _json
+
+	rel_items = list(filtered_relation_items)
+	facts_list = list(fact_summaries)
+	if rel_items or facts_list or item_summaries or concept_summaries:
+		facts_structured = _structured(rel_items, facts_list)
+		while len(_json.dumps(facts_structured, ensure_ascii=False)) > facts_quota and (rel_items or facts_list):
+			if facts_list:
+				facts_list.pop()
+			else:
+				rel_items.pop()
+			facts_structured = _structured(rel_items, facts_list)
 
 	bible_context: Optional[Dict[str, Any]] = None
 	if params.project_id:
@@ -242,16 +321,26 @@ def assemble_context(session: Session, params: ContextAssembleParams) -> Assembl
 				project_id=params.project_id,
 				chapter_number=params.chapter_number,
 				participants=eff_participants,
+				pov=pov,
 				budget_chars=bible_quota,
 			)
 			if compiled.blocks or compiled.prohibited:
 				bible_context = compiled.as_dict()
 		except Exception as exc:
-			logger.warning("[Context] Bible context compilation failed: {}", exc)
+			logger.error("[Context] Bible context compilation failed: {}", exc)
+			raise ContextAssemblyError(f"Bible context compilation failed: {exc}") from exc
 
 	return AssembledContext(
 		facts_subgraph=facts,
-		budget_stats={"facts_quota": facts_quota, "bible_quota": bible_quota, "bible_used": (bible_context or {}).get("used_chars", 0)},
+		budget_stats={
+			"facts_quota": facts_quota,
+			"facts_used": len(facts),
+			"bible_quota": bible_quota,
+			"bible_used": (bible_context or {}).get("used_chars", 0),
+			"relation_radius": radius,
+			"participants": eff_participants,
+			"pov": pov,
+		},
 		facts_structured=facts_structured,
 		bible_context=bible_context,
 	)

@@ -30,7 +30,7 @@
     "failed": "失败",
     "error": "错误",
     "warning": "警告",
-    "info": "提示",
+    "info": "信息",
     "tip": "提示",
     "ok": "确定",
     "yes": "是",
@@ -87,6 +87,8 @@
     "category": "分类",
     "filter": "筛选",
     "sort": "排序",
-    "info": "信息"
+    "aiGenerating": "AI生成中…",
+    "interruptGeneration": "中断生成",
+    "requestFailed": "请求失败：{status}"
   }
 }
