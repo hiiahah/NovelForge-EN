@@ -78,3 +78,4 @@ story_progress.json
 generate_master_bible.py
 generate_novel_volume1.py
 run_teardown_timid_noble_lady.py
+backend/openapi.json

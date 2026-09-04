@@ -21,7 +21,7 @@ export const useAIStore = defineStore('ai', () => {
     try {
       currentAbort?.abort()
       currentAbort = new AbortController()
-      showInterruptOverlay('AI生成中…', () => { try { currentAbort?.abort() } catch {} })
+      showInterruptOverlay(undefined, () => { try { currentAbort?.abort() } catch {} })
       const cardStore = useCardStore()
       const allowed = new Set(['Character Card','Scene Card','Organization Card','Item Card','Concept Card'])
       const typeIdToName = new Map<number, string>()
@@ -68,7 +68,7 @@ export const useAIStore = defineStore('ai', () => {
     try {
       currentAbort?.abort()
       currentAbort = new AbortController()
-      showInterruptOverlay('AI生成中…', () => { try { currentAbort?.abort() } catch {} })
+      showInterruptOverlay(undefined, () => { try { currentAbort?.abort() } catch {} })
       const cardStore = useCardStore()
       const allowed = new Set(['Character Card','Scene Card','Organization Card','Item Card','Concept Card'])
       const typeIdToName = new Map<number, string>()

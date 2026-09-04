@@ -47,7 +47,7 @@ function normalizeReviewMarkdown(markdown: string): string {
   const normalizedMarkdown = normalizedLines.join('\n').trim()
 
   return normalizedMarkdown.replace(
-    /^(-\s*结论[：:]\s*)(pass|revise|block)(\s*)$/gim,
+    /^(-\s*(?:结论|Conclusion)[：:]\s*)(pass|revise|block)(\s*)$/gim,
     (_, prefix: string, verdict: string, suffix: string) => {
       const localizedVerdict = verdictLabel(verdict.toLowerCase())
       return `${prefix}**${localizedVerdict}**${suffix}`

@@ -1,7 +1,9 @@
+import i18n from '@renderer/i18n'
+
 let overlayEl: HTMLElement | null = null
 let styleEl: HTMLStyleElement | null = null
 
-export function showInterruptOverlay(text: string, onCancel: () => void) {
+export function showInterruptOverlay(text: string | undefined, onCancel: () => void) {
   if (!styleEl) {
     styleEl = document.createElement('style')
     styleEl.textContent = `
@@ -20,8 +22,8 @@ export function showInterruptOverlay(text: string, onCancel: () => void) {
   overlayEl.innerHTML = `
     <div class="nf-interrupt-backdrop"></div>
     <div class="nf-interrupt-box">
-      <div class="nf-interrupt-text">${text || 'AI 生成中…'}</div>
-      <button class="nf-interrupt-btn" id="nf-interrupt-btn">中断生成</button>
+      <div class="nf-interrupt-text">${text || i18n.global.t('common.aiGenerating')}</div>
+      <button class="nf-interrupt-btn" id="nf-interrupt-btn">${i18n.global.t('common.interruptGeneration')}</button>
     </div>
   `
   document.body.appendChild(overlayEl)

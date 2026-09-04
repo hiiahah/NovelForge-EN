@@ -1,3 +1,4 @@
+import i18n from '@renderer/i18n'
 ﻿export interface SSERequestParams {
   endpoint: string
   body: any
@@ -40,7 +41,7 @@ export function createSSEStreamingRequest(params: SSERequestParams) {
     signal,
   }).then(async response => {
     if (!response.ok) {
-      const message = await extractErrorMessage(response, `请求失败：${response.status}`)
+      const message = await extractErrorMessage(response, i18n.global.t('common.requestFailed', { status: response.status }))
       throw new Error(message)
     }
 

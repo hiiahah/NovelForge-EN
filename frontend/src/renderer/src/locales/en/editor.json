@@ -1,5 +1,7 @@
 ﻿{
     "editor":  {
+                    "modePromptOnly":  "Prompt Constraint",
+                    "modeControlled":  "Control Mode",
                     "editGroup":  "Edit",
                     "aiGroup":  "AI",
                     "moreAI":  "More AI",

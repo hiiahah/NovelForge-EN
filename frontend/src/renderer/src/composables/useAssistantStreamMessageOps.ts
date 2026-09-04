@@ -252,7 +252,7 @@ export function applyAssistantStreamChunk(options: ApplyAssistantStreamChunkOpti
       const reason = data.reason || i18n.global.t('app.assistant.toolCallFailed')
       const current = data.current ?? data.retry
       const max = data.max
-      baseMessage.toolsInProgress = `🔄 工具调用失败，${reason}，正在重试 (${current}/${max})...`
+      baseMessage.toolsInProgress = `🔄 ${i18n.global.t('app.assistant.toolCallRetrying', { reason, current, max })}`
       options.scrollToBottom()
       return
     }
@@ -263,7 +263,7 @@ export function applyAssistantStreamChunk(options: ApplyAssistantStreamChunkOpti
         trackToolStartInTools: false,
         appendErrorToContent: false,
       })
-      baseMessage.toolsInProgress = `❌ 工具调用失败: ${errMessage}`
+      baseMessage.toolsInProgress = `❌ ${i18n.global.t('app.assistant.toolCallError', { message: errMessage })}`
       options.scrollToBottom()
       return
     }
