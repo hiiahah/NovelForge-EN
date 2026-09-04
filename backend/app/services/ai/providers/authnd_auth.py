@@ -1951,10 +1951,18 @@ def _send_chat_completion_inner(
         debug_only=True,
     )
     last_error: Optional[Exception] = None
+    env_permanent = os.getenv("AUTHND_PERMANENT_RETRY")
+    if env_permanent is not None:
+        permanent_retry = env_permanent.strip().lower() in ("1", "true", "yes", "on")
+    else:
+        # Permanent retry enabled by default for runtime resilience, unless explicit test retry limit is set
+        permanent_retry = os.getenv("AUTHND_TOKEN_RETRIES") is None
+
     token_retries = max(1, _env_int("AUTHND_TOKEN_RETRIES", _env_int("AUTHND_PROVIDER_RETRIES", 6)))
     attempts_log: List[str] = []
 
-    for attempt in range(token_retries):
+    attempt = 0
+    while True:
         if _is_cancelled():
             raise RuntimeError("stream cancelled")
         try:
@@ -1965,7 +1973,7 @@ def _send_chat_completion_inner(
             )
         except AuthNDDependencyError:
             raise
-        except RuntimeError as exc:
+        except (RuntimeError, Exception) as exc:
             if _is_cancelled() or "stream cancelled" in str(exc):
                 raise RuntimeError("stream cancelled") from exc
             last_error = exc
@@ -1974,13 +1982,15 @@ def _send_chat_completion_inner(
             _log(
                 log_fn,
                 f"⚠️ AuthND captcha token flow failed "
-                f"(attempt {attempt + 1}/{token_retries}, rerouting proxy retry in {sleep_for:.1f}s): "
+                f"(attempt {attempt + 1}{' [permanent retry]' if permanent_retry else f'/{token_retries}'}, retrying in {sleep_for:.1f}s): "
                 f"{_short_error(exc)}",
             )
-            if attempt + 1 >= token_retries:
+            if not permanent_retry and attempt + 1 >= token_retries:
                 raise
             time.sleep(sleep_for)
+            attempt += 1
             continue
+
         if _is_cancelled():
             raise RuntimeError("stream cancelled")
         _log(
@@ -2014,23 +2024,48 @@ def _send_chat_completion_inner(
                 proxy=proxy,
                 chunk_callback=chunk_callback,
             )
+            content = (result.get("content") or "").strip()
+            reasoning = (result.get("reasoning_content") or "").strip()
+            if not content and not reasoning:
+                raise RuntimeError("AuthND model returned empty content")
             result["model"] = model_id
             result["page_url"] = page_url
             return result
-        except RuntimeError as exc:
+        except (RuntimeError, Exception) as exc:
             if _is_cancelled() or "stream cancelled" in str(exc):
                 raise RuntimeError("stream cancelled") from exc
             last_error = exc
             message = str(exc).lower()
             attempts_log.append(f"request attempt {attempt + 1}: {_short_error(exc, 200)}")
-            retryable = "captcha" in message or "400" in message or "401" in message or "403" in message or "redirected" in message
-            if attempt + 1 < token_retries and retryable:
+            retryable = (
+                "captcha" in message
+                or "400" in message
+                or "401" in message
+                or "403" in message
+                or "429" in message
+                or "500" in message
+                or "502" in message
+                or "503" in message
+                or "504" in message
+                or "retries exhausted" in message
+                or "internal server error" in message
+                or "timeout" in message
+                or "timed out" in message
+                or "empty content" in message
+                or "redirected" in message
+                or "connection" in message
+                or "closed" in message
+                or "network" in message
+            )
+            has_more = permanent_retry or (attempt + 1 < token_retries)
+            if has_more and retryable:
+                sleep_s = min(15.0, 2.0 * (1.2 ** min(attempt, 15)))
                 if log_fn:
-                    log_fn(f"⚠️ AuthND: captcha token was rejected; retrying with a fresh browser token ({_short_error(exc)})")
+                    log_fn(f"⚠️ AuthND: Transient failure / no output ({_short_error(exc)}); retrying in {sleep_s:.1f}s (attempt {attempt + 1}{' [permanent retry]' if permanent_retry else ''})...")
+                time.sleep(sleep_s)
+                attempt += 1
                 continue
             raise RuntimeError(f"{exc} | attempts: {'; '.join(attempts_log)}") from exc
-
-    raise RuntimeError(f"AuthND request failed after {token_retries} attempts: {last_error} | attempts: {'; '.join(attempts_log)}")
 
 
 def _read_cli_text(value: Optional[str]) -> str:
