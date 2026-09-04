@@ -383,13 +383,14 @@ async def start_lab_workflow(req: LabRunRequest, session: Session = Depends(get_
     llm_cfg = session.get(LLMConfig, req.llm_config_id)
     if not llm_cfg:
         raise HTTPException(status_code=400, detail=f"LLM configuration {req.llm_config_id} not found")
-    if (llm_cfg.provider or "").strip().lower() != "authnd":
+    provider = (llm_cfg.provider or "").strip().lower()
+    if provider not in {"authnd", "genspark"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Lab reverse-engineering workflow requires an AuthND configuration (got provider '{llm_cfg.provider}')",
+            detail=f"Lab reverse-engineering workflow requires an AuthND or Genspark configuration (got provider '{llm_cfg.provider}')",
         )
     target_model = (llm_cfg.model_name or "").strip().lower()
-    if target_model and "kimi" not in target_model and target_model != "moonshotai/kimi-k3":
+    if provider == "authnd" and target_model and "kimi" not in target_model and target_model != "moonshotai/kimi-k3":
         raise HTTPException(
             status_code=400,
             detail=f"Lab reverse-engineering workflow requires the AuthND Kimi model (got '{llm_cfg.model_name}')",
