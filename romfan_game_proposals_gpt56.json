@@ -1,0 +1,305 @@
+{
+  "source_vibe_analysis": "The addictive engine is the collision of survival-game competence with romantic misinterpretation. A hardcore player enters a world whose beautiful heroines are effectively roaming boss monsters, remembers that nearly every intimate choice can produce a massacre, and therefore treats ordinary academy life like a no-damage speedrun. His first-person narration supplies tactical panic, irreverent commentary, route knowledge, and constant fear of hidden affection values, while his controlled exterior makes every retreat look dignified and every emergency intervention look impossibly gallant. Progression systems such as rankings, stat measurements, route events, dungeons, and public examinations provide frequent measurable victories. The heroine interludes then reframe those victories: women he regards as catastrophic death flags interpret his precautions as trust, acceptance, courtship, or soulmate-level insight. The strongest long-form version escalates from avoiding individual routes to discovering that the game itself rewards obsession, forcing the protagonist to stop treating people as scripted hazards and earn a definitive ending through honest relationships rather than route manipulation.",
+  "options": [
+    {
+      "title": "I Maxed Survival, So Why Are the Final Boss Heroines Chasing Me?",
+      "logline": "A challenge-run addict awakens as Lucen Vale, an irrelevant baron's son fated to die during an academy tutorial, and uses perfect route knowledge to avoid every heroine\u2014only for his cool-headed evasions to convince four living calamities that he alone understands their hearts.",
+      "game_title_and_setting": "The setting is Crown of Amaranth: A Romance Written in Blood, an infamous romance-fantasy simulation combining academy rankings, tactical dungeon raids, social-stat checks, and irreversible affection routes. Its Nightmare Crown difficulty gives named heroines autonomous behavior, hides affection values, strengthens enemies whenever canonical events are bypassed, and converts emotional instability into magical power. The imperial Asterion Academy measures students with Prism Cubes, assigns monthly rankings, and sends upper-year teams into relic zones. Lucen remembers 312 documented endings, including only nine nominal victories and no ending in which every heroine survives.",
+      "protagonist": "Lucen Vale is a sixteen-year-old minor noble and tutorial casualty whose original role was to demonstrate the danger of a corrupted mana beast. Before transmigration, he was Kang Min-jun, a hardcore challenge runner who completed Crown of Amaranth with self-imposed restrictions and maintained spreadsheets for event timing, enemy patterns, and heroine corruption thresholds. Internally he is profane, suspicious, and perpetually calculating escape vectors. Externally he speaks slowly, maintains impeccable manners, and refuses emotional bait because one wrong sentence could activate a lethal route. His apparent composure is actually the practiced stillness of a player terrified of touching an unknown dialogue option.",
+      "heroines": [
+        {
+          "name": "Lysandra Veyr, the Ashen Dragon Duchess",
+          "archetype": "Yandere dragon shifter and hidden superboss disguised as an indolent ducal heiress",
+          "obsession_trigger": "Lucen smells dragon mana during the entrance ceremony and quietly returns the scale she dropped instead of exposing or blackmailing her. He then refuses her reward because accepting dragon treasure constitutes a mating oath. Lysandra concludes that he protected her secret without greed and rejected wealth because he wants the dragon herself.",
+          "interlude_dynamic": "Her interludes reveal a centuries-old predator becoming embarrassingly excited by his smallest gestures, hoarding objects he touched, rehearsing casual invitations, and threatening furniture whenever another heroine occupies his attention. She thinks his strategic avoidance is an elaborate draconic courtship chase."
+        },
+        {
+          "name": "Princess Eirwen Solgrave, the Winter Crown",
+          "archetype": "Emotion-sealed imperial princess whose runaway ice magic can freeze the capital",
+          "obsession_trigger": "Knowing that comforting her during a ranking-test breakdown causes the White Funeral ending, Lucen gives her precise breathing instructions, blocks the crowd from watching, and leaves before she can depend on him. Eirwen experiences emotional stability for the first time and interprets his departure as noble restraint rather than mortal terror.",
+          "interlude_dynamic": "Her interludes contrast a glacial public persona with frantic private study of romance manuals. She engineers official meetings, becomes silently jealous, and repeatedly attempts subtle seduction using tactics so formal that Lucen mistakes them for imperial inspections."
+        },
+        {
+          "name": "Saint Mirielle Aster, the Hollow Halo",
+          "archetype": "Fallen saintess carrying a sentient corruption that feeds on hypocrisy",
+          "obsession_trigger": "Lucen refuses to confess fabricated sins during a church event because the canonical ritual lets the corruption copy a target's guilt. He tells Mirielle that she is allowed to hate the people exploiting her holiness. She hears the first honest permission she has ever received and decides he saw the woman beneath the saint.",
+          "interlude_dynamic": "Her interludes show devotional language mutating into possessive romance, theological justifications for monopolizing him, and mortified attempts to appear pure while her shadow proposes increasingly criminal solutions to romantic competition."
+        },
+        {
+          "name": "Kaela Routh, the Sword Star of the North",
+          "archetype": "Battle-obsessed sword prodigy and doomed rival-route heroine",
+          "obsession_trigger": "Lucen uses speedrun footwork to survive three exchanges during a compulsory duel, then forfeits before triggering her berserk awakening. Kaela believes he perfectly understood both her sword and her loneliness, while his refusal to claim victory becomes, in her mind, a promise of a more intimate rematch.",
+          "interlude_dynamic": "Her interludes turn combat analysis into romantic fixation. She blushes while cataloguing his movements, challenges rivals who approach him, and fails to understand why invitations phrased as threats do not produce dates."
+        }
+      ],
+      "comedy_and_misunderstanding_engine": "Every survival maneuver has two readings. Lucen avoids eye contact because direct recognition can raise affection; the heroines think he is respectfully resisting their beauty. He remembers favorite foods because poisoned-banquet events require exact menus; they interpret it as intimate attentiveness. He carries antidotes, rope, chalk, and emergency teleport stones because he expects scripted disasters; classmates see a flawlessly prepared mastermind. When cornered, he uses terse speedrunner language such as 'Not here,' 'Wait three minutes,' or 'Trust me once.' His internal narration is a cascading alarm about route locks and murder conditions, but his face remains neutral while he calculates. Public victories create rumors that he controls imperial politics, whereas Lucen is usually attempting to reach the safest chair in the room. The jokes escalate when the heroines sabotage one another's seduction plans, only to mistake Lucen's desperate mediation for equitable romantic management.",
+      "pov_80_20_mechanics": "Approximately 80 percent of chapters remain in Lucen's first-person present-tense perspective, including academy routines, stat planning, examinations, dungeon tactics, investigations, and his increasingly unreliable attempts to quantify affection. His narration never directly accesses a heroine's thoughts, preserving the gap between apparent menace and romantic panic. The remaining 20 percent consists of short third-person limited interludes placed after major misunderstandings or every four to six Lucen chapters. Each interlude belongs to one heroine only and cannot reveal information she does not know. Early interludes expose blushing, jealousy, and failed invitations; middle interludes reveal competing schemes and genuine vulnerabilities; late interludes demonstrate how badly Lucen's route assumptions have dehumanized them. During climactic battles, perspective remains primarily with Lucen, while brief interludes show the heroines choosing him without magical coercion. The final ten chapters gradually narrow the gap, culminating in Lucen openly expressing what readers previously heard only in his internal monologue.",
+      "macro_timeline_450_chapters": [
+        {
+          "volume_num": 1,
+          "title": "The Extra Who Refused the Tutorial Death",
+          "chapter_range": "Chapters 1\u201352",
+          "main_conflict_and_game_event": "Lucen awakens three days before Asterion Academy's entrance test and prevents his scripted death using improvised stat allocation. Prism Cube examinations, dormitory selection, and the first ranking tournament establish the game systems. His efforts to remain below rank one hundred accidentally expose exam tampering and place him at rank twelve.",
+          "heroine_milestones": "He protects Lysandra's dragon secret, stabilizes Eirwen during the ranking test, and attracts Kaela's interest by forfeiting their duel. Lysandra quietly marks his room with a draconic ward; Eirwen requests him as her academic partner; Kaela declares him her destined opponent.",
+          "ending_cliffhanger": "The hidden Nightmare Crown system announces that three impossible heroine routes have activated simultaneously and advances the academy massacre event by six months."
+        },
+        {
+          "volume_num": 2,
+          "title": "Please Stop Calling My Panic a Master Plan",
+          "chapter_range": "Chapters 53\u2013108",
+          "main_conflict_and_game_event": "Lucen forms a deliberately mediocre dungeon team to survive the Labyrinth Midterms, but randomized rooms produce endgame monsters. He exploits map seams and puzzle logic, leading the academy to believe he discovered an ancient strategic doctrine. A cult begins searching for the unknown student disrupting prophecy.",
+          "heroine_milestones": "Eirwen experiences her first ordinary outing while Lucen thinks they are scouting evacuation routes. Lysandra gives him a scale that he tries unsuccessfully to return. Kaela learns restraint from his tactical commands. Mirielle arrives to investigate the dungeon corruption and becomes fixated after Lucen rejects her confession ritual.",
+          "ending_cliffhanger": "Mirielle's shadow identifies Lucen as an entity absent from divine fate, while the academy headmaster publicly appoints him commander of the elite Crown Class."
+        },
+        {
+          "volume_num": 3,
+          "title": "Four Routes Are Not a Harem; They Are a Disaster",
+          "chapter_range": "Chapters 109\u2013166",
+          "main_conflict_and_game_event": "The Imperial Founding Festival combines a masquerade, political duels, and a terrorist event that originally kills half the cast. Lucen attempts to evacuate everyone without entering any dance or escort flags. His coded warnings are mistaken for an intelligence operation, pulling him into a succession struggle.",
+          "heroine_milestones": "Eirwen asks Lucen for the first dance under the pretext of national security. Lysandra crashes the masquerade in a dress made from her own scales. Mirielle weaponizes church etiquette to remain at his side. Kaela interprets a paired escape sequence as a moonlit date. Their rivalry becomes explicit, but Lucen assumes they are fighting over political influence.",
+          "ending_cliffhanger": "After the festival is saved, the emperor offers Lucen an engagement to Eirwen, and Lysandra responds by revealing her dragon form above the palace."
+        },
+        {
+          "volume_num": 4,
+          "title": "The Dragon's Proposal Is a Raid Boss",
+          "chapter_range": "Chapters 167\u2013224",
+          "main_conflict_and_game_event": "Lysandra's dragon clan invokes an ancient claim over the capital, forcing Lucen into the Draconic Covenant Expedition. He must clear airborne ruins and prevent the canonical Dragon Bride ending, which destroys human civilization. Evidence emerges that affection itself is being amplified by a buried game mechanism.",
+          "heroine_milestones": "Lysandra admits that her obsession began as instinct but has become a conscious choice. Lucen rejects ownership language while promising not to abandon her, accidentally creating a more binding equal-partner covenant. Eirwen and Kaela cooperate despite jealousy, while Mirielle learns that her corruption can hear system messages near Lucen.",
+          "ending_cliffhanger": "The covenant ruins display Lucen's former player username and address him as the last authorized administrator of the world."
+        },
+        {
+          "volume_num": 5,
+          "title": "The Saintess Read the Hidden Patch Notes",
+          "chapter_range": "Chapters 225\u2013282",
+          "main_conflict_and_game_event": "The group infiltrates the Holy City to investigate the administrator message. Mirielle's corruption is revealed as a failed safeguard designed to consume forced emotions. The church stages the Saint's Ascension, a ritual that will overwrite Mirielle's personality and spread obedience across the empire.",
+          "heroine_milestones": "Lucen trusts Mirielle with the truth of his transmigration, believing she can detect lies. She chooses to keep his secret rather than treat him as a divine messenger. The other heroines discover fragments of his foreknowledge and feel betrayed by his habit of reducing their pain to route labels.",
+          "ending_cliffhanger": "Mirielle destroys the Ascension system, but its records reveal that Lucen's survival has awakened the game's original protagonist, who remembers every abandoned timeline."
+        },
+        {
+          "volume_num": 6,
+          "title": "The Protagonist of the Dead Timelines",
+          "chapter_range": "Chapters 283\u2013340",
+          "main_conflict_and_game_event": "Canonical hero Cassian Roel returns as a tragic antagonist carrying memories from thousands of failed playthroughs. He believes the only stable solution is to reset the world and force the single approved route. Academy factions split, ranking battles become civil warfare, and Lucen's gamer knowledge starts failing as characters make unprecedented choices.",
+          "heroine_milestones": "The heroines confront Lucen about treating them as future murderers. He admits his fear without revealing romantic certainty and gives each woman the freedom to leave. All four remain for different reasons, shifting their attachment from magically intensified obsession toward informed loyalty, though jealousy remains fierce and comedic.",
+          "ending_cliffhanger": "Cassian activates the World Reset at the academy graduation ceremony, erasing everyone except Lucen and the four heroines, whose personal tokens anchor them outside time."
+        },
+        {
+          "volume_num": 7,
+          "title": "Speedrunning the End of the World",
+          "chapter_range": "Chapters 341\u2013398",
+          "main_conflict_and_game_event": "The survivors traverse compressed versions of destroyed routes, gathering administrator keys from the Dragon Funeral, Frozen Empire, Hollow Heaven, and Sword Calamity endings. Lucen can restore the world only by selecting one heroine as the official route and deleting the others, or by defeating the system without guaranteed resurrection.",
+          "heroine_milestones": "Each heroine privately offers to be deleted if it will save Lucen and the world, disproving the system's claim that their love is inherently selfish. Lucen finally recognizes their agency and stops searching for a painless scripted solution. He confesses that he wants a future containing all four, without demanding that they share or immediately accept his feelings.",
+          "ending_cliffhanger": "Lucen rejects the route-selection screen and destroys his administrator privileges, causing the system core to manifest as the final boss while the erased world begins a seventy-two-minute countdown."
+        },
+        {
+          "volume_num": 8,
+          "title": "A Romance Fantasy Without Bad Endings",
+          "chapter_range": "Chapters 399\u2013452",
+          "main_conflict_and_game_event": "Lucen and the heroines fight through the collapsing system core using lessons from every examination, dungeon, political arc, and failed timeline. Cassian is freed from accumulated memories rather than killed. Lucen replaces forced affection values and scripted routes with autonomous continuity, restoring the dead without resetting their growth.",
+          "heroine_milestones": "Lysandra renounces possessive dragon law, Eirwen chooses life beyond imperial duty, Mirielle integrates rather than purges her shadow, and Kaela finds purpose beyond endless victory. Lucen separately answers their feelings with honesty. They establish a negotiated, openly acknowledged multi-partner relationship after boundaries, consent, residences, and political consequences are addressed; rivalry survives as comedy rather than violence.",
+          "ending_cliffhanger": "There is no unresolved cliffhanger. Five years later, Lucen teaches practical strategy at the rebuilt academy while his partners pursue independent roles. The final scene has a harmless Prism Cube label him an 'ordinary citizen'; he celebrates too early, walks outside, and finds all four women waiting for their scheduled anniversary trip. He goes willingly, closing the story on a chosen life rather than a cleared game."
+        }
+      ]
+    },
+    {
+      "title": "The Villainess Route's Inventory Clerk Wants to Resign",
+      "logline": "Reborn as the academy shopkeeper who supplies weapons used in every bad ending, a roguelike expert tries to sell only harmless items, but four doomed heroines interpret his perfectly timed equipment, ruthless bargains, and refusal to fear them as secret declarations of devotion.",
+      "game_title_and_setting": "The game is The Seven Returns of the Black Rose, a punishing otome roguelike in which each semester ends with a catastrophe and the timeline resets if the central romance fails. Its economy is central: named equipment remembers prior owners, gifts can lock routes, debts create magical geases, and rare inventory appears only after hidden conditions. The setting centers on Bellgrave Royal Academy and the extradimensional Night Market beneath it. On Abyssal difficulty, non-player characters retain emotional residue between loops, while the protagonist alone normally remembers events. The transmigrator occupies Niles Greymark, an overlooked viscount's son and assistant clerk whose canonical function is to sell a cursed dagger before being murdered in Chapter One.",
+      "protagonist": "Niles Greymark was formerly Seo Jin-woo, a roguelike optimizer known for winning with terrible random seeds and turning shop inventories into deterministic builds. He awakens with the appraisal skill Ledger Eye but no combat talent worth mentioning. His plan is to run an honest, forgettable supply booth and never sell a route-triggering relic. Internally he treats conversations as volatile transactions, curses random loot tables, and calculates whether customers could kill him before the nearest guard arrives. Outwardly he is dry, unflinching, and exact: he names fair prices, refuses bribes, and tells princesses and monsters alike when an item will hurt them. His terror-induced professionalism looks like incorruptible confidence.",
+      "heroines": [
+        {
+          "name": "Ravena Drakul, Heiress of the Gilded Wyrm",
+          "archetype": "Dragon-blooded villainess whose greed transforms affection into hoarding instinct",
+          "obsession_trigger": "Niles refuses to sell Ravena a cursed crown despite her threat to burn his shop, then offers a cheap copper ring that safely vents her dragon mana. She concludes that he values her life over profit and recognizes what she needs better than her own clan does.",
+          "interlude_dynamic": "Ravena compulsively buys mundane objects from his stall, labels them treasures, and plots hostile takeovers of competing shops. Her internal dignity collapses whenever Niles includes a free receipt or remembers her usual order."
+        },
+        {
+          "name": "Celine Frosthart, the Disinherited Ice Princess",
+          "archetype": "Exiled imperial princess and precision-magic sniper destined to assassinate the crown prince",
+          "obsession_trigger": "Niles notices frostbite beneath her gloves and trades her warming bracers for a promise to sleep eight hours, choosing health rather than royal favors. Celine interprets the absurdly personal payment term as concern hidden behind merchant language.",
+          "interlude_dynamic": "Celine approaches romance like procurement, drafting contracts for meals and walks while becoming privately furious that affection cannot be secured through flawless terms. Her assassination planning slowly turns into elaborate protection planning centered on Niles."
+        },
+        {
+          "name": "Sister Vesper Lume, the Debt-Eating Saintess",
+          "archetype": "Morally gray saintess who absorbs curses and secretly controls the criminal Night Market",
+          "obsession_trigger": "Niles identifies that every healing donation transfers pain to Vesper and redesigns the collection ledger to distribute the burden among willing volunteers. He believes he is patching an exploit; she believes he noticed suffering that even her god ignored.",
+          "interlude_dynamic": "Vesper alternates between holy serenity and underworld possessiveness. She attempts to bind Niles through contracts, then tears them up because coerced affection suddenly disgusts her. Her shadow organization treats his grocery lists as strategic directives."
+        },
+        {
+          "name": "Aria Voss, the Nameless Sword",
+          "archetype": "Amnesiac sword prodigy who becomes whichever identity her weapon demands",
+          "obsession_trigger": "Niles withholds her legendary blade and gives her an ordinary training sword, explaining that a person should choose a weapon rather than be chosen by one. Aria hears the first affirmation that she exists independently of combat and adopts his words as the foundation of her identity.",
+          "interlude_dynamic": "Aria practices facial expressions before visiting the shop, views every customer as a possible kidnapper, and tries to become Niles's ideal employee despite having no concept of prices or customer service."
+        }
+      ],
+      "comedy_and_misunderstanding_engine": "Niles thinks in costs, drop rates, cursed-item clauses, and survival margins. His habit of presenting exactly the right tool at exactly the right moment looks like omniscience. He charges heroines ordinary prices to avoid gift flags; they treasure the equality. He refuses extravagant repayment because magically enforced debts are dangerous; they believe his affection is too pure to monetize. When he says, 'That item does not suit you,' he means it unlocks a murder route, but the heroine hears intimate knowledge of her true self. His blank merchant smile is a stress response. The Night Market interprets it as the expression of a criminal kingpin, while academy nobles decide he is manipulating the imperial economy. Running jokes include heroines competing through increasingly ridiculous purchases, Niles trying to issue refunds on romantic tokens, and his inventory interface categorizing engagement rings as non-returnable quest items.",
+      "pov_80_20_mechanics": "Eighty percent uses Niles's first-person perspective, with chapter openings frequently displaying inventory changes, debts, deadlines, and his cynical evaluation of each apparent romantic event as an economic hazard. Combat remains indirect and puzzle-like: he survives by preparing equipment, exploiting item interactions, and coordinating stronger allies. Twenty percent consists of third-person limited heroine interludes following significant purchases, refusals, rescues, or perceived dates. These scenes reveal how objects acquire emotional meaning and how each heroine misreads his merchant vocabulary. Interludes rotate without omniscient crossover: Ravena sees treasure and territory, Celine sees contracts and statecraft, Vesper sees sacrifice and moral debt, and Aria sees identity and chosen purpose. Later volumes use paired events shown first through Niles's transactional panic and then through one heroine's romantic interpretation. The finale lets his first-person narration abandon numerical valuation when he makes choices no ledger can optimize.",
+      "macro_timeline_450_chapters": [
+        {
+          "volume_num": 1,
+          "title": "No Refunds on Death Flags",
+          "chapter_range": "Chapters 1\u201350",
+          "main_conflict_and_game_event": "Niles prevents the cursed-dagger murder, inherits the academy supply booth, and discovers that refusing key sales changes the loot table. Entrance duels and the first Night Market auction force him to equip students without triggering known bad endings.",
+          "heroine_milestones": "Ravena receives the copper mana ring, Celine accepts warming bracers, and Aria is denied her identity-devouring sword. All three begin visiting daily for implausible reasons.",
+          "ending_cliffhanger": "The inventory produces an impossible item labeled 'Saintess's Heart, already sold,' and Vesper arrives to collect the buyer's debt."
+        },
+        {
+          "volume_num": 2,
+          "title": "The Saintess Owes Me One Apocalypse",
+          "chapter_range": "Chapters 51\u2013106",
+          "main_conflict_and_game_event": "Niles enters the Night Market to cancel the divine debt and becomes embroiled in a war between curse brokers. Academy practical exams overlap with black-market raids, forcing him to run two supply networks while pretending neither exists.",
+          "heroine_milestones": "Vesper becomes attached after he repairs the charity ledger. Ravena buys the shop's debt to protect him, Celine challenges the acquisition as illegal, and Aria moves into the storeroom as self-appointed security.",
+          "ending_cliffhanger": "Niles discovers records proving the world has reset six times and that every heroine carries fragments of prior-loop grief."
+        },
+        {
+          "volume_num": 3,
+          "title": "A Merchant Should Not Lead the Rankings",
+          "chapter_range": "Chapters 107\u2013163",
+          "main_conflict_and_game_event": "Bellgrave introduces a team ranking league in which support personnel receive command authority. Niles attempts to lose safely but assembles item combinations that defeat elite teams. The crown prince targets his growing influence and plants counterfeit relics that induce madness.",
+          "heroine_milestones": "Celine publicly chooses Niles's team over restoration to the royal family. Ravena calls him part of her hoard and is firmly corrected, which only deepens her respect. Aria wins without the legendary sword. Vesper tries and fails to arrange a private festival date through criminal intermediaries.",
+          "ending_cliffhanger": "The crown prince forces Niles to appraise the Black Rose, an artifact that identifies him as the replacement protagonist of the seventh and final loop."
+        },
+        {
+          "volume_num": 4,
+          "title": "The Dragon Bought the Academy",
+          "chapter_range": "Chapters 164\u2013220",
+          "main_conflict_and_game_event": "Ravena purchases Bellgrave's debts to prevent a royal seizure, accidentally becoming its legal owner. Clan elders invade to claim her and the academy treasury. Niles must restructure the institution while clearing a dragon vault whose treasures impose emotional compulsions.",
+          "heroine_milestones": "Ravena confronts the difference between protecting and possessing. Niles entrusts her with his shop keys, intending logistical convenience; she treats them as a proposal but asks rather than assumes. The other heroines establish rules against financial warfare over him.",
+          "ending_cliffhanger": "The dragon vault contains Niles's original-world gaming account and receipts showing that someone outside the game has been purchasing resets."
+        },
+        {
+          "volume_num": 5,
+          "title": "Every Contract Has a Hidden Route",
+          "chapter_range": "Chapters 221\u2013278",
+          "main_conflict_and_game_event": "The group investigates the imperial treasury and learns that the royal family funds resets by sacrificing accumulated memories. Celine's assassination route activates when her brother attempts to erase her identity from public records. Niles wages an economic and legal campaign instead of the expected coup.",
+          "heroine_milestones": "Celine rejects both revenge and restoration, choosing a new civic office built with Niles. She confesses through a brutally detailed partnership contract; he returns it with romantic clauses separated from political ones. Their first genuine date is repeatedly interrupted by jealous inspections.",
+          "ending_cliffhanger": "The seventh loop begins collapsing early, and the system demands that Niles sell one heroine's defining relic to finance another reset."
+        },
+        {
+          "volume_num": 6,
+          "title": "Bankrupting the Gods",
+          "chapter_range": "Chapters 279\u2013335",
+          "main_conflict_and_game_event": "Niles refuses the sacrifice and targets the divine marketplace controlling causality. Vesper guides the party through cathedral ledgers, memory auctions, and a trial where sins have monetary values. Their rebellion causes magic shortages throughout the empire.",
+          "heroine_milestones": "Vesper relinquishes her ability to turn affection into obligation. Niles admits his transmigration and former habit of viewing everyone as game assets. Aria begins seeking memories of her own choice rather than accepting a convenient invented past.",
+          "ending_cliffhanger": "Aria recovers the legendary sword and remembers that she was created by the system to kill replacement protagonists\u2014including Niles."
+        },
+        {
+          "volume_num": 7,
+          "title": "The Sword That Chose Not to Kill Me",
+          "chapter_range": "Chapters 336\u2013393",
+          "main_conflict_and_game_event": "The system takes control of Aria in stages, turning each use of her power into a countdown. Niles searches prior loops for a mundane item capable of severing ownership. Meanwhile, royal armies besiege the independent academy and the Night Market fractures into open revolt.",
+          "heroine_milestones": "Aria defines herself through choices made across the current loop and breaks the sword with the cheap training blade Niles first gave her. The four heroines learn the full extent of one another's feelings and negotiate an alliance without pretending jealousy has vanished.",
+          "ending_cliffhanger": "The divine marketplace lists the entire world for liquidation, with Niles named as auctioneer and only one day remaining before all lives are converted into reset currency."
+        },
+        {
+          "volume_num": 8,
+          "title": "The Last Shop at the End of the Game",
+          "chapter_range": "Chapters 394\u2013450",
+          "main_conflict_and_game_event": "Niles weaponizes contracts, academy debts, dragon treasure laws, saintly donations, royal legitimacy, and unowned weapons to make every resident a legal stakeholder in reality. Because the world cannot be sold without unanimous consent, the divine auction collapses. He defeats the reset mechanism through an impossible collective buyout rather than a conventional duel.",
+          "heroine_milestones": "Each heroine establishes a life not centered solely on Niles: Ravena builds a public bank, Celine leads constitutional reform, Vesper creates voluntary curse relief, and Aria opens a school for weaponless sword theory. Niles reciprocates their love after rejecting contractual coercion. Their consensual polyamorous household develops slowly through explicit agreements and abundant comedic renegotiation.",
+          "ending_cliffhanger": "The ending is definitive. Seven years later, the former shop is a museum and Niles operates a modest general store with no magical inventory. The women arrive separately, each carrying the same supposedly unique anniversary gift because the retired divine appraiser has become an incompetent artisan. Niles laughs instead of checking its value, and the ledger closes permanently."
+        }
+      ]
+    },
+    {
+      "title": "I Hid in the Academy Library, but the Calamity Heroines Found Me",
+      "logline": "A lore-obsessed completionist reincarnates as an uncredited library assistant and plans to survive by never entering the main story, but his forbidden-book knowledge repeatedly saves four unstable heroines who come to regard the quiet librarian as their sole sanctuary\u2014and anyone approaching him as an intruder.",
+      "game_title_and_setting": "The world comes from Epilogue of the Moonlit Throne, a romance-fantasy mystery game notorious for lore puzzles, contradictory chronicles, and heroine routes that become cosmic-horror scenarios when key secrets are learned out of order. The imperial Orison Academy is built over the Archive Below, where written stories can overwrite memories and historical records physically alter reality. Students gain ranks through Theory Trials, combat examinations, and exploration credits measured by Mnemonic Obelisks. On Unwritten difficulty, save files are disabled, guides contain deliberate falsehoods, and every discovered secret increases the attention of the Narrative, an entity that forces people into dramatic roles.",
+      "protagonist": "Theo Arden is the forgotten second son of a rural count and a nameless assistant scheduled to disappear when the restricted stacks open. He was formerly Park Hyun-seok, a completionist who translated item descriptions, reconstructed timelines, and solved Epilogue's secret ending without using combat companions. He remembers enormous amounts of lore but distrusts it because Unwritten difficulty changes facts when observed. His inner voice is fast, sarcastic, and terrified of narrative foreshadowing. His public manner is soft-spoken and severe because library discipline gives him a socially acceptable reason to end conversations. Heroines mistake his clipped warnings, unwavering silence, and carefully selected books for profound emotional intuition.",
+      "heroines": [
+        {
+          "name": "Seraphine Aurix, the Last Story Dragon",
+          "archetype": "Dragon shifter born from a forbidden epic who can become whatever legends claim she is",
+          "obsession_trigger": "Theo removes sensational dragon-slaying books from circulation to prevent them from defining Seraphine as a monster. He then gives her an unfinished blank journal and tells her to write her own ending. He intends to neutralize a lore mechanic; she regards it as the first recognition of her personhood.",
+          "interlude_dynamic": "Seraphine secretly fills the journal with increasingly romantic domestic fantasies, panics whenever Theo asks about her progress, and edits historical records to remove women she considers romantic competitors before guiltily restoring them."
+        },
+        {
+          "name": "Princess Noelle Caerwyn, Keeper of the Frozen Memory",
+          "archetype": "Imperial ice princess who stores dangerous emotions as perfect crystalline memories",
+          "obsession_trigger": "Theo recognizes that Noelle's emotionless behavior is memory overload and deliberately asks her an ordinary question about a mystery novel rather than her magic or title. Their weekly reading discussion becomes the only place she can safely thaw one emotion at a time.",
+          "interlude_dynamic": "Noelle conducts secret research into humor, flirting, and hand-holding, then applies it with terrifying precision and no sense of timing. Her jealousy appears as meticulously catalogued evidence that other women are violating library policy."
+        },
+        {
+          "name": "Saintess Calista Veil, the Redacted Oracle",
+          "archetype": "Fallen saintess whose prophecies erase possible futures and whose missing face appears differently to each observer",
+          "obsession_trigger": "Theo refuses to ask Calista for a prophecy and lends her a book with the final chapter sealed, saying that not knowing an ending can be a form of freedom. He merely wants to avoid activating her apocalypse route; she becomes fascinated by the one man who does not consume her future sight.",
+          "interlude_dynamic": "Calista's interludes show playful manipulation masking existential loneliness. She engineers coincidences to test whether Theo will choose her without prophecy, grows possessive when outcomes remain uncertain, and becomes flustered whenever he ruins her schemes through mundane librarian logic."
+        },
+        {
+          "name": "Iris Bellator, the Sword Saint's Unwritten Daughter",
+          "archetype": "Sword prodigy erased from history whenever she loses a formal duel",
+          "obsession_trigger": "Theo interrupts Iris's doomed ranking match by citing an obscure rule that reclassifies it as an exhibition. She retains her identity despite defeat and concludes that he protected her existence while asking for nothing in return.",
+          "interlude_dynamic": "Iris becomes devoted to guarding the library, imagines every overdue-book offender as a threat to Theo, and attempts courtship through acts of service that usually involve cutting objects he needed intact."
+        }
+      ],
+      "comedy_and_misunderstanding_engine": "Theo hides in the library because it has the lowest canonical death rate, but every route-critical character needs information stored there. His attempts to keep heroines away lead him to prepare the exact book, tea, ward, or excuse they require, which feels intensely personal. He whispers because sound awakens archive monsters; heroines interpret it as intimate closeness. He grabs a wrist to stop someone touching a cursed page; she remembers only the contact. He says, 'Your ending is not written here,' meaning the relevant guide page is missing, while she hears a declaration that destiny cannot control her. Internally he reacts to flirting as if it were a trap-filled dialogue tree. Externally he calmly stamps return dates while ancient beasts and imperial guards wait for his judgment. Recurring comedy comes from romantic schemes being defeated by cataloguing rules, the heroines weaponizing silence against one another, and Theo believing their escalating competition is a dispute over restricted borrowing privileges.",
+      "pov_80_20_mechanics": "Theo narrates 80 percent in first person, emphasizing deduction, lore comparison, suspicious wording, archive exploration, and frantic efforts to remain a background worker. Footnote-like observations appear naturally in his narration but never become omniscient exposition. Twenty percent uses third-person limited interludes focused on one heroine's emotional response to a recent library encounter. Seraphine's chapters use mythic associations, Noelle's use ordered memory fragments, Calista's branch through futures she refuses to view, and Iris's center on physical action and fear of erasure. Interludes account for roughly one chapter in five, occasionally shortened and attached as epilogues to preserve pacing. They reveal possessiveness and failed seduction but also correct Theo's assumption that every intense feeling is mechanically imposed. In the final arc, heroine interludes carry essential independent missions while Theo remains first-person at the central Archive, proving they possess stories beyond his viewpoint.",
+      "macro_timeline_450_chapters": [
+        {
+          "volume_num": 1,
+          "title": "Silence in the Restricted Stacks",
+          "chapter_range": "Chapters 1\u201354",
+          "main_conflict_and_game_event": "Theo survives his scheduled disappearance, seals the first forbidden book, and becomes temporary custodian after senior librarians lose their memories. Academy Theory Trials force students to retrieve texts from shifting shelves, making his obscure knowledge publicly valuable despite his efforts to hide.",
+          "heroine_milestones": "Seraphine receives the blank journal, Noelle begins weekly reading sessions, and Iris survives her ranking defeat through Theo's rules-lawyering. Each claims a preferred seat near his desk.",
+          "ending_cliffhanger": "A returned book contains a chapter describing Theo's actions one week before he performs them, ending with his murder by 'the woman he trusted most.'"
+        },
+        {
+          "volume_num": 2,
+          "title": "Do Not Flirt with the Librarian During an Apocalypse",
+          "chapter_range": "Chapters 55\u2013110",
+          "main_conflict_and_game_event": "Theo investigates predictive books while managing the academy's Grand Research Exhibition. Calista arrives as church adjudicator, and prophecies begin deleting alternate solutions to an approaching archive breach.",
+          "heroine_milestones": "Calista becomes attached after Theo seals a book's final chapter. Noelle attempts her first joke and accidentally threatens a duke. Seraphine writes Theo into her journal as 'home.' Iris takes a library job and interprets employee orientation as domestic preparation.",
+          "ending_cliffhanger": "The predictive volume rewrites itself: Theo survives, but only because all four heroines are listed as co-conspirators in the emperor's future assassination."
+        },
+        {
+          "volume_num": 3,
+          "title": "The Ranking Exam Has Too Much Foreshadowing",
+          "chapter_range": "Chapters 111\u2013167",
+          "main_conflict_and_game_event": "A combined combat-and-theory ranking exam sends teams into historical reenactments that can replace present reality. Theo must guide the heroines without allowing them to embody their legendary calamity roles. His calm commands elevate him to first place in strategic ranking.",
+          "heroine_milestones": "Noelle safely releases anger while defending Theo, then mistakes his concern about frost damage for admiration. Iris chooses a tactical loss without being erased. Calista attempts an unprophesied date. Seraphine becomes jealous of a fictional heroine Theo praises for good decision-making.",
+          "ending_cliffhanger": "Theo discovers that the academy's official history has changed: records now identify him as the founder who built the Archive three hundred years ago."
+        },
+        {
+          "volume_num": 4,
+          "title": "The Dragon Is Editing My Love Life",
+          "chapter_range": "Chapters 168\u2013224",
+          "main_conflict_and_game_event": "Reality fractures as Seraphine's species and personality shift according to competing legends. Theo leads an expedition into the Epic Vault to find her original page while imperial historians deliberately publish monstrous versions of her as weapons.",
+          "heroine_milestones": "Seraphine nearly rewrites history to make herself Theo's destined bride but destroys the page before using it. Theo tells her that choosing not to control him matters more than any legend. The other heroines recognize that their own attachment may also be exploited by the Narrative.",
+          "ending_cliffhanger": "Seraphine's original page reveals that Theo was inserted into the world by the Narrative to serve as its next author, not summoned by accident."
+        },
+        {
+          "volume_num": 5,
+          "title": "The Princess Thawed the Wrong Timeline",
+          "chapter_range": "Chapters 225\u2013281",
+          "main_conflict_and_game_event": "Noelle's stored memories contain remnants of realities overwritten by the Archive. When the emperor attempts to extract them, frozen timelines spread across the capital. Theo must identify which memories belong to real people and which were fabricated to create dramatic conflict.",
+          "heroine_milestones": "Noelle chooses imperfect present emotions over flawless preserved memories and relinquishes her claim to the throne. Theo reveals his previous-world identity to her, expecting distrust; she accepts both identities without treating either as less real. Their almost-kiss is interrupted by three women returning books simultaneously.",
+          "ending_cliffhanger": "Among Noelle's recovered memories is a scene of Theo willingly becoming the Narrative and ordering the heroines' deaths."
+        },
+        {
+          "volume_num": 6,
+          "title": "The Saintess Cannot See Our Ending",
+          "chapter_range": "Chapters 282\u2013338",
+          "main_conflict_and_game_event": "Calista investigates whether the memory is prophecy, fabrication, or a future choice. The church opens the Redacted Cathedral, where observed possibilities vanish. Theo's lore knowledge becomes actively dangerous because certainty feeds the Narrative.",
+          "heroine_milestones": "Calista gives up guaranteed foresight and confesses without checking his response in advance. Theo cannot yet reciprocate cleanly but promises an honest answer after the crisis. Seraphine, Noelle, and Iris stop treating Calista's visions as an unfair romantic advantage and begin sharing their fears.",
+          "ending_cliffhanger": "The Narrative erases Theo from everyone's memories. He remains physically present but becomes an unremarkable stranger even to the four heroines."
+        },
+        {
+          "volume_num": 7,
+          "title": "Remember Me Without the Script",
+          "chapter_range": "Chapters 339\u2013395",
+          "main_conflict_and_game_event": "Theo must cooperate with heroines who no longer recognize him while the academy descends into its canonical final routes. He refuses to recreate intimate moments as manipulation and instead helps them make independent choices. Each gradually recognizes patterns of trust not stored as explicit memory.",
+          "heroine_milestones": "Iris remembers him through bodily habits learned while guarding the library; Noelle recognizes emotional safety; Seraphine finds blank spaces in her journal; Calista chooses him in futures she cannot see. Their memories return, but affection is not automatically restored, allowing each to reaffirm it voluntarily.",
+          "ending_cliffhanger": "The Narrative takes physical form using Theo's appearance and offers the heroines perfect personalized endings if they surrender the flawed real Theo and let the world become a finished book."
+        },
+        {
+          "volume_num": 8,
+          "title": "The Ending We Refused to Read",
+          "chapter_range": "Chapters 396\u2013451",
+          "main_conflict_and_game_event": "The heroines pursue separate missions through their personal bad endings while Theo descends into the Archive's unwritten core. They reject perfect scripted lives and contribute contradictory truths that the Narrative cannot reconcile. Theo wins not by becoming the author but by abolishing any single authority over history, turning the Archive into a record of choices rather than a machine that dictates them.",
+          "heroine_milestones": "Theo directly addresses his tendency to regard closeness as a death flag. He reciprocates each heroine's love without claiming that affection erases jealousy or trauma. After sustained negotiation, the five choose a consensual shared relationship with separate spaces, responsibilities, and the continuing right to change. Each heroine completes an independent ambition outside romance.",
+          "ending_cliffhanger": "The conclusion is final. Six years later, Theo directs a public library where dangerous knowledge is taught responsibly. Seraphine publishes her first intentionally unfinished novel, Noelle curates recovered memories, Calista runs an ethics institute for divination, and Iris heads archive security. The last predictive book arrives with blank pages. Theo places it on the shelf without reading ahead and joins the four women for dinner."
+        }
+      ]
+    }
+  ]
+}
