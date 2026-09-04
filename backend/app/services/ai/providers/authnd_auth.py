@@ -661,6 +661,7 @@ def _apply_reasoning_payload(
         kwargs.pop("enable_thinking", None)
         kwargs.pop("clear_thinking", None)
         payload["chat_template_kwargs"] = kwargs
+        payload["reasoning_effort"] = "high" if effort in ("high", "xhigh", "max", "heavy") else effort
         return
 
     kwargs = _kwargs()
