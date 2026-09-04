@@ -30,7 +30,7 @@ I scratched that last line out, because reading it back made my hands sweat, and
 
 *Day 4 update:*
 
-*Combat assessment deviated from plot. Instructor Vance matched me against Rhea Valtor. I got caught using the Ashenveil Retreat — footwork from a disciplinary technique from a dead commander whose daughter now thinks I'm a clue to her father's treason case. Great. Fantastic. Ten out of ten transmigration experience.*
+*Combat assessment deviated from plot. Instructor Vance matched me against Erik Holt, but I had to use the Ashenveil Retreat to keep my ribs intact—and Rhea Valtor was watching from the bleachers. She recognized the footwork. I got caught using the Ashenveil Retreat — footwork from a disciplinary technique from a dead commander whose daughter now thinks I'm a clue to her father's treason case. Great. Fantastic. Ten out of ten transmigration experience.*
 
 *Bruised ribs. Minor. Healing cleanly.*
 

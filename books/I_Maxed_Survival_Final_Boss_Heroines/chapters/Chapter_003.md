@@ -84,13 +84,13 @@ Dimmer.
 
 It flickered once, apologetically, like a candle being told disappointing news, and displayed a number.
 
-**0.03.**
+**0.009.**
 
 Helmond stared at the orb.
 
 The orb stared back, ashamed.
 
-"Point zero three," Helmond repeated flatly.
+"point zero zero nine," Helmond repeated flatly.
 
 "I've been told I'm very stable," I said.
 
@@ -336,7 +336,7 @@ And then the world chimed.
 
 **[Bad Ends Remaining: 636.]**
 
-**[Notes: Enrollment rank — Provisional Fourth-Class. Mana index — 0.03. Social standing — 'the mud boy'. Death flags acquired within first hour of enrollment — 1.]**
+**[Notes: Enrollment rank — Provisional Fourth-Class. Mana index — 0.009. Social standing — 'the mud boy'. Death flags acquired within first hour of enrollment — 1.]**
 
 **[Note: The Evil Goddess has stopped screaming and is now laughing in a deeply concerning way.]**
 
@@ -424,7 +424,7 @@ One: enrollment. Done, catastrophically.
 
 Two: knowledge. Three full playthroughs of canon — every route, every event, every death flag, every hidden boss trigger.
 
-Three: a mana index of 0.03, the approximate magical output of a decorative throw pillow.
+Three: a mana index of 0.009, the measurably less magical than an enchanted wooden training dummy.
 
 Four: a bad end flag attached to my neck within the first hour.
 

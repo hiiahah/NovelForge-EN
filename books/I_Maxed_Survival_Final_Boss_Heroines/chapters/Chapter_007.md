@@ -62,7 +62,7 @@ I closed my eyes.
 
 *Min-jun.*
 
-She was the only one in this entire world who used that name. Kim Min-jun, twenty-six years old, former office worker, proud owner of a platinum-rated completionist save file and one (1) fatal weakness for games sold by suspicious elderly shopkeepers.
+She was the only one in this entire world who used that name. Kang Min-jun, twenty-three years old, unemployed job-seeker and completionist gamer, proud owner of a platinum-rated completionist save file and one (1) fatal weakness for games sold by suspicious elderly shopkeepers.
 
 In this world, I was Lucen Gray. Seventeen. Commoner. No house, no mana, no future, a file so empty the administration office had flagged it twice for suspected forgery.
 
@@ -488,7 +488,7 @@ Damn her.
 
 ---
 
-The communal dining hall of Sirius Academy was, like everything else at this school, divided by invisible fortifications.
+The communal dining hall of Stellaris Royal Academy was, like everything else at this school, divided by invisible fortifications.
 
 Nobles on the east side, where the high windows were. Imperial students — the handful of them, the *actual* high nobility — at the long table beneath the banners, spaced out like chess pieces on a board. Commoners and provisional students crammed along the west wall, where the benches wobbled and the stew was, in fairness, exactly the same stew.
 
@@ -617,7 +617,7 @@ That night, in my storage-closet room, under one blanket, with the journal clutc
 
 '1. 루카스 애쉬포드 등교까지 13일. 남주 중력이 오면 모든 게 정상화된다. 그때까지만 버틴다.'
 
-*1. Thirteen days until Lucas Ashford enrolls. When the male lead's gravity arrives, everything normalizes. Survive until then.*
+*1. Lucas Ashford has enrolled early. The canon timeline is compressed. Avoid his line of sight and let him trigger his own quest flags.*
 
 '2. 아이템 회수는 야간에. 절대 목격되지 말 것.'
 

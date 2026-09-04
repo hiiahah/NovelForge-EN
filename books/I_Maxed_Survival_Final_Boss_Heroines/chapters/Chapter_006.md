@@ -266,11 +266,7 @@ Morning classes passed the way morning classes always passed.
 
 Iris sat in her assigned seat — first row, because no one dared sit behind her and she refused to let the empty space make her look *shunned.* She took perfect notes. She answered when called upon. She was aware, the entire time, of exactly one presence in the room behaving wrong.
 
-Lucen Gray did not sit in the back.
-
-The back was what normal students assumed was the invisible seat. It wasn't. Any instructor's lecturing sightline swept the back wall constantly; it was where attention *lingered.*
-
-No — Lucen Gray sat second row from the front, dead center-ish, one seat off the geometric midpoint, beside another student broad enough to partially block the sightline from the door.
+Lucen Gray sat in Seat 7-F — the dead corner by the far right window, furthest from the lectern, partially obscured by the morning glare and a stone pillar. To an amateur instructor, it looked like a normal lazy student hiding in the back. But Iris knew academy architecture. Seat 7-F was the one desk in the entire lecture hall that fell outside every standard surveillance ward's focal radius.
 
 Iris knew this seat's properties because on her first day at this academy, three years ago, before anyone had shown her to a seat, she had spent fourteen minutes mapping every sightline, every exit, and every blind angle in the room, and she had selected her own position knowing exactly what each square meter of floor *meant.*
 

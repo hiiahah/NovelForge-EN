@@ -22,7 +22,7 @@ That's my job now.
 
 - **No. 7 — Raised.** Pending review.
 
-- **No. 12 — Fully Active.** Mr. Thorne's crimson eyes still live in my dreams rent-free.
+- **No. 12 — Fully Active.** The memory of that roadside cleaver still lives in my dreams rent-free.
 
 - **No. 34 — Proximity.** I don't even remember what No. 34 was, which somehow makes it worse.
 
@@ -50,7 +50,7 @@ Three copper coins a week.
 
 Do you know what three copper buys at the academy commissary?
 
-One bread roll a day. One. The kind that doubles as masonry material. I'm fairly certain the could kill a man if thrown with sufficient velocity and intent.
+One bread roll a day. One. The kind that doubles as masonry material. I'm fairly certain the bread roll could kill a man if thrown with sufficient velocity and intent.
 
 Two kilograms.
 
@@ -146,7 +146,7 @@ The boy sat like a soldier. Ate like a prisoner. Watched the courtyard like he w
 
 And he never once looked like he wanted company.
 
-Most commoners who clawed their way into Asterion Academy wore their hunger openly — the desperate networking, the clingy flattery, the frantic grabbing at any noble hand extended their way. Lucas had seen it a hundred times. He understood it. He even pitied it.
+Most commoners who clawed their way into Stellaris Royal Academy wore their hunger openly — the desperate networking, the clingy flattery, the frantic grabbing at any noble hand extended their way. Lucas had seen it a hundred times. He understood it. He even pitied it.
 
 This boy did none of it.
 
@@ -190,7 +190,7 @@ He had absolutely no idea that the boy in question would, upon learning of this 
 
 ◈
 
-Evening came down over Asterion like a lid on a pot.
+Evening came down over Stellaris like a lid on a pot.
 
 I took the long way back to the provisional dormitory. Not for the scenery.
 

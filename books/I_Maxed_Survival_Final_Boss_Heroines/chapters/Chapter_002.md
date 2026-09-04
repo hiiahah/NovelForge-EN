@@ -167,7 +167,7 @@ He sighed. "Get in the back. Don't touch the eels."
 
 That was the entire job interview.
 
-And that is how I, Lucen Gray, twenty-seven-year-old secret god-gamer turned seventeen-year-old background NPC, became a hitchhiker in a pickled eel caravan.
+And that is how I, Lucen Gray, twenty-three-year-old secret god-gamer turned seventeen-year-old background NPC, became a hitchhiker in a pickled eel caravan.
 
 I was lying on a lumpy sack of something grain-adjacent, pressed between the warm flank of a donkey and a barrel that kept making ominous gurgling noises.
 

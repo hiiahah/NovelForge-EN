@@ -22,7 +22,7 @@ I dragged myself to homeroom looking like a man who had spent the night calculat
 
 The classroom buzzed.
 
-Thirty-eight students, first-years of Solhart Academy, most of them nobility, all of them gifted, all of them capable of killing me by accident during a stretching exercise.
+Thirty-eight students, first-years of Stellaris Royal Academy, most of them nobility, all of them gifted, all of them capable of killing me by accident during a stretching exercise.
 
 I slid into my seat near the window. Finn was already there, scribbling in a notebook with the desperation of a man rewriting his notes for the fourth time.
 

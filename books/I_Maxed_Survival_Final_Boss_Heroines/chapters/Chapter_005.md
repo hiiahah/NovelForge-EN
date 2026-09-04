@@ -13,7 +13,7 @@ Mine was scheduled for immediately after lunch.
 
 'Even the class schedule is mocking me now.'
 
-The outdoor training grounds of Aldenhearst Academy were, to put it in terms any modern person would understand, criminal.
+The outdoor training grounds of Stellaris Royal Academy were, to put it in terms any modern person would understand, criminal.
 
 An arena the size of three football fields, ringed by translucent enchantment barriers that shimmered like heat haze. Observation towers at each corner. Weapon racks polished to a mirror shine. Training dummies that, I knew from the game, cost more mana-stone each than the average commoner family earned in a decade.
 

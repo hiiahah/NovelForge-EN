@@ -13,6 +13,30 @@
 
 ---
 
+### 🔒 MASTER LOCKED CANON & NEGATIVE CONSTRAINTS (MANDATORY FOR ALL CHAPTERS)
+*Refer to `00_Locked_Canon_Registry.json` for full machine-readable schema.*
+1. **INSTITUTIONAL NAME LOCK:**
+   - Canonical: **Stellaris Royal Academy** (or simply **Stellaris**).
+   - **STRICTLY PROHIBITED:** Aldenhearst, Sirius, Asterion, Solhart, Astraea. Never invent alternative academy names.
+2. **GAME UNIVERSE LOCK:**
+   - Canonical: ***Eschaton Hearts***.
+   - **STRICTLY PROHIBITED:** *Hero's Legacy*, *Hero's Dawn*, *Hero's Eternal Dawn*.
+3. **PROTAGONIST PAST-LIFE IDENTITY LOCK:**
+   - Canonical: **Kang Min-jun** (강민준), **23 years old**, unemployed job-seeker and 347-hour completionist speedrunner gamer.
+   - **STRICTLY PROHIBITED:** Kim Min-jun, 26 years old, 27 years old, office worker, salaryman, forensic accountant.
+4. **MANA INDEX & STAT LOCK:**
+   - Canonical: **Mana Index 0.009 / 100,000** (All Stats: F).
+   - Core Running Joke: **Less mana than an enchanted wooden training dummy (0.01). Measurably less magical than oak furniture.**
+   - **STRICTLY PROHIBITED:** 0.03, 0.01, 0.1, or changing his mana level.
+5. **CLASSROOM SEAT LOCK:**
+   - Canonical: **Seat 7-F** (Row 7, Column F — back-right corner dead-zone by the window, formerly assigned to background NPC 'Student F').
+   - **STRICTLY PROHIBITED:** Second row, center aisle, front row.
+6. **LUCAS ASHFORD TIMELINE PRECONDITION:**
+   - Canonical: **Lucas Ashford enrolled on Day 2 in Homeroom 1-A (Seat 4-C) and is physically present on campus from Day 2 onward.**
+   - **STRICTLY PROHIBITED:** Stating or implying that Lucas has not yet arrived, or that he arrives in two weeks / fourteen days.
+7. **PHANTOM CHARACTER & EVENT PROHIBITIONS:**
+   - **STRICTLY PROHIBITED:** Inventing unestablished characters (e.g. Roland Huxley, Mr. Thorne) or unoccurred offscreen events (e.g. demon-boar disaster).
+
 ---
 
 ## STAGE 1: THE SAVE FILE GLITCH & SURVIVING ORIENTATION
@@ -411,7 +435,7 @@ He was supposed to be invisible.
 ```
 
 **Rising Tension:**
-He pulls out a leather journal he bought with his last copper coins and begins writing. In Korean. Hangul characters, neat rows, organized by category. Heroine schedules for the first semester. Lucas Ashford's canonical event timeline. Locations of hidden items and stat-boosting resources he might be able to use (most require mana he doesn't have, but a few are physical-attribute items). Known bad ending triggers for each heroine.
+He pulls out a leather journal he bought with his last copper coins and begins writing. In Korean. Hangul characters, neat rows, organized by category. Lucas Ashford is already enrolled early in Homeroom 1-A (sitting in Seat 4-C) since Day 2. The canon timeline has accelerated. Lucen notes with dread that he cannot afford to get caught in Lucas's protagonist gravity before the First Evaluation Exam. He documents heroine schedules for the first semester, locations of hidden items and stat-boosting resources he might be able to use (most require mana he doesn't have, but a few are physical-attribute items), and known bad ending triggers for each heroine.
 
 He writes for hours. This notebook is his lifeline — the only advantage he has over this world.
 

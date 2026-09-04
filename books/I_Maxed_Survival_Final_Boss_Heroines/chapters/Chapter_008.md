@@ -52,7 +52,7 @@ Zero mana. A body weighing maybe fifty-five kilograms soaking wet, built by a ch
 
 And 347 hours of muscle memory regarding how video game characters move.
 
-Min-jun — the me before this me — had been a twenty-three-year-old office worker whose primary cardiovascular exercise was lunging for energy drinks across a desk. His most athletic achievement was once catching a falling phone with his foot.
+Min-jun — the me before this me — had been a twenty-three-year-old completionist gamer whose primary cardiovascular exercise was lunging for energy drinks across a desk. His most athletic achievement was once catching a falling phone with his foot.
 
 Which, to be fair, is a genuine skill. But it's not transferable to sword combat.
 
@@ -93,13 +93,7 @@ I am not exaggerating. The sun came out from behind a cloud specifically for his
 
 Golden hair. Eyes like the noon sky. A jawline that the character designer had clearly spent an entire quarterly budget on. He moved like the concept of grace had unionized.
 
-'Thirteen days,' I reminded myself, watching him. 'Well. Twelve now. The protagonist arrives and—'
-
-Wait.
-
-He was already here.
-
-'Right. Right, he enrolled *early*. That was the problem. That was the whole—'
+'Lucas is already here,' I reminded myself, watching him from across the yard. 'The protagonist enrolled early, the timeline is accelerated, and every bad ending trigger is on a hair-trigger.'
 
 ```
 [The Goddess notes your coping mechanisms are showing.]
@@ -197,7 +191,7 @@ Erik Holt was walking toward Ring 2 with the relaxed confidence of a boy who has
 
 He was stocky. His neck had a neck. His forearms looked like they'd been grown on a farm that specialized in forearms. His name tag said 'Holt,' and I had a distant, terrible memory of that family name being attached to a weapon shop in the capital district.
 
-'Of course. Of COURSE.' Roland Huxley's crowd was thin on the ground lately — Roland had gone eerily quiet, actually, which was a separate horrifying item on my list — but the universe had thoughtfully provided a substitute bully-adjacent noble just for cardio.
+'Of course. Of COURSE.' Derrick Holt's crowd was thin on the ground lately — Derrick had gone eerily quiet, actually, which was a separate horrifying item on my list — but the universe had thoughtfully provided a substitute bully-adjacent noble just for cardio.
 
 Erik picked up a practice sword and rolled his shoulders.
 
@@ -235,7 +229,7 @@ I have never had a plan fail so successfully at failing.
 
 Erik took a stance. Textbook. Real textbook, not my imagined textbook — weight low, blade mid-line, eyes on my chest like a grown-up.
 
-I took... something. A shape. My body arranged itself into a rough approximation of every low-level mob I'd ever bodied in *Hero's Legacy*, which in hindsight was the first mistake.
+I took... something. A shape. My body arranged itself into a rough approximation of every low-level mob I'd ever bodied in *Eschaton Hearts*, which in hindsight was the first mistake.
 
 "Begin."
 
@@ -247,7 +241,7 @@ My body did something else.
 
 ---
 
-Here's the thing about *Hero's Legacy* that I never appreciated until this exact moment.
+Here's the thing about *Eschaton Hearts* that I never appreciated until this exact moment.
 
 The combat was *animation-locked*. That was the game design philosophy. Every enemy attack had wind-up frames, active frames, recovery frames — and the dodge system wasn't a roll or a teleport. It was *positioning*. Step back at forty-five degrees. Pivot the back foot. Let the blow pass your shoulder. Reset center.
 
@@ -351,7 +345,7 @@ And the whole field was staring.
 
 Behind the circle of silent students, two gazes landed on me with physical weight. I felt them before I found them.
 
-Lucas Ashford — standing very still, head tilted, wearing that same strange expression I'd caught at the demon-boar disaster, that guilt-recognition look, like he was trying to remember a dream he'd had about me.
+Lucas Ashford — standing very still, head tilted, wearing that same strange expression I'd caught in homeroom on Day 2, that strange guilt-recognition look, like he was trying to remember a dream he'd had about me.
 
 And, at the edge of the grounds —
 
@@ -417,7 +411,7 @@ He paused.
 
 The game lore assembled itself in my skull with the cheerful efficiency of a coroner laying out tools.
 
-The Seventh Legion. The Empire's erased unit. In *Hero's Legacy*, they were deep-cut lore — collectible letters, a ruined fort, an achievement for finding all seven memorial stones. Their commander, executed for treason on fabricated charges, his name struck from the rolls, his techniques banned and buried because dead men's footwork makes for awkward parades.
+The Seventh Legion. The Empire's erased unit. In *Eschaton Hearts*, they were deep-cut lore — collectible letters, a ruined fort, an achievement for finding all seven memorial stones. Their commander, executed for treason on fabricated charges, his name struck from the rolls, his techniques banned and buried because dead men's footwork makes for awkward parades.
 
 Commander Kaelen Valtor.
 
