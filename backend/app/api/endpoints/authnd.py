@@ -83,7 +83,8 @@ def compute_authnd_status(*, probe_network: bool = True) -> Dict[str, Any]:
         try:
             import requests as _requests
 
-            resp = _requests.head(authnd_auth.BUILD_BASE_URL, timeout=5, allow_redirects=True)
+            resp = _requests.get(authnd_auth.BUILD_BASE_URL, timeout=8, allow_redirects=True, stream=True)
+            resp.close()
             checks["build_reachable"] = 200 <= resp.status_code < 400
             if not checks["build_reachable"]:
                 status = "degraded"

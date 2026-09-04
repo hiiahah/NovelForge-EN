@@ -11,6 +11,13 @@ from typing import Dict, List, Optional, Tuple
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Tests must never touch the developer's novelforge.db. Test modules import
+# app.* at collection time, so the database path has to be fixed *before* any
+# app module is imported: use a per-session temporary file here.
+import tempfile  # noqa: E402
+
+_TEST_DB_DIR = tempfile.mkdtemp(prefix="novelforge-tests-")
+os.environ["NOVELFORGE_DB_PATH"] = os.path.join(_TEST_DB_DIR, "test.db")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # Never let a unit test start the browser token helper.
 os.environ.setdefault("AUTHND_TOKEN_MODE", "pool")
@@ -147,8 +154,7 @@ def make_app_client(tmp_path_factory, name: str):
     from fastapi.testclient import TestClient
 
     if _APP_CLIENT is None:
-        db_path = tmp_path_factory.mktemp("appdb") / "test.db"
-        os.environ["NOVELFORGE_DB_PATH"] = str(db_path)
+        db_path = os.environ["NOVELFORGE_DB_PATH"]
         from main import app  # noqa: WPS433
 
         client = TestClient(app)
