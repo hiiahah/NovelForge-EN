@@ -298,3 +298,53 @@ def test_api_import_is_atomic_and_replace_rollback_safe(client, project, fixture
     assert len(listing_after["chapters"]) == n_before
     assert [c["title"] for c in listing_after["chapters"]] == [c["title"] for c in listing_before["chapters"]]
     assert listing_after["meta"]["book_title"] == "Before"
+
+
+def test_lab_workflow_code_overrides_defaults():
+    from app.api.endpoints.lab import _lab_workflow_code
+    base = """
+project = Logic.SelectProject(project_id=1)
+llm = Logic.SelectLLM(llm_config_id=1)
+settings = Logic.Expression(expression="{'llm_config_id': llm.llm_config_id, 'window_size': 40, 'max_stage_count': 24, 'analysis_concurrency': 12}")
+"""
+    code = _lab_workflow_code(base, project_id=42, llm_config_id=99, concurrency=4, window_size=50, max_stage_count=30)
+    assert "Logic.SelectProject(project_id=42)" in code
+    assert "Logic.SelectLLM(llm_config_id=99)" in code
+    assert "'window_size': 50" in code
+    assert "'max_stage_count': 30" in code
+    assert "'analysis_concurrency': 4" in code
+    assert "Logic.SelectProject(project_id=1)" not in code
+    assert "Logic.SelectLLM(llm_config_id=1)" not in code
+
+
+def test_lab_workflow_run_rejects_non_authnd(client, project, fixture_epub):
+    from app.db.models import LLMConfig
+    from app.db.session import engine
+    from sqlmodel import Session
+
+    r_imp = client.post("/api/lab/manuscript/import", json={**_payload(fixture_epub), "project_id": project["id"], "book_title": "Test Book"})
+    assert r_imp.status_code == 200
+
+    r_none = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": 99999})
+    assert r_none.status_code == 400
+    assert "not found" in r_none.json()["detail"].lower()
+
+    with Session(engine) as s:
+        cfg_openai = LLMConfig(provider="openai", display_name="GPT-4o", model_name="gpt-4o", api_key="sk-test")
+        s.add(cfg_openai)
+        cfg_other_model = LLMConfig(provider="authnd", display_name="Nemotron", model_name="nvidia/nemotron-4-340b-instruct", api_key="")
+        s.add(cfg_other_model)
+        s.commit()
+        s.refresh(cfg_openai)
+        s.refresh(cfg_other_model)
+        openai_id = cfg_openai.id
+        other_id = cfg_other_model.id
+
+    r_openai = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": openai_id})
+    assert r_openai.status_code == 400
+    assert "authnd" in r_openai.json()["detail"].lower()
+
+    r_other = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": other_id})
+    assert r_other.status_code == 400
+    assert "kimi" in r_other.json()["detail"].lower()
+

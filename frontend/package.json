@@ -19,7 +19,6 @@
     "build": "npm run clean && npm run typecheck && electron-vite build",
     "clean:web": "node -e \"const fs = require('fs'); const dir = 'dist-web'; fs.existsSync(dir) && fs.rmSync(dir, { recursive: true, force: true })\"",
     "build:web": "npm run clean:web && cross-env VITE_APP_PLATFORM=web vite build -c vite.config.web.ts",
-    "postbuild:web": "node scripts/postbuild-copy-backend.cjs",
     "preview:web": "cross-env VITE_APP_PLATFORM=web vite preview -c vite.config.web.ts",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "npm run build && electron-builder --dir",

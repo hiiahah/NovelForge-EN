@@ -17,7 +17,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.db.models import Project, Workflow, WorkflowRun
+from app.db.models import LLMConfig, Project, Workflow, WorkflowRun
 from app.db.session import get_session
 from app.services.lab.manuscript_import import (
     CHAPTER_PATTERN_CANDIDATES,
@@ -380,6 +380,20 @@ def _run_status(session: Session, run: WorkflowRun) -> LabRunStatus:
 async def start_lab_workflow(req: LabRunRequest, session: Session = Depends(get_session)):
     if not session.get(Project, req.project_id):
         raise HTTPException(status_code=404, detail="Project not found")
+    llm_cfg = session.get(LLMConfig, req.llm_config_id)
+    if not llm_cfg:
+        raise HTTPException(status_code=400, detail=f"LLM configuration {req.llm_config_id} not found")
+    if (llm_cfg.provider or "").strip().lower() != "authnd":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lab reverse-engineering workflow requires an AuthND configuration (got provider '{llm_cfg.provider}')",
+        )
+    target_model = (llm_cfg.model_name or "").strip().lower()
+    if target_model and "kimi" not in target_model and target_model != "moonshotai/kimi-k3":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Lab reverse-engineering workflow requires the AuthND Kimi model (got '{llm_cfg.model_name}')",
+        )
     manuscript = ManuscriptImportService(session).list_manuscript(req.project_id)
     if not manuscript.get("chapters"):
         raise HTTPException(status_code=400, detail="No imported manuscript in this project. Import chapters first.")
