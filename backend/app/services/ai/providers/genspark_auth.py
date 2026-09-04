@@ -379,24 +379,26 @@ class GensparkSessionManager:
                 except Exception:
                     pass
 
-        if not loaded and os.path.exists(COOKIE_JSON_PATH) and self.cookie_file != COOKIE_JSON_PATH:
-            try:
-                with open(COOKIE_JSON_PATH, "r") as f:
-                    cookie_list = json.load(f)
-                for c in cookie_list:
-                    if "genspark" in c.get("domain", ""):
-                        self.session.cookies.set(
-                            c["name"], c["value"], domain=c.get("domain", ".genspark.ai"), path=c.get("path", "/")
-                        )
-                loaded = True
-            except Exception:
-                pass
+        # Only the 'default' account falls back to COOKIE_JSON_PATH or active Firefox profile
+        if not loaded and self.name == "default":
+            if os.path.exists(COOKIE_JSON_PATH) and self.cookie_file != COOKIE_JSON_PATH:
+                try:
+                    with open(COOKIE_JSON_PATH, "r") as f:
+                        cookie_list = json.load(f)
+                    for c in cookie_list:
+                        if "genspark" in c.get("domain", ""):
+                            self.session.cookies.set(
+                                c["name"], c["value"], domain=c.get("domain", ".genspark.ai"), path=c.get("path", "/")
+                            )
+                    loaded = True
+                except Exception:
+                    pass
 
-        if not loaded:
-            ff_cookies = import_cookies_from_firefox()
-            if ff_cookies:
-                for k, v in ff_cookies.items():
-                    self.session.cookies.set(k, v, domain=".genspark.ai", path="/")
+            if not loaded:
+                ff_cookies = import_cookies_from_firefox()
+                if ff_cookies:
+                    for k, v in ff_cookies.items():
+                        self.session.cookies.set(k, v, domain=".genspark.ai", path="/")
 
     def save_cookies(self) -> None:
         with self.lock:
@@ -496,8 +498,11 @@ class GensparkAccountPool:
         log_fn: Optional[Callable[[str], None]] = None,
     ) -> Optional[GensparkSessionManager]:
         with self._lock:
-            # If 5-hour limit reached, apply full 5-hour cooldown (18000s); otherwise default to 30 min (1800s)
-            is_5h = "5-hour" in reason.lower() or "5 hour" in reason.lower()
+            # If 5-hour limit or quota notice reached, apply full 5-hour cooldown (18000s); otherwise default to 30 min (1800s)
+            reason_lower = (reason or "").lower()
+            is_5h = any(k in reason_lower for k in [
+                "5-hour", "5 hour", "usage limit", "quota", "limit", "try again in", "exceeded", "429", "hours", "upgrade to plus"
+            ])
             cooldown_sec = 18000.0 if is_5h else 1800.0
             cooldown_str = "5 hours" if is_5h else "30 minutes"
 
@@ -780,9 +785,36 @@ def _iter_sse_stream(
         if tail:
             log_fn(tail)
 
-    full_content = "".join(content_parts)
+    full_content = "".join(content_parts).strip()
     full_reasoning = "".join(reasoning_parts) if reasoning_parts else None
     elapsed = time.time() - started_at
+
+    # Check if stream body itself contained a quota/rate limit notice
+    is_quota_in_full = (
+        len(full_content) < 400
+        and any(
+            phrase in full_content.lower()
+            for phrase in [
+                "rate limit",
+                "usage limit",
+                "quota exceeded",
+                "reached your limit",
+                "reached the limit",
+                "daily limit reached",
+                "free limit",
+                "plan limit",
+                "5-hour limit",
+                "5 hour limit",
+                "try again in 5 hours",
+                "try again in",
+                "hours until reset",
+                "upgrade to plus",
+            ]
+        )
+    )
+    if is_quota_in_full:
+        _log(log_fn, f"⚠️ Genspark limit notice detected in stream body: {full_content}")
+        raise GensparkRateLimitError(full_content)
 
     if log_stream:
         _log(log_fn, f"✅ Genspark: Stream finished in {elapsed:.1f}s ({len(full_content):,} chars)")
