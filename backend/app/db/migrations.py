@@ -126,8 +126,12 @@ def check_schema_drift(engine: Engine) -> List[str]:
                 out.append(f"{kind}: {d[2]}.{d[3].name}")
         elif isinstance(d, list):
             for sub in d:
-                if isinstance(sub, tuple) and sub[0] in ("modify_nullable", "modify_default", "modify_type"):
-                    out.append(f"{sub[0]}: {sub[2]}.{sub[3]}")
+                if not (isinstance(sub, tuple) and sub[0] in ("modify_nullable", "modify_default", "modify_type")):
+                    continue
+                # Legacy SQLite "INTEGER PRIMARY KEY" columns report as nullable; not real drift.
+                if sub[0] == "modify_nullable" and str(sub[3]) == "id":
+                    continue
+                out.append(f"{sub[0]}: {sub[2]}.{sub[3]}")
     return out
 
 

@@ -168,7 +168,8 @@ class ContextCompiler:
             c = _c(card)
             cname = canon(c.get("name") or card.title)
             aliases = _lower_set(c.get("aliases"))
-            if names and cname not in names:
+            if cname not in names:
+                # No participants -> no character blocks (never dump the whole cast).
                 continue
             dd = c.get("dramatic_design") or {}
             voice = c.get("voice") or {}
@@ -193,7 +194,7 @@ class ContextCompiler:
         for card in self.bible.cards_of_type(project_id, "Relationship Arc"):
             c = _c(card)
             a, b = canon(c.get("character_a", "")), canon(c.get("character_b", ""))
-            if names and not ({a, b} & names):
+            if not ({a, b} & names):
                 continue
             both = bool(names) and a in names and b in names
             blocks.append(CompiledBlock(
@@ -214,7 +215,7 @@ class ContextCompiler:
             if c.get("status") in ("resolved", "abandoned", "obsolete"):
                 continue
             parts = {canon(x) for x in _lower_set(c.get("participants"))}
-            overlap = bool(parts & names) if names else True
+            overlap = bool(parts & names)
             main = c.get("thread_type") == "main_plot"
             if not overlap and not main:
                 continue
@@ -238,7 +239,7 @@ class ContextCompiler:
             rng = c.get("target_payoff_range")
             due = isinstance(rng, (list, tuple)) and len(rng) == 2 and isinstance(rng[0], int) and rng[0] <= chapter
             overdue = isinstance(rng, (list, tuple)) and len(rng) == 2 and isinstance(rng[1], int) and chapter > rng[1]
-            overlap = bool(parts & names) if names else True
+            overlap = bool(parts & names)
             if not due and not overlap:
                 continue
             reason = "Overdue payoff" if overdue else ("Payoff window open" if due else "Participants involved")
@@ -254,7 +255,7 @@ class ContextCompiler:
             c = _c(card)
             knowers = [k for k in (c.get("knowers") or []) if isinstance(k, dict)]
             involved = {canon(k.get("entity", "")) for k in knowers}
-            if names and not (involved & names) and c.get("sensitivity") != "high":
+            if not (involved & names) and c.get("sensitivity") != "high":
                 continue
             pov_state = next((k for k in knowers if canon(k.get("entity", "")) == pov_name), None) if pov_name else None
             reader_state = c.get("reader_state") or "unaware"
@@ -278,7 +279,7 @@ class ContextCompiler:
         for card in self.bible.cards_of_type(project_id, "World Rule"):
             c = _c(card)
             known = {canon(x) for x in _lower_set(c.get("known_by"))}
-            overlap = bool(known & names) if names else True
+            overlap = bool(known & names)
             if not overlap and c.get("domain") not in ("magic_power", "law", "politics"):
                 continue
             blocks.append(CompiledBlock(

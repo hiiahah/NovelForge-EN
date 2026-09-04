@@ -810,6 +810,10 @@ def _mint_captcha_token_subprocess(page_url: str, timeout: int, proxy: Optional[
             time.sleep(0.1)
         reader.join(timeout=5)
         stdout_text = "".join(out_chunks)
+        if _is_cancelled():
+            # The control may have killed the child directly before this loop
+            # observed the flag; report cancellation, not a helper failure.
+            raise RuntimeError("stream cancelled")
     finally:
         if proc is not None and control is not None:
             control.unregister_process(proc)
@@ -1096,15 +1100,20 @@ def token_helper_status() -> Dict[str, Any]:
         info["detail"] = f"external token pool at {os.getenv('AUTHND_TOKEN_POOL_URL', 'http://127.0.0.1:8080/get-token')}"
         return info
     try:
-        import importlib
-
-        importlib.import_module("PySide6.QtWebEngineCore")
-        importlib.import_module("PySide6.QtWidgets")
+        _import_qt_webengine()
         info["available"] = True
         info["detail"] = "PySide6 QtWebEngine importable"
     except Exception as exc:  # ImportError or missing shared libraries (OSError)
         info["detail"] = f"PySide6 QtWebEngine unavailable: {_short_error(exc, 300)}"
     return info
+
+
+def _import_qt_webengine() -> None:
+    """Import hook kept separate so tests can simulate a missing dependency."""
+    import importlib
+
+    importlib.import_module("PySide6.QtWebEngineCore")
+    importlib.import_module("PySide6.QtWidgets")
 
 
 def _validate_token(token: Any) -> str:
