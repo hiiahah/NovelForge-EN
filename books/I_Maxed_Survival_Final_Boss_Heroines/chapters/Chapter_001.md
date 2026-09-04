@@ -1,625 +1,331 @@
-# Chapter 1: Surviving the Save File
+# Chapter 1: The Worst Possible Save File
 
-**'I loved surprises.'**
+'I loved my life.'
 
-As a gamer, surprises were my bread and butter.
+Okay, that was a lie.
 
-A hidden boss behind a waterfall. A secret ending that needed 400 hours and a blood sacrifice. A rare drop with a 0.01% rate that made you scream at 3 AM.
+I was Kang Min-jun, twenty-three years old, professional shut-in, and proud owner of exactly one life achievement—
 
-Life was boring when it was predictable, you know?
+347 hours in *[Eschaton Hearts]*.
 
-That's why I, Kang Min-jun, 23 years old, professional job interview reject and part-time legend, willingly threw away 347 hours of my life hunting down every scrap of content in *[Hero's Eternal Dawn]*.
+Every route cleared. Every heroine conquered. Every single Bad Ending unlocked, down to the forty-ninth one where the protagonist gets turned into garden mulch.
 
-All 7 heroine routes. Cleared.
+I did it for the holographic skull trophy.
 
-All hidden events. Triggered.
+A *skull*.
 
-All 49 Bad Endings.
+I sacrificed my youth for a floating CGI skull, and you know what? Worth it. That platinum unlock animation at 4 AM hit harder than my college acceptance letter ever did.
 
-*All forty-nine of them.*
+Then I fell asleep at my desk like a responsible adult.
 
-I watched the protagonist get beheaded, incinerated, swallowed, frozen, curdled, and once — memorably — turned into a decorative garden statue because a certain Empress "wanted to keep him forever."
-
-And when the platinum holographic skull achievement popped up on my screen at 4:47 AM, I did what any sane man would do.
-
-I went to bed.
-
-Just... went to sleep.
-
-I didn't sell my soul. I didn't die in a truck accident. Truck-kun never even grazed me. I just fell asleep as Kang Min-jun...
-
-...and woke up as a dead man.
+And woke up eating dirt.
 
 ---
 
-*Well. A scheduled dead man.*
+"Cough—! *Hak*—!"
 
-Lucen Gray.
+My face was in the ground. Wet, cold ground that smelled like mud, horse piss, and—
 
-Ever heard of him? No?
+'Wine?'
 
-Of course not.
+I blinked.
 
-He was the "tutorial corpse" of [Hero's Eternal Dawn]. A background mob so insignificant he didn't even get a portrait. Just a name on the casualty list.
+Silver birches. Moonlight cutting through the canopy in pale slashes. An overturned merchant wagon with its wheels still spinning lazily, smashed crates everywhere, dark red liquid pooling from a split cask.
 
-His entire narrative purpose existed for exactly one cutscene:
+Fermented grapes. The expensive kind.
 
-The Intake Ceremony. A stray mana explosion. Some nameless commoner boy dies in a spray of light. And the golden hero, Lucas Ashford, kneels beside his body with tears streaming and clenches his fist with righteous fury.
+My gamer brain catalogued the scene in 0.3 seconds flat, and my blood went colder than the mud under my cheek.
 
-*Camera pan. Inspiring music. Hero arc: initiated.*
+'No.'
 
-Ten seconds of screen time to make the protagonist look noble.
+No, no, no—
 
-That was Lucen Gray's entire existence.
+I knew this place.
 
-And I woke up in his body, in the infirmary, right after that explosion — which he very much did *not* die from, because apparently my soul cramming itself into his meat-suit at the last second counted as an act of god.
+I had watched this exact camera angle forty-nine times.
 
-A very confused, very buggy act of god.
+This was the **unskippable twenty-second opening cutscene** of *Eschaton Hearts*. The tutorial. The intro nobody watches because everyone button-mashes through it to get to the character creator.
 
-'I survived. Great. Miraculous. Somebody give me a medal.'
+The one where a nameless NPC servant boy gets hacked apart by four Level 3 bandits on the Imperial Highway.
 
-That's what I thought at first.
+The one where, the next morning, the golden-haired hero Lucas Ashford finds the mangled corpse in the road, drops to his knees, sheds a single glistening tear, and swears his holy oath—
 
-Then I opened my status window.
+*"I will become strong enough to protect the weak!"*
 
----
+Dun dun dunnn. Cue title screen. Cue the fandom crying in the comments.
 
-[Status Window]
+And I—
 
-Name: Lucen Gray
+I looked down at my body.
 
-Title: The Tutorial Corpse (Glitch)
+Skinny. Bruised. Sixteen years old, maybe. A torn linen tunic that smelled like a stable. Stick arms that couldn't arm-wrestle a hamster.
 
-Mana Affinity: 0.009 (Sub-Dummy)
+'I'm the corpse.'
 
-Special Trait: [Fate Glitch: A Person Who Should Not Exist]
+*I'm the tutorial corpse.*
 
----
+My entire narrative purpose in this world was to be a red puddle of character development for some golden-retriever protagonist I'd never meet.
 
-I stared at it for ten minutes straight.
+A sound snapped me out of my breakdown.
 
-*Sub-Dummy.*
+Boots. Crunching gravel. Four sets of them.
 
-Not "Low." Not "Weak." The system had to go out of its way to tell me I had less mana than the wooden training posts the students whack with sticks.
-
-And that trait.
-
-*[A Person Who Should Not Exist.]*
-
-Reading that felt like the universe leaning over my shoulder and whispering, *"Hey. Buddy. You're not in the script."*
-
-In this game, do you know what happens to things that aren't in the script?
-
-The world deletes them.
+And laughter—the ugly, phlegmy kind only NPC bandits and my old raid leader could produce.
 
 ---
 
-So I did what any completionist gamer would do.
+Then light bloomed in front of my face.
 
-I coped.
+A translucent blue window, hovering in the air like the world's least helpful pop-up ad.
 
-No — more than that. For the last three days, I went absolutely *feral*.
+**[System: Welcome, Player.]**
 
-I bought a leather-bound notebook with what little pocket money Lucen Gray had. Then I locked the door of Dormitory Room 402, and I wrote.
+**[You have been loaded into ESCHATON HEARTS — Story Mode.]**
 
-I wrote *everything*.
+**[Current Identity: Lucen Gray, Servant Boy. Age 16.]**
 
-Every route flag. Every trigger condition. Every hidden item location from the Moonlight Dagger to the Saintess's hairpin. Every heroine's psychological trauma file, down to the exact childhood incident that made the Seventh Princess permanently distrust men with green eyes.
+**[Status: A person who should not exist.]**
 
-All 49 Bad Endings, indexed and annotated.
+'Rude.'
 
-Diagrams. Maps. The layout of the Imperial Palace. The secret passage to the Crown Princess's private garden. The insignia of the Dawn Sect, drawn stroke-by-stroke from memory.
-
-Three days. Zero sleep. My hand was a claw.
-
-But it was worth it.
-
-Because this notebook? This was my Bible. My grimoire. My one cheat in a world where I had the combat power of a moderately enthusiastic houseplant.
-
-And the best part?
-
-I wrote it all in Korean.
-
-Hangul. The beautiful, geometric, utterly alien script of my homeland.
-
-This world used the Latin alphabet. To any person in this fantasy world, my notebook looked like the ramblings of a lunatic drawing circles, boxes, and lines for two hundred pages.
-
-An unbreakable cipher.
-
-Nobody on this continent could ever read it.
-
-*Nobody.*
-
-I remember laughing to myself last night as I tucked it under my pillow.
-
-"Perfect security," I said to the ceiling. "Min-jun, you genius. You handsome, paranoid genius."
-
-Reader.
-
-I'd like to formally retract that statement.
-
----
-
-Half past midnight.
-
-Cold moonlight poured through the window of Room 402 like spilled milk.
-
-I woke up because of the heat.
-
-That's the thing. It's the middle of the night, the autumn air is freezing, my blanket is thin as tissue paper...
-
-...so why is the room warm?
-
-Why is the air *shimmering*?
-
-My eyes opened.
-
-And my soul left my body several kilometers behind it.
-
-The chair by my desk was no longer empty.
-
-Someone was sitting in it.
-
-Legs crossed elegantly, posture regal enough to make emperors jealous, bathed in a shaft of moonlight that honestly looked staged like some kind of divine photoshoot.
-
-Long hair the color of liquid platinum cascaded down her shoulders.
-
-Two eyes of molten gold glowed faintly in the dark — lit from within, like sunrise trapped in glass.
-
-And resting on her lap, being slowly, slowly, casually turned page by page...
-
-...was my notebook.
-
-'..........'
-
-My brain flatlined.
-
-*Thump.* My heart remembered its job and restarted at four times normal speed.
-
-*Fuck.*
-
-*Fuck fuck fuck fuck—*
-
-I knew that face.
-
-My God, did I know that face. I had seen it in 4K resolution, in seventeen different costumes, in at least five CGs where she was bathed in someone else's *ashes*.
-
-Crown Princess Iris Aurelia.
-
-First Princess of the Celestine Empire. The Dawn Incarnate. Heir to the Star Throne.
-
-And in [Hero's Eternal Dawn] — the Final Boss of Route 1.
-
-*"The Dawn Tyrant."*
-
-A woman whose bad route ends with the capital burned so thoroughly that the game award screen literally just shows a cinder.
-
-'Why.'
-
-That was the only coherent thought my brain produced.
-
-'Why is the final boss in my room at midnight reading my diary.'
-
-This was Dormitory Room 402. Second floor of the default commoner dormitory. Population: one dead-extra. This building didn't even have hot water.
-
-Royalty didn't come here.
-
-Damage control did come here, before the game started, to check out that cool explosion site from the tutorial. But *Princesses* did not come here.
-
-And yet.
-
-Her head tilted slightly. A few platinum strands slid over her shoulder.
-
-Tap. Tap. Tap.
-
-Her finger rested on one of my pages.
-
-A diagram page.
-
-My hand-drawn map of the Imperial Palace. *Including the servant routes.*
-
-"..."
-
-"..."
-
-Silence.
-
-Wonderful silence.
-
-The kind of silence that precedes natural disasters and military tribunals.
-
-"Lu-cen... Gray."
-
-She said my name slowly, tasting it.
-
-Like a panther naming the mouse it had decided to play with for a few months.
-
-"Y-Yes!"
-
-I sat bolt upright so fast my spine cracked. Military-style. Knees together. Back straight.
-
-*Survive first. Posture matters. Dead men don't slouch.*
-
-Her golden eyes studied me.
-
-Up close — well, three meters away — the aura hit like opening an oven with your face.
-
-Sun mana. Overwhelming, ambient, passive sun mana. The air around her literally rippled with heat distortion, and the frost on my window was melting into sad little tears on her side of the room.
-
-*This woman could boil me alive by sulking.*
-
-"You're awake," she said pleasantly. "Good. The alternative was going to be complicated."
-
-'What was the alternative, exactly? Do I want to know? Am I mentally prepared to— no. No, I don't want to know.'
-
-"I am told," she continued, voice light, "that the academy intake ceremony produced a... statistical anomaly this year."
-
-Her finger tapped the notebook again.
-
-Tat. Tat.
-
-"One private mana conduit, fired by accident, at a measured force of roughly thirty standard units. Do you know what the survival odds are for an unawakened commoner caught in the blast at that range?"
-
-She smiled.
-
-"Zero."
-
-'Oh.'
-
-Oh.
-
-*Oh no.*
-
-"And yet here sits Lucen Gray of Nowhere-Important. Breathing."
-
-Her head tilted the other way.
-
-"Interesting. And three days after this miracle... I learn that this same unremarkable student hasn't set foot in a single lecture. Hasn't cast a single spell. Has, instead, spent seventy-two consecutive hours locked in his room, *writing*."*
-
-She lifted the notebook.
-
-God, seeing my sacred grimoire in the hands of the final boss felt like watching a demon lord browse through your browser history.
-
-"In a script," she said softly, "that does not exist in any record of the Empire, any record of the fallen kingdoms, or any of the forty-seven language archives in the royal library."
-
-*Flip.*
-
-She turned a page.
-
-'Oh god. That's the seventh princess trauma chart. She's reading the trauma chart. In Korean. She can't read it. She *can't* read it. Breathe.'
-
-"I can't read it," she said, confirming the one pillar of my sanity. "No one in this world can."
-
-...
-
-The silence this time had teeth.
-
-"But you see, Lucen Gray?"
-
-Her voice dropped an octave.
-
-"I don't need to read the words... to read a *drawing.*"
-
-She opened the notebook flat and turned it toward me.
-
-My palace map. My beautiful, detailed, extremely incriminating palace map. Labeled in Korean, yes, but a hallway is a hallway in any language.
-
-And then she turned the page.
-
-The private garden. *Her* private garden. The escape route behind the fountain drawn with a dotted line and a little Korean note saying "안전한 탈출 루트 — 복선?" ("Safe escape route — a flag?").
-
-And then one more page.
-
-The rising sun crest of the Dawn Sect. Heretical cultists who try to assassinate her in Year 2, which I drew so I could be warned when I saw it.
-
-Her molten eyes rose from the pages to my face.
-
-And the temperature in the room spiked so hard my bedsheets started to feel sun-warmed.
-
-[Bad End No. 12: The Tyrant's Curiosity]
-
-'AHHHHHHHHHHH!'
-
-The memory crashed into my skull in full 4K resolution.
-
-The CG. Route 1, Year 2. A captured spy kneeling in front of Iris. She asks a question. He lies.
-
-She extends one slender finger —
-
-— and the screen goes white, and the audio designer includes a sound I can only describe as *setting fire to a scream*, and the only thing left on the marble floor is a drift of white ash and a pair of shoes.
-
-*Shoes.* The game deliberately drew the shoes. The devs knew what they were doing.
-
-[Bad End No. 4: Ashes of the Dawn]
-
-Fifty hours of gameplay taught me this face.
-
-The soft smile. The gentle eyes. The terrifying restraint of a cat that has already calculated thirty-seven ways to break the mouse.
-
-"A commoner student," she said, each word slow and precise as a bead being placed on a scale, "with less mana than a wooden training post."
-
-'She inspected me. She *inspected* me. Oh my god she actually ran a scan on my 0.009.'
-
-"...writing state secrets," she continued, "architectural weaknesses of the Imperial Palace, the layout of my private garden, and the insignia of an underground heretical sect..."
-
-She leaned forward in her chair.
-
-"...in an unreadable... *demonic*... script."
-
-The word *demonic* was doing a lot of work in that sentence. There were demon dungeons in this world. If she stamped that label on me, I would not be tried. I would be *processed.*
-
-"So. Lucen Gray."
-
-Her voice became sweet.
-
-Beautiful.
-
-Catastrophically pleasant.
-
-"Care to explain yourself?"
-
-'Rrrrrrgh.'
-
-Play it cool. Lying is death. Honesty is death and also a permanent residency at the priesthood's exorcism clinic.
-
-*Think, Min-jun. Completionist brain. ON.*
-
-I ran the odds.
-
-Option 1: Deny everything. → Bad End 12. She's already eliminated denial as a possibility. She did her *homework*. This woman hasn't come to interrogate. She's come to *collate.*
-
-Option 2: Tell her I'm a transmigrator from Earth. → burned by the Inquisition by Friday. An unknown soul from an unknown world? The Church would treat me like free loot.
-
-Option 3: Attack. → 0.009 mana. *Sub-Dummy* literally in the trait. I'd have better odds slapping a hurricane.
-
-Option 4.
-
-...
-
-Option 4 was the danger zone. It was the exact kind of play that, in the game, had a skull marked on the dialogue option.
-
-But it was also the only one with a chance.
-
-Alright.
-
-*God, I hope completionist instincts carry over.*
-
-"...There's a reason," I said.
-
-My voice shook. Screw it. Let it shake. Fear was authentic. Authentic was good.
-
-"A reason. Mm."
-
-She recrossed her legs. *Go on,* her eyes said. *Entertain me.*
-
-'Okay. Here we go. Absolutely no turning back.'
-
-"The Academy only tests mana output, right? That's why I scored like a brick."*
-
-I took a breath.
-
-"But there are people who can't contribute with mana... so they contribute another way. By knowing things."
-
-"..."
-
-"A mana collapse in the intake inspection. Forty-nine books in the public academy library are mislabeled — I know which. In Year 2 the Dawn Sect infiltrates this campus. I know their methods."
-
-*Don't say too much. But also say too much. Threading the needle so hard right now.*
-
-Her eyes narrowed, just slightly.
-
-She didn't believe me. But I hadn't said something that could be a lie, either, and she could *feel* that.
-
-Everything I'd said was true. Everything I said was verifiable. And a person who knew Year 2's infiltration mechanisms *now* was —
-
-"...an asset," she murmured. "Hmm."
-
-'YES. Yesssss. Hmm is good. Hmm is alive. Hmm is the good sound!'
-
-"Or," she said pleasantly, "a very creative spy. Or a madman. Or a demonically-touched lunatic so far from the script that burning him counts as pest control."
-
-'The 'or' list, your Highness, really didn't need the last two items.'
-
-She stood up.
-
-The chair didn't even creak. It was like gravity had asked her permission before touching her.
-
-She crossed the distance between us.
-
-Three meters. Two. One.
-
-Her footsteps on the floorboards were soft, unhurried, and measured in exactly the way of a creature that knew there was not one thing in the room that could hurt it.
-
-'Fuck. Fuck. She's close. She's really close. The CG is close. Please wait. I didn't save.'
-
-The warmth came first. Then the scent.
-
-Some kind of royal incense — sandalwood, something floral, something expensive enough to buy the building I was standing in. It tried to make me feel safe, an obvious trap.
-
-She stopped.
-
-I could see the individual lashes framing gold eyes. At this distance her face was so flawless it stopped reading as a face and started reading as a threat, like a tiger-striped glacier.
-
-'Beautiful' was the wrong word. 'Ruinous' was closer. The kind of beauty that had a body count as a hobby.
-
-Her hand rose.
-
-'OH FUCK—'
-
-...and rested two fingers lightly against my chest.
-
-Right over the heart.
-
-*Thump thump thump thump thump.*
-
-"Mm," she said. "You really are terrified."
-
-"I-I would never dream of—"
-
-"You should be," she agreed, kindly. "No, no. It's healthy. It means your survival instincts are functional. I approve of those words coming from you."
-
-'She approves. She approves of my fear. Oh, she is exactly as written. Exactly as in the game. The route guides were NOT exaggerating.'
-
-Tap. Tap.
-
-Her fingers tapped against my chest in time with my heartbeat, like she was checking the rhythm against a chart.
-
-"Then. As a reward for not boring me to death tonight..."
-
-Her other hand came up.
-
-She was holding the notebook.
-
-'My precious—!'
-
-"...this stays with *me.*"
-
-The words hit like a sentence being read out in court.
-
-"Wait, that's— that notebook is—" I choked. "Your Highness, you can't— it's nonsense, the drawings are just, it's nothing—"
-
-"Mm. 'Nonsense.'"*
-
-She held it up next to my face and slowly swung it side to side, watching my pupils track it like a man watching his own organs.
-
-"Two hundred pages of 'nonsense.' Written in three days. In a script that doesn't exist. Containing the blueprints of my home."
-
-*Swoosh.*
-
-She tucked it under her arm.
-
-'IT'S GONE. It's over. That's my life. That is my one cheat item. My grimoire. My strategy guide. My brain backup. AND IT'S LEAVING.'
-
-I almost cried. I'm not even kidding, my eyes got wet. Do you understand? I farmed that knowledge. Over 347 hours. 347.
-
-"But," she said.
-
-The single word thudded down like an iron gate trapping everything inside.
-
-"...I am *deeply* interested in what it says."
-
-Golden eyes.
-
-Gleaming now. Not with fire or threat this time, but with something worse, something so much worse.
-
-*Interest.*
-
-"Soon, you will translate it for me. In my presence. Every page. Every stroke. If there's even one page I dislike... you know what happens."
-
-She leaned in close enough that her breath touched my cheek.
-
-'Fuck. Fuck. Is this a death flag? A romance flag? Why does this game keep overlaying the same two flags? Why is the danger animation and the romance animation literally the same animation?'
-
-And then —
-
-"...Until you translate every single stroke of this for me..."
-
-Her tone was gentle as sunrise.
-
-Cold as a verdict.
-
-*"...your life belongs to me."*
-
-[Bad End No. 30: The Tyrant's Collection]
-
-'NO, NO, NOT THAT ONE. THAT ONE'S THE ONE WHERE HE NEVER LEAVES THE PALACE. THAT'S A SLOW-BURN HORROR CG. THE DEV TEAM LITERALLY PUT A GUARDSMAN IN THE BACKGROUND OF THAT CG SLOWLY GOING INSANE—'
-
-"Mm. I'll come again," she said.
-
-And she smiled.
-
-Not the court smile. Not the political smile.
-
-A real one. A slow, terrifyingly genuine one that curved her lips and crinkled the corners of her eyes, and it was so beautiful it crashed my brain for a full second, because my god, what a thing that face was when it actually meant it.
-
-And that made it worse.
-
-That made it *so* much worse.
-
-"Iris. Aurelia."
-
-She offered her own name like a knife being handed to me hilt-first.
-
-"Use it when we're alone. Since we are going to be... close... from now on."
-
-"I'm going to visit you often. Make time."
-
-'She's setting up recurring meetings. She, the imperial crown princess, final boss, Dawn Tyrant, is— she's making me a recurring calendar event. In her life. On purpose. Voluntarily.'
-
-This had never happened in the game.
-
-There was no flag for this.
-
-Not in 347 hours. Not in 49 bad endings. Not in a single data-mined string of dialogue I had scoured in the long, unhinged nights of my completionist run.
-
-There was no route.
-
-No guide.
-
-No walkthrough.
-
----
-
-She left the same way she'd apparently arrived — silently. Through the door, which I'm fairly certain she didn't open herself in any way that my 0.009-mana eyes could detect, but which opened for her anyway, because it knew better.
-
-Down the corridor. Gone.
-
-Only heat lingered.
-
-The room was still uncomfortably warm. The frost on my window had fully melted into condensation, and little droplets were running down the glass like the whole building had been sweating with me.
-
-I stood in the middle of Room 402.
-
-Two (2) seconds.
-
-Three (3).
-
-My knees gave out.
-
-*Thump.*
-
-I sat down hard on the cold floorboards and just... leaned against the bed frame, staring at the door.
+**[Mana Index: 0.009 / 100,000]**
 
 '...'
 
+Zero point zero zero nine.
+
+I stared at that number until it burned into my retinas.
+
+For reference—*for reference*—a wooden training dummy in this game has a mana index of 0.01.
+
+A *dummy*.
+
+A motionless oak scarecrow that exists to be kicked by children is more magical than me. I am canonically, mathematically, *less than furniture*.
+
+**[All Stats: F]**
+
+**[Luck: —]**
+
+**[Note: An Evil Goddess warns you that you are already dead. Try not to make it worse.]**
+
+'Try not to make it worse, she says.'
+
+Fantastic. The system was sarcastic. I got transmigrated with a *snarky* system. That's exactly what I needed. A UI with attitude problems.
+
+No spell in my head. No sword art. No protagonist halo. Just 0.009 mana and the body of a malnourished stable boy.
+
+'Three hundred and forty-seven hours of game knowledge,' I thought hysterically, 'and the build I spawn with is "corpse." '
+
+---
+
+"Oy."
+
+A shadow fell over me.
+
+I looked up. Slowly. The way you look up at a guillotine.
+
+Four men stood around me in a loose semicircle. Grimy, scarred, stinking of sweat and old blood, each one holding a rusted iron cleaver that had definitely seen more necks than a barber.
+
+Torches crackled behind them. The flames made their grins look orange.
+
+"Look at this little rat," the biggest one said. "Still breathin'."
+
+"Boss said leave no witnesses," another one grunted, scratching his neck with the flat of his blade.
+
+"Merchant's already feedin' the worms. Boy'd better join 'im quick, eh?"
+
+They laughed. All four of them.
+
+And here was the thing.
+
+Here was the *stupid, beautiful* thing.
+
+A normal transmigrator would panic. A normal transmigrator would beg, or cry, or try to fight with a stick and get his head introduced to the dirt.
+
+Hell, in forty-nine out of forty-nine viewings of this cutscene, that's exactly what the NPC did. Stand there. Shake. Die in eight seconds.
+
+But I wasn't a normal transmigrator.
+
+I was a 347-hour completionist degenerate who had spent an entire weekend binge-watching speedrun footage of this game out of pure, unmedicated boredom.
+
+And there was one clip—
+
+One legendary, cursed, frame-perfect clip from the community archives—
+
+'Version 1.02,' my brain whispered. 'The prologue skip.'
+
+My eyes slid sideways.
+
+The overturned wagon. The rear wheel, half-buried in the mud. And behind it, a jagged boulder at the very edge of the clearing, where the ground dropped away into darkness.
+
+Where the darkness hummed with the distant hiss of the Whispering Rapids, fifty feet down.
+
+The speedrunners had found it by accident. Behind the overturned wagon, right where the wheel's rim kissed the boulder, there was a *one-pixel seam* in the collision mesh.
+
+A gap. A hole in the world.
+
+The devs had flagged the servant boy as a scripted corpse—an asset that *never moved*—so they never bothered giving the geometry behind the wagon a proper hitbox. Why would they? The corpse wasn't going anywhere.
+
+If you clipped through that seam, the engine couldn't calculate floor collision.
+
+It panicked.
+
+And it dumped you straight through the terrain, off the cliff, and into the river — skipping the entire prologue.
+
+The clip had 4.2 million views and a top comment that read: *"certified hood classic."*
+
+'It's a fifty-foot fall into freezing rapids.'
+
+'In an F-stat body.'
+
+'Beautiful. The optimal play.'
+
+---
+
+"Aww, lookit 'im. Pissin' himself," the lead bandit chuckled, raising his cleaver high over his head. Torchlight ran down the pitted edge. "Hold still, rat. Clean an' quick, I promise."
+
+'Lying in the first line. Classic bandit dialogue. I've *read* this script, buddy.'
+
+I didn't answer.
+
+Every completionist instinct in my body screamed at once. It wasn't courage. It wasn't a plan. It was muscle memory — the same reflex that used to yank my mouse at 3 AM chasing a frame-perfect input.
+
+The cleaver started its downswing.
+
+I moved.
+
+Not a dodge. Call it what it was: a full-body, dignity-free, screeching *flop*.
+
+I kicked off the dirt with both feet, threw my scrawny weight backwards, and jammed myself spine-first into the crook between the wagon wheel and the boulder — arms tucked, chin down, like the world's least aerodynamic cannonball.
+
+*THWACK!*
+
+The cleaver buried itself into the wagon bed where my skull had been a heartbeat ago, wood screaming as it split.
+
+"Eh?"
+
+That was the last intelligent sound anyone made.
+
+Because then the world *hiccuped*.
+
+The air went white for one frame.
+
+The forest tore like wet paper.
+
+The torch flames stretched into long smears of orange, the bandits' faces warped like a corrupted texture file, and the ground beneath my back simply—
+
+*Deleted itself.*
+
+**[Collision error.]**
+
+**[Recalculating—]**
+
+**[Failed.]**
+
+'Oh, shi—'
+
+I fell.
+
+---
+
+No floor. No sound for half a second. Just the roar of wind and the moon spinning overhead like a coin.
+
+Fifty feet of empty air.
+
+Then the river hit me.
+
+Correction — I hit the river.
+
+*WHAM.*
+
+It wasn't water. Water is soft. Water is forgiving. This was getting drop-kicked by a frozen truck.
+
+Cold punched through my whole body at once. The current grabbed my ankles and folded me in half, tumbling me through black froth, slamming me shoulder-first into a boulder —
+
+*CRACK.*
+
+Something inside my chest made a sound like dry firewood snapping.
+
+Pain. White, absolute, full-body pain, blooming from my ribs outward.
+
+'Two. That's two ribs. Non-refundable.'
+
+I couldn't scream. Water was already in my mouth, my nose, my lungs. The rapids dragged me under, spun me, spat me up, dragged me under again, and my F-stat limbs flailed with all the grace of a drowning cat.
+
+Downriver. Downriver. Downriver.
+
+Until finally the current slackened, the roar faded to a hiss, and my fingers clawed into wet gravel.
+
+---
+
+"Hahh— hahhk— *koff*—"
+
+I dragged myself up the bank like a slug escaping a salt shaker.
+
+River sludge came out of me in heaves. Then water. Then something warm and coppery that looked black in the moonlight.
+
+'Blood. Great. Love that for me.'
+
+I collapsed onto the gravel, flat on my back, chest heaving. Every breath was a knife. Two cracked ribs pulsed in time with my hammering heart. My tunic was plastered to my skin, and the night wind was turning me into a popsicle.
+
+I was freezing. Broken. Soaked to the bone in some forest in the middle of nowhere.
+
+But I was breathing.
+
+*I was breathing.*
+
+Up on that cliff, four very confused bandits were probably staring at a wagon wheel and wondering where the hell the corpse went.
+
+'Heh.'
+
+A broken laugh scraped out of me.
+
+'Heheh... yes. YES. Clip of the century, baby. The NPC corpse just no-clipped out of his own death cutscene. Four million views, easy—'
+
+Ding.
+
+The blue window bloomed above my face.
+
+**[Congratulations. You have survived Prologue Death Flag #1.]**
+
+**[Bad End No. 1: 'A Nameless Grave' — AVERTED.]**
+
+"Yeah," I rasped up at the sky, grinning through split lips. "Yeah, eat it, you unskippable piece of—"
+
+**[Warning: 637 potential Bad Endings remain.]**
+
 '...'
 
-'What.'
+The smile slid off my face.
 
-*'What was that.'*
+I read it again.
 
-I had a list of seven disaster scenarios for my first month here. Princess Imperial Grand Catastrophe *personally repossessing my strategy guide* after inspecting my paltry mana levels was not on it.
+*Six.*
 
-And beneath the panic, a worse realization coiled in my stomach like a snake.
+*Hundred.*
 
-'The notebook...'
+*Thirty.*
 
-Everything I know about this world is in there.
+*Seven.*
 
-Every girl's route. Every trigger. Every death.
+'Excuse me?'
 
-Every *secret.*
+*Forty-nine.* There were forty-nine Bad Endings in the original game. I would know — I unlocked every single one of the bastards. I have the *apology letters from my sleep schedule.*
 
-Including, on page 116, a certain section of notes about a certain Dawn Tyrant's private psychology that — translated with full context and nuance — amounts to the single most dangerous document in the Empire.
+Where the hell did the other 588 come from?!
 
-And the worst part of the whole night?
+**[Note: The Evil Goddess thinks you should have stayed dead. It would have been kinder.]**
 
-I now officially cannot run away.
+The window hovered there, smug and luminous, like a cat that had just pushed my mortality off a table.
 
-Because if I run, I'm a fleeing suspect who drew maps of the palace.
+I lay on the gravel and stared up at the cold white moon.
 
-And if I *stay*...
+Broken ribs. Zero magic. Less mana than IKEA furniture. A derailed tutorial, an F-stat body, and six hundred and thirty-seven fresh, undocumented ways to get murdered.
 
-I leaned my head back and stared at the ceiling.
+And somewhere out there was a hero who was supposed to find my corpse in the morning and swear his big heroic oath over it.
 
-The moon was very bright. Very beautiful. Very indifferent.
+'Sorry, buddy. You're going to have to get your character development somewhere else.'
 
-"Guys," I muttered to nobody, in Korean, the world's most useless language. "What do we do now?"
-
-The ceiling didn't answer.
-
-All I had was 0.009 mana, no save function, no strategy guide, no party members, no hidden items, and a Final Boss who had just informed me that I am now her *property* until further notice.
-
-...And no clear way to reset.
+A shiver wracked through me — cold, or laughter, or fear. Probably all three.
 
 "How the fuck am I supposed to survive in this romance fantasy game?"
