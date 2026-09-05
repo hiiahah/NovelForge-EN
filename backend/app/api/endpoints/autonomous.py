@@ -8,22 +8,48 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
+import re
+import zipfile
+from io import BytesIO
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.db.models import AutonomousNovelJob, ExportArtifact, LLMConfig, ModelInvocation, StorylineCandidate
+from app.core.config import settings
+from app.db.models import AutonomousNovelJob, ExportArtifact, LLMConfig, ModelInvocation, ModelInvocationAttempt, StorylineCandidate
 from app.db.session import get_session
+from app.services.autonomous import budget as budget_mod
+from app.services.autonomous import preflight as preflight_mod
+from app.services.autonomous import recovery
 from app.services.autonomous import runner as runner_mod
 from app.services.autonomous.storylines import candidate_dict
 from app.services.autonomous.worker import autonomous_worker
 from app.services.forge.models import validate_lab_llm_config
 
 router = APIRouter()
-MAX_UPLOAD_BYTES = 60 * 1024 * 1024
+MAX_UPLOAD_BYTES = int(settings.autonomous.max_upload_bytes)
+_SAFE_NAME_RX = re.compile(r"[^A-Za-z0-9._ \-()\[\]]+")
+
+
+class BudgetSpec(BaseModel):
+    max_calls: int = Field(default=0, ge=0)
+    max_input_tokens: int = Field(default=0, ge=0)
+    max_output_tokens: int = Field(default=0, ge=0)
+    max_total_tokens: int = Field(default=0, ge=0)
+    max_repair_calls: int = Field(default=0, ge=0)
+    max_cost_usd: float = Field(default=0.0, ge=0)
+    price_per_million: Dict[str, float] = Field(default_factory=dict, description="Optional {'input': usd, 'output': usd}; without it cost is reported as unknown")
+
+
+class PreflightRequest(BaseModel):
+    llm_config_id: int
+    fallback_llm_config_id: Optional[int] = None
+    timeout_seconds: float = Field(default=45.0, ge=5, le=300)
+    check_fallback: bool = True
 
 
 class CreateJobRequest(BaseModel):
@@ -46,6 +72,9 @@ class CreateJobRequest(BaseModel):
     storyline_count: int = Field(default=7, ge=5, le=10)
     fallback_llm_config_id: Optional[int] = None
     notes: Optional[str] = None
+    budget: Optional[BudgetSpec] = Field(default=None, description="Hard job limits; 0 = unlimited")
+    idempotency_key: Optional[str] = Field(default=None, max_length=64, description="Client-supplied key; repeated identical requests return the existing job")
+    preflight_acknowledged: bool = Field(default=False, description="Set when the user confirms starting without a passing preflight")
 
 
 class SelectStorylineRequest(BaseModel):
@@ -64,13 +93,50 @@ def _decode(content_base64: str) -> bytes:
     raw = (content_base64 or "").strip()
     if not raw:
         raise HTTPException(status_code=400, detail="content_base64 is empty")
+    if len(raw) > MAX_UPLOAD_BYTES * 4 // 3 + 16:
+        raise HTTPException(status_code=413, detail=f"File too large (limit {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)")
     try:
         data = base64.b64decode(raw, validate=True)
     except (binascii.Error, ValueError):
         raise HTTPException(status_code=400, detail="content_base64 is not valid base64")
     if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large (limit 60 MB)")
+        raise HTTPException(status_code=413, detail=f"File too large (limit {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)")
     return data
+
+
+def safe_filename(name: str) -> str:
+    """Basename only, no traversal, conservative character set, bounded length."""
+    base = os.path.basename((name or "").replace("\\", "/")).strip()
+    base = _SAFE_NAME_RX.sub("_", base).strip(" .")
+    if not base or base in (".", ".."):
+        base = "manuscript.epub"
+    return base[:120]
+
+
+def inspect_zip_upload(data: bytes, filename: str) -> None:
+    """Reject zip bombs, oversized entries and path traversal before any parsing happens."""
+    if not filename.lower().endswith(".epub"):
+        return
+    try:
+        zf = zipfile.ZipFile(BytesIO(data))
+    except zipfile.BadZipFile:
+        raise HTTPException(status_code=400, detail="EPUB is not a valid zip container")
+    a = settings.autonomous
+    infos = zf.infolist()
+    if len(infos) > a.max_zip_entries:
+        raise HTTPException(status_code=413, detail=f"EPUB has too many entries ({len(infos)} > {a.max_zip_entries})")
+    total = 0
+    for info in infos:
+        name = info.filename
+        if name.startswith(("/", "\\")) or ".." in name.replace("\\", "/").split("/") or re.match(r"^[A-Za-z]:", name):
+            raise HTTPException(status_code=400, detail="EPUB contains an unsafe entry path")
+        if info.file_size > a.max_entry_bytes:
+            raise HTTPException(status_code=413, detail=f"EPUB entry '{safe_filename(name)}' exceeds {a.max_entry_bytes // (1024 * 1024)} MB")
+        if info.compress_size and info.file_size / max(1, info.compress_size) > a.max_compression_ratio and info.file_size > 1024 * 1024:
+            raise HTTPException(status_code=400, detail="EPUB entry has a suspicious compression ratio")
+        total += info.file_size
+        if total > a.max_expanded_bytes:
+            raise HTTPException(status_code=413, detail=f"EPUB expands beyond {a.max_expanded_bytes // (1024 * 1024)} MB")
 
 
 def _job(session: Session, job_id: int) -> AutonomousNovelJob:
@@ -88,21 +154,37 @@ def _quality_options(preset: str) -> Dict[str, Any]:
     return {"economy": {"max_repairs": 1, "analysis_concurrency": 6}, "quality": {"max_repairs": 3, "analysis_concurrency": 2}}.get(preset, {"max_repairs": 2, "analysis_concurrency": 4})
 
 
+@router.post("/preflight", response_model=Dict[str, Any], summary="Provider preflight: validate an LLM configuration (reachability, model availability, text + structured output, usage, fallback) before a long job")
+async def preflight(req: PreflightRequest, session: Session = Depends(get_session)):
+    if session.get(LLMConfig, req.llm_config_id) is None:
+        raise HTTPException(status_code=404, detail=f"LLM configuration {req.llm_config_id} not found")
+    result = await preflight_mod.run_preflight(session, req.llm_config_id, fallback_llm_config_id=req.fallback_llm_config_id, timeout=req.timeout_seconds, check_fallback=req.check_fallback)
+    return preflight_mod.result_dict(result)
+
+
 @router.post("/jobs", response_model=JobResponse, summary="Create Novel from EPUB: start the autonomous pipeline (ingest -> analysis -> fingerprint -> storyline options)")
-async def create_job(req: CreateJobRequest, session: Session = Depends(get_session)):
+async def create_job(req: CreateJobRequest, session: Session = Depends(get_session), idempotency_key: Optional[str] = Header(default=None, alias="Idempotency-Key")):
     cfg = session.get(LLMConfig, req.llm_config_id)
     if cfg is None:
         raise HTTPException(status_code=400, detail=f"LLM configuration {req.llm_config_id} not found")
     ok, reason = validate_lab_llm_config(cfg)
     if not ok:
         raise HTTPException(status_code=400, detail=reason)
+    ok, problems = preflight_mod.validate_config(cfg)
+    if not ok:
+        raise HTTPException(status_code=400, detail="LLM configuration is invalid: " + "; ".join(problems))
+    if req.fallback_llm_config_id and session.get(LLMConfig, req.fallback_llm_config_id) is None:
+        raise HTTPException(status_code=400, detail=f"Fallback LLM configuration {req.fallback_llm_config_id} not found")
     if req.mode not in runner_mod.MODES:
         raise HTTPException(status_code=400, detail=f"mode must be one of {runner_mod.MODES}")
     data = _decode(req.content_base64)
-    options = {k: v for k, v in req.model_dump(exclude={"filename", "content_base64", "llm_config_id", "mode", "role_llm_config_ids"}).items() if v not in (None, "", {})}
+    filename = safe_filename(req.filename)
+    inspect_zip_upload(data, filename)
+    options = {k: v for k, v in req.model_dump(exclude={"filename", "content_base64", "llm_config_id", "mode", "role_llm_config_ids", "budget", "idempotency_key"}).items() if v not in (None, "", {}, False)}
     options.update(_quality_options(req.quality_preset))
+    budget = {k: v for k, v in (req.budget.model_dump() if req.budget else {}).items() if v}
     try:
-        job = runner_mod.create_job(session, filename=req.filename, data=data, llm_config_id=req.llm_config_id, mode=req.mode, options=options, role_llm_config_ids=req.role_llm_config_ids)
+        job = runner_mod.create_job(session, filename=filename, data=data, llm_config_id=req.llm_config_id, mode=req.mode, options=options, role_llm_config_ids=req.role_llm_config_ids, budget=budget, idempotency_key=req.idempotency_key or idempotency_key)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     autonomous_worker.start(int(job.id))
@@ -158,17 +240,41 @@ async def pause(job_id: int, session: Session = Depends(get_session)):
     return _response(session, job)
 
 
-@router.post("/jobs/{job_id}/resume", response_model=JobResponse, summary="Resume a paused or recovered job from its persisted stage")
-async def resume(job_id: int, session: Session = Depends(get_session)):
+class ResumeRequest(BaseModel):
+    budget: Optional[BudgetSpec] = Field(default=None, description="Raise or set job limits when resuming after budget exhaustion")
+
+
+@router.post("/jobs/{job_id}/resume", response_model=JobResponse, summary="Resume a paused or recovered job from its persisted stage (idempotent; optionally raise the budget)")
+async def resume(job_id: int, req: Optional[ResumeRequest] = None, session: Session = Depends(get_session)):
     job = _job(session, job_id)
     if autonomous_worker.is_active(int(job.id)):
-        raise HTTPException(status_code=409, detail="Job is already running")
+        return _response(session, job)  # already running: idempotent
     try:
-        job = runner_mod.resume(session, job)
+        budget = {k: v for k, v in (req.budget.model_dump() if req and req.budget else {}).items() if v} or None
+        job = runner_mod.resume(session, job, budget=budget)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     autonomous_worker.start(int(job.id))
     return _response(session, job)
+
+
+@router.get("/jobs/{job_id}/recovery", response_model=List[Dict[str, Any]], summary="Recovery history: stage, attempt, failure category, action, models, outcome")
+def recovery_history(job_id: int, limit: int = 100, session: Session = Depends(get_session)):
+    _job(session, job_id)
+    return recovery.history(session, job_id, limit=max(1, min(limit, 500)))
+
+
+@router.get("/jobs/{job_id}/attempts", response_model=List[Dict[str, Any]], summary="Per-provider-attempt telemetry (no prompts, no secrets)")
+def attempts(job_id: int, limit: int = 500, session: Session = Depends(get_session)):
+    _job(session, job_id)
+    rows = session.exec(select(ModelInvocationAttempt).where(ModelInvocationAttempt.job_id == job_id).order_by(ModelInvocationAttempt.id.desc()).limit(max(1, min(limit, 5000)))).all()
+    return [{k: getattr(r, k) for k in ("id", "invocation_id", "attempt", "provider", "model_name", "llm_config_id", "fallback", "role", "stage", "latency_ms", "status", "error_category", "provider_status", "provider_request_id", "retry_after_seconds", "input_tokens", "output_tokens", "timeout_seconds", "response_hash", "diagnostic")} | {"started_at": r.started_at.isoformat(), "completed_at": r.completed_at.isoformat() if r.completed_at else None} for r in rows]
+
+
+@router.get("/jobs/{job_id}/budget", response_model=Dict[str, Any], summary="Usage versus configured limits")
+def budget(job_id: int, session: Session = Depends(get_session)):
+    job = _job(session, job_id)
+    return budget_mod.usage_snapshot(session, job)
 
 
 @router.post("/jobs/{job_id}/cancel", response_model=JobResponse, summary="Cancel the job")
@@ -206,12 +312,25 @@ def artifacts(job_id: int, session: Session = Depends(get_session)):
     return [{"id": r.id, "kind": r.kind, "filename": r.filename, "media_type": r.media_type, "size_bytes": r.size_bytes, "content_hash": r.content_hash, "created_at": r.created_at.isoformat()} for r in rows]
 
 
-@router.get("/artifacts/{artifact_id}/download", summary="Download one export artifact")
+def _artifact_response(row: ExportArtifact) -> Response:
+    return Response(content=row.data, media_type=row.media_type, headers={"Content-Disposition": f'attachment; filename="{safe_filename(row.filename)}"', "X-Content-Type-Options": "nosniff"})
+
+
+@router.get("/jobs/{job_id}/artifacts/{artifact_id}/download", summary="Download one export artifact of a job (artifact must belong to the job)")
+def download_scoped(job_id: int, artifact_id: int, session: Session = Depends(get_session)):
+    _job(session, job_id)
+    row = session.get(ExportArtifact, artifact_id)
+    if row is None or int(row.job_id) != int(job_id):
+        raise HTTPException(status_code=404, detail="Artifact not found for this job")
+    return _artifact_response(row)
+
+
+@router.get("/artifacts/{artifact_id}/download", summary="Download one export artifact (legacy path)")
 def download(artifact_id: int, session: Session = Depends(get_session)):
     row = session.get(ExportArtifact, artifact_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Artifact not found")
-    return Response(content=row.data, media_type=row.media_type, headers={"Content-Disposition": f'attachment; filename="{row.filename}"'})
+    return _artifact_response(row)
 
 
 @router.get("/jobs/{job_id}/report", response_model=Dict[str, Any], summary="Quality / originality / cost report of a finished (or in-progress) job")
@@ -221,7 +340,7 @@ def report(job_id: int, session: Session = Depends(get_session)):
     job = _job(session, job_id)
     results = job.stage_results or {}
     audit = (results.get("GLOBAL_REPAIR") or {}).get("audit") or results.get("WHOLE_NOVEL_AUDIT") or {}
-    return {"job_id": job.id, "status": job.status, "stage": job.stage, "audit": {k: v for k, v in audit.items() if k != "findings"}, "findings": (audit.get("findings") or [])[:200], "ingestion": (results.get("INGEST") or {}).get("quality"), "storylines": results.get("STORYLINE_GENERATION"), "architecture": results.get("NOVEL_ARCHITECTURE"), "run": run_summary(session, job)}
+    return {"job_id": job.id, "status": job.status, "stage": job.stage, "quality_status": job.quality_status, "quality_summary": job.quality_summary, "audit": {k: v for k, v in audit.items() if k != "findings"}, "findings": (audit.get("findings") or [])[:200], "repair": {k: v for k, v in (results.get("GLOBAL_REPAIR") or {}).items() if k != "audit"}, "ingestion": (results.get("INGEST") or {}).get("quality"), "storylines": results.get("STORYLINE_GENERATION"), "architecture": results.get("NOVEL_ARCHITECTURE"), "budget": budget_mod.usage_snapshot(session, job), "recovery": recovery.history(session, job.id, limit=50), "run": run_summary(session, job)}
 
 
 __all__ = ["router"]

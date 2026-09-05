@@ -287,7 +287,14 @@ class JobRunner:
             return audit_mod.whole_novel_audit(self.session, int(job.original_project_id), job.chapter_count)
         if stage == "GLOBAL_REPAIR":
             audit = (job.stage_results or {}).get("WHOLE_NOVEL_AUDIT") or audit_mod.whole_novel_audit(self.session, int(job.original_project_id), job.chapter_count)
-            return await audit_mod.global_repair(self.session, project_id=int(job.original_project_id), chapter_count=job.chapter_count, client=client, audit=audit, lease_check=self._check_lease)
+            checkpoint = dict((job.stage_results or {}).get("checkpoint:GLOBAL_REPAIR") or {})
+
+            def save_checkpoint(cp: Dict[str, Any]) -> None:
+                results = dict(self.job.stage_results or {})
+                results["checkpoint:GLOBAL_REPAIR"] = cp
+                self._publish(stage_results=results)
+
+            return await audit_mod.global_repair(self.session, project_id=int(job.original_project_id), chapter_count=job.chapter_count, client=client, audit=audit, lease_check=self._check_lease, checkpoint=checkpoint, save_checkpoint=save_checkpoint)
         if stage == "EXPORT":
             audit = ((job.stage_results or {}).get("GLOBAL_REPAIR") or {}).get("audit") or (job.stage_results or {}).get("WHOLE_NOVEL_AUDIT") or {}
             failpoints.hit("before_export_create")
