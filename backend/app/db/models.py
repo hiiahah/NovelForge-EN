@@ -547,7 +547,18 @@ class AutonomousNovelJob(SQLModel, table=True):
     output_tokens: int = Field(default=0)
     lease_owner: Optional[str] = Field(default=None)
     lease_expires_at: Optional[datetime] = Field(default=None)
+    # Fencing token: every successful acquisition advances it; publications carry the
+    # generation they were acquired under and are rejected when it no longer matches.
+    lease_generation: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
     heartbeat_at: Optional[datetime] = Field(default=None)
+    # Budget ceilings (0 = unlimited) and reserved-but-unreconciled usage.
+    budget: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    reserved_calls: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
+    reserved_tokens: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
+    repair_calls: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
+    # Terminal quality verdict: completed | completed_with_warnings | quality_gate_failed | manual_review_required
+    quality_status: Optional[str] = Field(default=None, index=True)
+    quality_summary: dict = Field(default_factory=dict, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
     started_at: Optional[datetime] = None
@@ -590,11 +601,76 @@ class ModelInvocation(SQLModel, table=True):
     retries: int = Field(default=0)
     validation_status: str = Field(default="ok")  # ok|invalid|error
     error: Optional[str] = None
+    prompt_hash: str = Field(default="", sa_column=Column(sa.String, nullable=False, server_default=""))
+    total_attempts: int = Field(default=1, sa_column=Column(sa.Integer, nullable=False, server_default="1"))
+    selected_attempt: Optional[int] = Field(default=None)
+    fallback_used: bool = Field(default=False, sa_column=Column(sa.Boolean, nullable=False, server_default=sa.false()))
+    started_at: Optional[datetime] = Field(default=None)
+    finished_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class ModelInvocationAttempt(SQLModel, table=True):
+    """One provider attempt of a logical ``ModelInvocation`` (retries, fallbacks, verifiers).
+
+    Rows are written in their own short transaction so a failed attempt survives the
+    surrounding stage rollback. No prompt or response text is stored: hashes plus a
+    bounded, redacted diagnostic excerpt only.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    invocation_id: Optional[int] = Field(default=None, index=True)
+    job_id: Optional[int] = Field(default=None, index=True)
+    attempt: int = Field(default=1)
+    provider: str = Field(default="")
+    model_name: str = Field(default="")
+    llm_config_id: Optional[int] = Field(default=None)
+    fallback: bool = Field(default=False)
+    role: str = Field(default="", index=True)
+    stage: str = Field(default="")
+    started_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    completed_at: Optional[datetime] = None
+    latency_ms: int = Field(default=0)
+    status: str = Field(default="ok", index=True)  # ok|invalid|error|timeout|budget_refused
+    error_category: Optional[str] = None
+    provider_status: Optional[str] = None
+    provider_request_id: Optional[str] = None
+    retry_after_seconds: Optional[float] = None
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    timeout_seconds: Optional[float] = None
+    response_hash: str = Field(default="")
+    diagnostic: Optional[str] = Field(default=None)
+
+
+class RecoveryAction(SQLModel, table=True):
+    """One executed recovery-ladder action with its inputs, outputs and outcome."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_id: int = Field(index=True)
+    stage: str = Field(index=True)
+    stage_attempt: int = Field(default=0)
+    failure_category: str = Field(default="")
+    action: str = Field(index=True)
+    reason: str = Field(default="")
+    parameters_before: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    parameters_after: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    input_artifact: Optional[str] = None
+    output_artifact: Optional[str] = None
+    original_model: str = Field(default="")
+    selected_model: str = Field(default="")
+    downstream_invalidations: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    validation: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    success: bool = Field(default=False)
+    detail: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    started_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    finished_at: Optional[datetime] = None
 
 
 class StorylineCandidate(SQLModel, table=True):
     """One generated original storyline option for a job."""
+
+    __table_args__ = (UniqueConstraint("job_id", "option_index", name="uq_storyline_job_option"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     job_id: int = Field(index=True)
@@ -615,6 +691,8 @@ class StorylineCandidate(SQLModel, table=True):
 
 class ExportArtifact(SQLModel, table=True):
     """A produced deliverable (EPUB, DOCX, Markdown, text, report) stored for download."""
+
+    __table_args__ = (UniqueConstraint("job_id", "kind", name="uq_export_job_kind"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     job_id: int = Field(index=True)

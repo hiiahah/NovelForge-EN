@@ -14,11 +14,12 @@ applies.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from sqlmodel import Session, select
 
 from app.db.models import Card, ChapterPipelineRun
+from app.services.autonomous import failpoints
 from app.services.autonomous import failures as fail
 from app.services.autonomous.chapter_plan import existing_outlines, replan_from
 from app.services.autonomous.model_client import ForgeDrafterAdapter, ModelClient
@@ -73,7 +74,8 @@ def deviation_report(session: Session, project_id: int, chapter_number: int, res
     return {"chapter": chapter_number, "words": words, "word_target": word_target, "reasons": reasons, "material": bool(missed) or (word_target and abs(words - word_target) / float(word_target) > 0.6), "accepted_warnings": [{"code": w.get("code"), "severity": w.get("severity"), "rationale": "below blocking threshold; accepted by policy"} for w in warnings][:20], "facts_committed": len(committed_facts) if isinstance(committed_facts, list) else committed_facts}
 
 
-async def generate_next_chapter(session: Session, *, project_id: int, chapter_count: int, client: ModelClient, options: Dict[str, Any], word_target: int, budget_chars: int = 16000) -> Dict[str, Any]:
+async def generate_next_chapter(session: Session, *, project_id: int, chapter_count: int, client: ModelClient, options: Dict[str, Any], word_target: int, budget_chars: int = 16000, lease_check: Optional[Callable[[], None]] = None) -> Dict[str, Any]:
+    check = lease_check or (lambda: None)
     manifest = provenance.get_manifest(session, project_id, create=True)
     n = int(manifest.latest_committed_chapter) + 1
     if n > chapter_count:
@@ -84,7 +86,9 @@ async def generate_next_chapter(session: Session, *, project_id: int, chapter_co
     for attempt in range(MAX_CHAPTER_REGENERATIONS + 1):
         if attempt:
             pipeline_opts = PipelineOptions(max_repairs=int(options.get("max_repairs") or 2) + 1, budget_chars=budget_chars, word_target=word_target, regenerate=True)
+        check()
         result = await run_chapter(session, project_id=project_id, chapter_number=n, drafter=drafter, options=pipeline_opts)
+        failpoints.hit("after_chapter_commit")
         if result.status == "committed":
             break
         if result.status in ("compile_failed",):
@@ -92,6 +96,7 @@ async def generate_next_chapter(session: Session, *, project_id: int, chapter_co
     assert result is not None
     if result.status != "committed":
         raise fail.StageFailure(_category_for(result), f"Chapter {n} ended in status '{result.status}': {(result.error or {}).get('message') or (result.error or {}).get('code')}", detail={"chapter": n, "run_id": result.run_id, "error": result.error, "blocking": ((result.error or {}).get("blocking") or [])[:10]})
+    check()
     dev = deviation_report(session, project_id, n, result, word_target=word_target)
     replan: Dict[str, Any] = {"replanned": 0}
     if dev["material"] and n < chapter_count:
