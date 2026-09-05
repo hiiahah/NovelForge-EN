@@ -842,6 +842,244 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/forge/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Card-quality audits: duplicates, alias collisions, unresolved references, stale cards, contamination */
+        get: operations["audit_api_forge_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/canon/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Canon state as-of a chapter (temporal snapshot) */
+        get: operations["canon_state_api_forge_canon_state_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/chapters/compile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compile the authoritative chapter context (fail-closed; no model call) */
+        post: operations["compile_chapter_api_forge_chapters_compile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/chapters/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run compile -> draft -> validate -> repair -> commit -> synchronize for one chapter */
+        post: operations["run_chapter_endpoint_api_forge_chapters_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/chapters/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pipeline runs for a project (newest first) */
+        get: operations["list_runs_api_forge_chapters_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/chapters/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Full report of one pipeline run */
+        get: operations["get_run_api_forge_chapters_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project Narrative Manifest (revisions, next allowed chapter, stale dependencies, unresolved errors) */
+        get: operations["manifest_api_forge_manifest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/original/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a strictly separated original project (fingerprint + abstract mechanisms only) */
+        post: operations["original_create_api_forge_original_create_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/original/isolation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Source/original separation report (firewall over every Bible card) */
+        get: operations["original_isolation_api_forge_original_isolation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/original/seed-canon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Seed chapter-0 canon facts from the approved original Bible cards */
+        post: operations["original_seed_canon_api_forge_original_seed_canon_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/source/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build / rebuild the function-tagged Reference Example Library */
+        post: operations["source_examples_api_forge_source_examples_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/source/fingerprint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Build / rebuild the 20-layer Narrative Fingerprint from measured chapters and verified observations */
+        post: operations["source_fingerprint_api_forge_source_fingerprint_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/source/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Source analysis completeness, evidence coverage, failed chapters, fingerprint and example index status */
+        get: operations["source_status_api_forge_source_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/forge/source/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-verify every stored chapter analysis against the imported chapter text */
+        post: operations["source_verify_api_forge_source_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/genspark/accounts": {
         parameters: {
             query?: never;
@@ -3322,6 +3560,31 @@ export interface components {
             /** Used Chars */
             used_chars: number;
         };
+        /** CompileRequest */
+        CompileRequest: {
+            /**
+             * Budget Chars
+             * @default 16000
+             */
+            budget_chars: number;
+            /** Chapter Number */
+            chapter_number: number;
+            /** Expected Canon Revision */
+            expected_canon_revision?: number | null;
+            /** Outline Card Id */
+            outline_card_id?: number | null;
+            /** Participants */
+            participants?: string[] | null;
+            /** Pov */
+            pov?: string | null;
+            /** Project Id */
+            project_id: number;
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate: boolean;
+        };
         /** CompiledBlockRead */
         CompiledBlockRead: {
             /** Card Id */
@@ -3498,6 +3761,24 @@ export interface components {
              * @enum {string}
              */
             role: "system" | "user" | "assistant";
+        };
+        /** CreateOriginalRequest */
+        CreateOriginalRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+            /** Source Project Id */
+            source_project_id: number;
+            /**
+             * Template
+             * @description Project template used to scaffold the original Bible chain
+             * @default bible
+             */
+            template: string | null;
         };
         /** DeletionInfo */
         DeletionInfo: {
@@ -4574,8 +4855,23 @@ export interface components {
             excluded_words: number;
             /** Folder Card Id */
             folder_card_id: number;
+            /**
+             * Invalidated
+             * @default 0
+             */
+            invalidated: number;
+            /**
+             * Manuscript Id
+             * @default
+             */
+            manuscript_id: string;
             /** Total Words */
             total_words: number;
+            /**
+             * Unchanged
+             * @default false
+             */
+            unchanged: boolean;
         };
         /** ManuscriptListResponse */
         ManuscriptListResponse: {
@@ -5538,6 +5834,65 @@ export interface components {
             draft: components["schemas"]["ReviewDraftResult"];
             /** Review Text */
             review_text: string;
+        };
+        /** RunChapterRequest */
+        RunChapterRequest: {
+            /**
+             * Budget Chars
+             * @default 16000
+             */
+            budget_chars: number;
+            /** Chapter Number */
+            chapter_number: number;
+            /** Expected Canon Revision */
+            expected_canon_revision?: number | null;
+            /**
+             * Llm Config Id
+             * @description Drafting model; other roles default to it
+             */
+            llm_config_id: number;
+            /**
+             * Max Repairs
+             * @default 2
+             */
+            max_repairs: number;
+            /**
+             * Max Tokens
+             * @default 8192
+             */
+            max_tokens: number;
+            /** Outline Card Id */
+            outline_card_id?: number | null;
+            /** Participants */
+            participants?: string[] | null;
+            /** Pov */
+            pov?: string | null;
+            /** Project Id */
+            project_id: number;
+            /**
+             * Regenerate
+             * @default false
+             */
+            regenerate: boolean;
+            /**
+             * Role Llm Config Ids
+             * @description Optional per-role overrides: planning, validator, repair, evaluator
+             */
+            role_llm_config_ids?: {
+                [key: string]: number;
+            };
+            /**
+             * Temperature
+             * @default 0.7
+             */
+            temperature: number;
+            /**
+             * Timeout
+             * @default 240
+             */
+            timeout: number;
+            /** Word Target */
+            word_target?: number | null;
         };
         /**
          * RunStatus
@@ -7910,6 +8265,477 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuggestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audit_api_forge_audit_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    canon_state_api_forge_canon_state_get: {
+        parameters: {
+            query: {
+                project_id: number;
+                chapter: number;
+                subject?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compile_chapter_api_forge_chapters_compile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_chapter_endpoint_api_forge_chapters_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunChapterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_forge_chapters_runs_get: {
+        parameters: {
+            query: {
+                project_id: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_forge_chapters_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    manifest_api_forge_manifest_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    original_create_api_forge_original_create_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOriginalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    original_isolation_api_forge_original_isolation_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    original_seed_canon_api_forge_original_seed_canon_post: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    source_examples_api_forge_source_examples_post: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    source_fingerprint_api_forge_source_fingerprint_post: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    source_status_api_forge_source_status_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    source_verify_api_forge_source_verify_post: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

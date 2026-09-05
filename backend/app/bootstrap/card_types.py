@@ -247,6 +247,10 @@ def create_default_card_types(session: Session) -> None:
         "Emotional Rhythm": {"is_singleton": False, "is_ai_enabled": False, "description": "Chapter-level emotional values and reader rewards", "default_ai_context_template": None},
         "Narrative Genome": {"is_singleton": False, "is_ai_enabled": False, "description": "Reusable story mechanisms extracted from an analysed novel", "default_ai_context_template": None},
         "Originality Transformation": {"is_singleton": False, "is_ai_enabled": False, "description": "Original premise candidates derived from abstract patterns with similarity review", "default_ai_context_template": None},
+        # Forge (reverse-engineering / generation control) card types.
+        "Narrative Fingerprint": {"is_singleton": True, "is_ai_enabled": False, "description": "20-layer measurable narrative fingerprint built from the imported manuscript; consumed by the chapter context compiler and style validation", "default_ai_context_template": None},
+        "Abstract Mechanism": {"is_singleton": False, "is_ai_enabled": False, "description": "Entity-free narrative mechanism transferred from a source Narrative Genome after passing the Originality Firewall", "default_ai_context_template": None},
+        "Chapter State Packet": {"is_singleton": False, "is_ai_enabled": False, "description": "Next Chapter State Packet written by automatic synchronization after a chapter is committed", "default_ai_context_template": None},
     }
 
     # Default AI parameter presets per type (does not include llm_config_id)
@@ -285,6 +289,9 @@ def create_default_card_types(session: Session) -> None:
         "Emotional Rhythm": None,
         "Narrative Genome": None,
         "Originality Transformation": None,
+        "Narrative Fingerprint": None,
+        "Abstract Mechanism": None,
+        "Chapter State Packet": None,
     }
 
     # Mapping from type name to built-in response model (used directly to generate json_schema)

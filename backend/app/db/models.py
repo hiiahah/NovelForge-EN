@@ -364,3 +364,146 @@ class KGRelation(SQLModel, table=True):
     stance: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# Forge: reverse-engineering / generation-control tables
+# ---------------------------------------------------------------------------
+
+class ReferenceExample(SQLModel, table=True):
+    """One short, function-tagged excerpt of the imported source manuscript.
+
+    Excerpts never leave the source project except as technique demonstrations
+    inside a compiled generation context; ``evidence_hash`` ties the excerpt to
+    the exact imported chapter text.
+    """
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "manuscript_id", "example_id", name="uq_reference_example_key"),
+        sa.Index("ix_reference_example_project_function", "project_id", "beat_function"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(index=True)
+    manuscript_id: str = Field(index=True)
+    example_id: str
+    chapter_card_id: Optional[int] = Field(default=None, index=True)
+    chapter_number: int = Field(default=0, index=True)
+    span_start: int = Field(default=0)
+    span_end: int = Field(default=0)
+    excerpt: str
+    language: str = Field(default="")
+    pov_type: str = Field(default="")
+    scene_type: str = Field(default="")
+    dominant_emotion: str = Field(default="")
+    beat_function: str = Field(default="", index=True)
+    tags: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    position: str = Field(default="middle")
+    dialogue_ratio: float = Field(default=0.0)
+    pacing: str = Field(default="")
+    entity_roles: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    metrics: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    retrieval_terms: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    evidence_hash: str = Field(default="", index=True)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class ArtifactProvenance(SQLModel, table=True):
+    """Dependency-graph record for one derived artifact (card or manifest entry)."""
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "artifact_kind", "artifact_key", name="uq_artifact_provenance_key"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(index=True)
+    artifact_kind: str = Field(index=True)
+    artifact_key: str = Field(index=True)
+    card_id: Optional[int] = Field(default=None, index=True)
+    content_hash: str = Field(default="")
+    upstream: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
+    dependency_hash: str = Field(default="")
+    producer: str = Field(default="")
+    model_role: str = Field(default="")
+    model_name: str = Field(default="")
+    prompt_version: str = Field(default="")
+    schema_version: str = Field(default="")
+    stale: bool = Field(default=False, index=True)
+    stale_reason: Optional[str] = None
+    version: int = Field(default=1)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class ProjectManifest(SQLModel, table=True):
+    """Project Narrative Manifest: the single authoritative revision record."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(unique=True, index=True)
+    project_role: str = Field(default="original")
+    source_project_id: Optional[int] = Field(default=None, index=True)
+    source_manuscript_id: Optional[str] = None
+    canon_revision: int = Field(default=0)
+    outline_revision: int = Field(default=0)
+    fingerprint_revision: int = Field(default=0)
+    latest_committed_chapter: int = Field(default=0)
+    next_allowed_chapter: int = Field(default=1)
+    context_compiler_version: str = Field(default="")
+    unresolved_errors: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
+    stale_dependency_count: int = Field(default=0)
+    last_sync_status: str = Field(default="never")
+    last_sync_chapter: Optional[int] = None
+    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class CanonFact(SQLModel, table=True):
+    """Temporal, append-only canonical state.
+
+    A fact is valid from ``valid_from_chapter`` until another row for the same
+    (subject, attribute) supersedes it. Rows are never mutated after commit, so
+    the state as-of any chapter can be reconstructed.
+    """
+
+    __table_args__ = (
+        sa.Index("ix_canon_fact_lookup", "project_id", "subject", "attribute", "valid_from_chapter"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(index=True)
+    fact_id: str = Field(index=True)
+    subject: str = Field(index=True)
+    subject_kind: str = Field(default="character")
+    attribute: str = Field(index=True)
+    value: Any = Field(default=None, sa_column=Column(JSON))
+    valid_from_chapter: int = Field(default=0, index=True)
+    superseded_by_id: Optional[int] = Field(default=None, index=True)
+    canon_revision: int = Field(default=0, index=True)
+    support: str = Field(default="explicit")
+    evidence: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
+    source: str = Field(default="sync")
+    chapter_card_id: Optional[int] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class ChapterPipelineRun(SQLModel, table=True):
+    """One compile -> draft -> validate -> repair -> commit -> sync execution."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(index=True)
+    chapter_number: int = Field(index=True)
+    chapter_card_id: Optional[int] = Field(default=None, index=True)
+    outline_card_id: Optional[int] = Field(default=None)
+    status: str = Field(default="pending", index=True)
+    stage: str = Field(default="compile")
+    canon_revision_before: int = Field(default=0)
+    canon_revision_after: Optional[int] = None
+    context_hash: str = Field(default="")
+    context_manifest: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    validation_report: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    style_report: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    sync_report: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    repair_attempts: int = Field(default=0)
+    model_calls: int = Field(default=0)
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)

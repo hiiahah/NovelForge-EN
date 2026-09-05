@@ -135,7 +135,7 @@ async def generate_review(
             messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=user_prompt))
 
-        logger.info(f"Starting review, prompt: {system_prompt} \n\n {user_prompt}")
+        logger.info(f"Starting review, system_prompt_chars={len(system_prompt)} user_prompt_chars={len(user_prompt)}")
         response = await model.ainvoke(messages)
         content = getattr(response, "content", response)
         if isinstance(content, list):
@@ -455,7 +455,7 @@ async def _stream_continuation_single_round(
         HumanMessage(content=user_prompt),
     ]
 
-    logger.info(f"Starting continuation, prompt: {system_prompt} \n\n {user_prompt}")
+    logger.info(f"Starting continuation, system_prompt_chars={len(system_prompt)} user_prompt_chars={len(user_prompt)}")
 
     accumulated: str = ""
     pending_buffer: str = ""

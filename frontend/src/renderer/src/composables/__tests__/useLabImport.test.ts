@@ -33,7 +33,7 @@ function run(status: string, id = 1): LabRunStatus {
 function makeApi(overrides: Partial<LabApi> = {}): LabApi {
   return {
     previewManuscript: vi.fn(async (body) => previewFor(body.filename, [{}, {}])),
-    importManuscript: vi.fn(async () => ({ folder_card_id: 1, chapter_card_ids: [1, 2], chapter_count: 2, total_words: 200, excluded_count: 0, excluded_words: 0 })),
+    importManuscript: vi.fn(async () => ({ folder_card_id: 1, chapter_card_ids: [1, 2], chapter_count: 2, total_words: 200, excluded_count: 0, excluded_words: 0, manuscript_id: 'm1', unchanged: false, invalidated: 0 })),
     listManuscript: vi.fn(async () => ({ folder_card_id: 1, meta: {}, chapters: [{ card_id: 1, analysis_status: 'pending' }] })),
     startLabWorkflow: vi.fn(async () => run('running')),
     listLabRuns: vi.fn(async () => []),
