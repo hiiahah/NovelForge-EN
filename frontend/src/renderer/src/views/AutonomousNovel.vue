@@ -96,7 +96,7 @@
           <el-alert v-if="auto.preflight.value.passed" type="success" :closable="false" show-icon data-testid="preflight-result" :title="t('autonomous.preflight.passed', { provider: auto.preflight.value.provider, model: auto.preflight.value.model, endpoint: auto.preflight.value.endpoint_class, latency: auto.preflight.value.latency_ms })" />
           <el-alert v-else type="error" :closable="false" show-icon data-testid="preflight-result" :title="t('autonomous.preflight.failed', { category: auto.preflight.value.failure_category || 'unknown', diagnostic: auto.preflight.value.diagnostic || '' })" />
           <ul class="kv checks">
-            <li v-for="c in auto.preflight.value.checks" :key="c.name">
+            <li v-for="c in auto.preflight.value.checks.filter((x) => x.name !== 'usage_metadata')" :key="c.name">
               <span>{{ t('autonomous.preflight.check.' + c.name, c.name) }}</span>
               <el-tag size="small" effect="plain" :type="c.skipped ? 'info' : c.passed ? 'success' : c.advisory ? 'warning' : 'danger'">{{ c.skipped ? t('autonomous.preflight.skipped') : c.passed ? 'ok' : c.category || 'failed' }}</el-tag>
             </li>
