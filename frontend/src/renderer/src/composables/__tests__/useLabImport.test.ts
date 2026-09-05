@@ -127,7 +127,7 @@ describe('useLabImport', () => {
     expect((api.importManuscript as any).mock.calls[0][0]).toMatchObject({ project_id: 7, filename: 'a.epub', replace_existing: true })
     const r = await lab.startRun(3, 4)
     expect(r?.status).toBe('running')
-    expect((api.startLabWorkflow as any).mock.calls[0][0]).toEqual({ project_id: 7, llm_config_id: 3, analysis_concurrency: 4 })
+    expect((api.startLabWorkflow as any).mock.calls[0][0]).toEqual({ project_id: 7, llm_config_id: 3, analysis_concurrency: 4, start_chapter: 0, end_chapter: 0, only_missing: true, only_stale: false })
     expect(lab.step.value).toBe(3)
     expect(lab.runActive.value).toBe(true)
     status = 'succeeded'
@@ -176,5 +176,21 @@ describe('useLabImport', () => {
     const lab = useLabImport(api, ref(undefined))
     expect(await lab.runImport()).toBe(false)
     expect((api.importManuscript as any).mock.calls).toHaveLength(0)
+  })
+})
+
+describe('analysis scope', () => {
+  it('sends the chapter range and re-analysis policy, and previews cost without launching', async () => {
+    const plan = { project_id: 7, chapters_total: 350, chapters_done: 0, chapters_failed: 0, chapters_selected: 30, selected_chapter_numbers: [], estimated_input_tokens: 120000, estimated_model_calls: 30, manuscript_id: 'm' }
+    const api = makeApi({ planLabWorkflow: vi.fn(async () => plan) } as any)
+    const lab = useLabImport(api, ref(7))
+    lab.scope.start_chapter = 1
+    lab.scope.end_chapter = 30
+    lab.scope.only_stale = true
+    expect(await lab.planRun(3, 2)).toEqual(plan)
+    expect((api as any).planLabWorkflow.mock.calls[0][0]).toMatchObject({ project_id: 7, start_chapter: 1, end_chapter: 30, only_missing: true, only_stale: true })
+    expect((api.startLabWorkflow as any).mock.calls).toHaveLength(0)
+    await lab.startRun(3, 2)
+    expect((api.startLabWorkflow as any).mock.calls[0][0]).toMatchObject({ start_chapter: 1, end_chapter: 30, only_stale: true })
   })
 })

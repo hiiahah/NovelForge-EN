@@ -1285,6 +1285,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lab/workflow/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cost preview for a Lab run: which chapters the scope selects and the estimated model calls / input tokens (no model call) */
+        post: operations["plan_lab_workflow_api_lab_workflow_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lab/workflow/run": {
         parameters: {
             query?: never;
@@ -4688,6 +4705,33 @@ export interface components {
             /** User Agent */
             user_agent?: string | null;
         };
+        /**
+         * LabRunPlan
+         * @description Cost preview for a Lab run: what would be sent to the model, without sending anything.
+         */
+        LabRunPlan: {
+            /** Chapters Done */
+            chapters_done: number;
+            /** Chapters Failed */
+            chapters_failed: number;
+            /** Chapters Selected */
+            chapters_selected: number;
+            /** Chapters Total */
+            chapters_total: number;
+            /** Estimated Input Tokens */
+            estimated_input_tokens: number;
+            /** Estimated Model Calls */
+            estimated_model_calls: number;
+            /**
+             * Manuscript Id
+             * @default
+             */
+            manuscript_id: string;
+            /** Project Id */
+            project_id: number;
+            /** Selected Chapter Numbers */
+            selected_chapter_numbers: number[];
+        };
         /** LabRunRequest */
         LabRunRequest: {
             /**
@@ -4695,6 +4739,22 @@ export interface components {
              * @default 2
              */
             analysis_concurrency: number;
+            /**
+             * End Chapter
+             * @description Last chapter to analyse, inclusive (0 = to the end)
+             * @default 0
+             */
+            end_chapter: number;
+            /**
+             * Exclude Chapters
+             * @description Chapter numbers to skip
+             */
+            exclude_chapters?: number[];
+            /**
+             * Include Chapters
+             * @description Explicit chapter numbers to analyse (overrides the range)
+             */
+            include_chapters?: number[];
             /** Llm Config Id */
             llm_config_id: number;
             /**
@@ -4702,8 +4762,26 @@ export interface components {
              * @default 24
              */
             max_stage_count: number;
+            /**
+             * Only Missing
+             * @description Skip chapters whose analysis is already done
+             * @default true
+             */
+            only_missing: boolean;
+            /**
+             * Only Stale
+             * @description Also re-analyse done chapters whose source text or prompt version changed
+             * @default false
+             */
+            only_stale: boolean;
             /** Project Id */
             project_id: number;
+            /**
+             * Start Chapter
+             * @description First chapter to analyse (0 = from the start)
+             * @default 0
+             */
+            start_chapter: number;
             /**
              * Window Size
              * @default 40
@@ -9129,6 +9207,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManuscriptPreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_lab_workflow_api_lab_workflow_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabRunPlan"];
                 };
             };
             /** @description Validation Error */

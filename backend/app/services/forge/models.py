@@ -36,13 +36,24 @@ def normalize_authnd_model(model_name: str) -> str:
     return f"{publisher}/{model_id}".lower()
 
 
+# Direct API providers accepted for Lab analysis; they need an API key (checked
+# by the chat-model factory), no model allow list.
+API_KEY_PROVIDERS: Tuple[str, ...] = ("anthropic", "openai", "openai_compatible", "google")
+
+
 def validate_lab_llm_config(cfg: LLMConfig) -> Tuple[bool, str]:
-    """(ok, reason). Genspark configs are accepted as-is; AuthND must match the allow list exactly."""
+    """(ok, reason). Genspark and direct API providers are accepted as-is; AuthND must match the allow list exactly."""
     provider = (cfg.provider or "").strip().lower()
     if provider == "genspark":
         return True, "genspark"
+    if provider in API_KEY_PROVIDERS:
+        if not (cfg.api_key or "").strip():
+            return False, f"LLM configuration '{cfg.display_name or cfg.model_name}' ({provider}) has no API key"
+        if not (cfg.model_name or "").strip():
+            return False, f"LLM configuration '{cfg.display_name or ''}' ({provider}) has no model name"
+        return True, f"{provider}/{cfg.model_name.strip()}"
     if provider not in {"authnd", "nvidia_authnd"}:
-        return False, f"Lab analysis requires an AuthND or Genspark configuration (got provider '{cfg.provider}')"
+        return False, f"Lab analysis requires an AuthND, Genspark or API-key provider ({', '.join(API_KEY_PROVIDERS)}) configuration (got provider '{cfg.provider}')"
     try:
         normalized = normalize_authnd_model(cfg.model_name or "")
     except ValueError as exc:
@@ -82,4 +93,4 @@ def resolve_roles(session: Session, roles: Dict[str, Optional[int]], *, default_
     return out
 
 
-__all__ = ["AUTHND_LAB_ALLOWED_MODELS", "ROLES", "RoleResolution", "normalize_authnd_model", "resolve_roles", "validate_lab_llm_config"]
+__all__ = ["API_KEY_PROVIDERS", "AUTHND_LAB_ALLOWED_MODELS", "ROLES", "RoleResolution", "normalize_authnd_model", "resolve_roles", "validate_lab_llm_config"]

@@ -134,11 +134,20 @@
             </el-select>
           </el-form-item>
           <el-form-item :label="t('bible.lab.concurrency')"><el-input-number v-model="concurrency" :min="1" :max="32" /></el-form-item>
+          <el-form-item :label="t('bible.lab.scopeStart')"><el-input-number v-model="lab.scope.start_chapter" :min="0" data-testid="scope-start" /></el-form-item>
+          <el-form-item :label="t('bible.lab.scopeEnd')"><el-input-number v-model="lab.scope.end_chapter" :min="0" data-testid="scope-end" /></el-form-item>
+          <el-form-item :label="t('bible.lab.scopeMode')">
+            <el-checkbox v-model="lab.scope.only_missing" data-testid="scope-only-missing">{{ t('bible.lab.onlyMissing') }}</el-checkbox>
+            <el-checkbox v-model="lab.scope.only_stale" data-testid="scope-only-stale">{{ t('bible.lab.onlyStale') }}</el-checkbox>
+          </el-form-item>
         </div>
       </el-form>
+      <el-alert v-if="lab.plan.value" :type="lab.plan.value.chapters_selected ? 'success' : 'warning'" :closable="false" show-icon data-testid="run-plan"
+        :title="t('bible.lab.planSummary', { selected: lab.plan.value.chapters_selected, total: lab.plan.value.chapters_total, done: lab.plan.value.chapters_done, failed: lab.plan.value.chapters_failed, calls: lab.plan.value.estimated_model_calls, tokens: lab.plan.value.estimated_input_tokens.toLocaleString() })" />
       <el-alert v-if="lab.runError.value" type="error" :closable="false" show-icon :title="lab.runError.value" data-testid="run-error" />
       <div class="actions">
         <el-button @click="lab.step.value = 1" :disabled="!preview">{{ t('common.back') }}</el-button>
+        <el-button :disabled="!hasManuscript || !llmConfigId" :loading="lab.planning.value" data-testid="plan-btn" @click="doPlan">{{ t('bible.lab.planRun') }}</el-button>
         <el-button type="primary" :disabled="!hasManuscript || !llmConfigId || lab.runActive.value" :loading="lab.launching.value" data-testid="run-btn" @click="doStart">{{ t('bible.lab.runWorkflow') }}</el-button>
       </div>
       <LabRunPanel v-if="lab.run.value" :run="lab.run.value" :resumable="lab.runResumable.value" :active="lab.runActive.value" @cancel="lab.cancelRun" @resume="lab.resumeRun" @refresh="lab.refreshRun" />
@@ -258,6 +267,11 @@ async function doImport() {
       emit('imported')
     }
   } catch (e) { console.error(e); ElMessage.error(t('bible.lab.importFailed')) }
+}
+
+async function doPlan() {
+  if (!llmConfigId.value) return
+  await lab.planRun(llmConfigId.value, concurrency.value)
 }
 
 async function doStart() {

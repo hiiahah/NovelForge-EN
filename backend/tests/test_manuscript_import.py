@@ -317,7 +317,7 @@ settings = Logic.Expression(expression="{'llm_config_id': llm.llm_config_id, 'wi
     assert "Logic.SelectLLM(llm_config_id=1)" not in code
 
 
-def test_lab_workflow_run_rejects_non_authnd(client, project, fixture_epub):
+def test_lab_workflow_run_rejects_unusable_configs(client, project, fixture_epub):
     from app.db.models import LLMConfig
     from app.db.session import engine
     from sqlmodel import Session
@@ -330,7 +330,7 @@ def test_lab_workflow_run_rejects_non_authnd(client, project, fixture_epub):
     assert "not found" in r_none.json()["detail"].lower()
 
     with Session(engine) as s:
-        cfg_openai = LLMConfig(provider="openai", display_name="GPT-4o", model_name="gpt-4o", api_key="sk-test")
+        cfg_openai = LLMConfig(provider="openai", display_name="GPT-4o", model_name="gpt-4o", api_key="")
         s.add(cfg_openai)
         cfg_other_model = LLMConfig(provider="authnd", display_name="Nemotron", model_name="nvidia/nemotron-4-340b-instruct", api_key="")
         s.add(cfg_other_model)
@@ -342,9 +342,126 @@ def test_lab_workflow_run_rejects_non_authnd(client, project, fixture_epub):
 
     r_openai = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": openai_id})
     assert r_openai.status_code == 400
-    assert "authnd" in r_openai.json()["detail"].lower()
+    assert "api key" in r_openai.json()["detail"].lower()
 
     r_other = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": other_id})
     assert r_other.status_code == 400
     assert "kimi" in r_other.json()["detail"].lower()
 
+
+
+# --------------------------------------------------------------- analysis scope
+def _cards(n: int, done: set = frozenset(), stale: set = frozenset(), failed: set = frozenset()):
+    cards = []
+    for i in range(1, n + 1):
+        content = {"chapter_number": i, "title": f"C{i}", "source_text": f"text {i}", "word_count": 100, "source_text_hash": f"h{i}"}
+        if i in done:
+            content.update({"analysis_status": "done", "summary": "s", "analysis_source_hash": f"h{i}", "prompt_version": "Lab - Chapter Analysis@2"})
+        if i in stale:
+            content.update({"analysis_status": "done", "summary": "s", "analysis_source_hash": "old", "prompt_version": "Lab - Chapter Analysis@2"})
+        if i in failed:
+            content.update({"analysis_status": "failed", "analysis_error": "boom"})
+        cards.append({"id": i, "content": content})
+    return cards
+
+
+def test_lab_chapter_items_scope_range_and_lists():
+    from app.services.lab.lab_helpers import fn_lab_chapter_items
+
+    cards = _cards(50)
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards)] == list(range(1, 51))
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, start_chapter=1, end_chapter=30)] == list(range(1, 31))
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, start_chapter=27)] == list(range(27, 51))
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, include_chapters=[3, 9, 27])] == [3, 9, 27]
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, start_chapter=1, end_chapter=5, exclude_chapters=[2, 4])] == [1, 3, 5]
+    assert fn_lab_chapter_items(cards, start_chapter=60) == []
+    assert fn_lab_chapter_items(cards)[0]["source_text_hash"] == "h1"
+
+
+def test_lab_chapter_items_only_missing_and_stale_never_resend_completed_work():
+    """A failure at chapter 27 must not restart chapters 1-26."""
+    from app.services.lab.lab_helpers import fn_lab_chapter_items
+
+    cards = _cards(30, done=set(range(1, 27)), failed={27})
+    missing = [it["chapter_no"] for it in fn_lab_chapter_items(cards, only_missing=True)]
+    assert missing == [27, 28, 29, 30]  # failed + never-analysed; done chapters are not re-sent
+
+    cards = _cards(10, done={1, 2, 3}, stale={4})
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, only_missing=True)] == list(range(5, 11))
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, only_missing=True, only_stale=True)] == [4] + list(range(5, 11))
+    # prompt version change makes every done chapter stale
+    assert [it["chapter_no"] for it in fn_lab_chapter_items(cards, only_missing=True, only_stale=True, prompt_version="Lab - Chapter Analysis@3")] == list(range(1, 11))
+    # explicit full re-analysis
+    assert len(fn_lab_chapter_items(cards, only_missing=False)) == 10
+
+
+def test_lab_merge_stored_analyses_keeps_prior_chapters_and_prefers_fresh():
+    from app.services.lab.lab_helpers import fn_lab_merge_stored_analyses
+
+    cards = _cards(6, done={1, 2, 3}, failed={4})
+    fresh = [{"chapter_number": 3, "analysis_status": "done", "summary": "fresh"}, {"chapter_number": 5, "analysis_status": "done", "summary": "new"}, {"chapter_number": 6, "analysis_status": "failed"}]
+    merged = fn_lab_merge_stored_analyses(fresh, cards)
+    assert [m["chapter_number"] for m in merged] == [1, 2, 3, 5, 6]  # failed stored ch.4 is not "done"; fresh failed ch.6 is reported
+    assert next(m for m in merged if m["chapter_number"] == 3)["summary"] == "fresh"
+    assert all("source_text" not in m for m in merged if m["chapter_number"] in (1, 2))
+
+
+def test_lab_workflow_code_projects_scope():
+    from app.api.endpoints.lab import _lab_workflow_code
+
+    base = "scope = Logic.Expression(expression=\"{'start_chapter': 0, 'end_chapter': 0, 'include_chapters': [], 'exclude_chapters': [], 'only_missing': True, 'only_stale': False}\")\nsettings = Logic.Expression(expression=\"{'llm_config_id': 1, 'window_size': 40, 'max_stage_count': 24, 'analysis_concurrency': 12}\")"
+    code = _lab_workflow_code(base, project_id=1, llm_config_id=1, concurrency=2, window_size=40, max_stage_count=24, scope={"start_chapter": 1, "end_chapter": 30, "include_chapters": [], "exclude_chapters": [7, 3], "only_missing": True, "only_stale": True})
+    assert "'start_chapter': 1" in code and "'end_chapter': 30" in code
+    assert "'exclude_chapters': [3, 7]" in code and "'only_stale': True" in code
+
+
+def test_lab_run_plan_and_empty_scope_rejected(client, project, fixture_epub):
+    from app.db.models import LLMConfig
+    from app.db.session import engine
+    from sqlmodel import Session
+
+    r_imp = client.post("/api/lab/manuscript/import", json={**_payload(fixture_epub), "project_id": project["id"], "book_title": "Plan Book"})
+    assert r_imp.status_code == 200
+    total = r_imp.json()["chapter_count"]
+
+    plan = client.post("/api/lab/workflow/plan", json={"project_id": project["id"], "llm_config_id": 1, "start_chapter": 1, "end_chapter": 2})
+    assert plan.status_code == 200
+    body = plan.json()
+    assert body["chapters_total"] == total and body["chapters_selected"] == 2 and body["selected_chapter_numbers"] == [1, 2]
+    assert body["estimated_model_calls"] == 2 and body["estimated_input_tokens"] > 0
+
+    with Session(engine) as s:
+        cfg = LLMConfig(provider="anthropic", display_name="Eval", model_name="claude-fable-5-1", api_key="k")
+        s.add(cfg)
+        s.commit()
+        s.refresh(cfg)
+        cfg_id = cfg.id
+    r_empty = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": cfg_id, "start_chapter": 900})
+    assert r_empty.status_code == 400
+    assert "selects no chapters" in r_empty.json()["detail"]
+
+
+def test_project_lab_workflow_uses_shipped_file_over_stale_db_row(client, project, fixture_epub):
+    """A stale built-in row (no BOOTSTRAP_OVERWRITE) must not silently drop the analysis scope."""
+    from app.api.endpoints.lab import LAB_WORKFLOW_NAME, LabRunRequest, _project_lab_workflow
+    from app.db.models import Workflow
+    from app.db.session import engine
+    from sqlmodel import Session, select
+
+    r_imp = client.post("/api/lab/manuscript/import", json={**_payload(fixture_epub), "project_id": project["id"], "book_title": "Stale WF"})
+    assert r_imp.status_code == 200
+    with Session(engine) as s:
+        base = s.exec(select(Workflow).where(Workflow.name == LAB_WORKFLOW_NAME)).first()
+        assert base is not None
+        original = base.definition_code
+        base.definition_code = "project = Logic.SelectProject(project_id=1)\nllm = Logic.SelectLLM(llm_config_id=1)\n"  # pre-scope legacy row
+        s.add(base)
+        s.commit()
+        try:
+            wf = _project_lab_workflow(s, LabRunRequest(project_id=project["id"], llm_config_id=1, start_chapter=2, end_chapter=3))
+            assert "'start_chapter': 2" in wf.definition_code and "'end_chapter': 3" in wf.definition_code
+            assert "lab_merge_stored_analyses" in wf.definition_code
+        finally:
+            base.definition_code = original
+            s.add(base)
+            s.commit()

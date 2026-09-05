@@ -28,7 +28,7 @@ from app.services.forge import provenance
 from app.services.forge.corpus import integrity_report, load_source_chapters, manuscript_meta
 from app.services.forge.fingerprint import build_fingerprint, validate_fingerprint
 
-ANALYSIS_PROMPT_VERSION = "Lab - Chapter Analysis@2"
+from app.services.lab.lab_helpers import ANALYSIS_PROMPT_VERSION
 
 
 def _c(card: Card) -> Dict[str, Any]:

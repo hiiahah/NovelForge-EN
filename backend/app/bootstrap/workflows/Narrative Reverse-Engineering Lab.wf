@@ -28,6 +28,13 @@ settings = Logic.Expression(
 #</node>
 
 
+#@node(description="Analysis scope: chapter range / explicit lists, and whether already-analysed or stale chapters are re-sent. Defaults analyse only what is missing.")
+scope = Logic.Expression(
+    expression="{'start_chapter': 0, 'end_chapter': 0, 'include_chapters': [], 'exclude_chapters': [], 'only_missing': True, 'only_stale': False}"
+  )
+#</node>
+
+
 #@node(description="Load the imported manuscript chapters (Chapter Analysis cards holding source_text)")
 chapter_cards = Card.Query(
     project_id=project.project_id,
@@ -37,16 +44,16 @@ chapter_cards = Card.Query(
 #</node>
 
 
-#@node(description="Build batch items: content = chapter source text, plus chapter identity")
+#@node(description="Build batch items for the selected scope only: content = chapter source text, plus chapter identity")
 chapter_items = Logic.Expression(
-    expression="lab_chapter_items(chapter_cards.cards)"
+    expression="lab_chapter_items(chapter_cards.cards, start_chapter=scope.result.start_chapter, end_chapter=scope.result.end_chapter, include_chapters=scope.result.include_chapters, exclude_chapters=scope.result.exclude_chapters, only_missing=scope.result.only_missing, only_stale=scope.result.only_stale, prompt_version='Lab - Chapter Analysis@2')"
   )
 #</node>
 
 
 #@node(description="Guard: the manuscript must be imported first")
 assert_imported = Logic.Assert(
-    condition="len(chapter_items.result) > 0",
+    condition="len(lab_chapter_items(chapter_cards.cards)) > 0",
     message="No imported chapters found. Use Novel Intelligence Studio -> Extract Bible -> Import manuscript first."
   )
 #</node>
@@ -95,16 +102,16 @@ analysis_cards = Card.BatchUpsert(
 #</node>
 
 
-#@node(description="Only chapters whose evidence verified against the source text feed later stages; failed chapters are reported, never silently dropped")
+#@node(description="Fresh analyses plus previously completed chapters (scoped runs never drop earlier work); only verified evidence feeds later stages, failed chapters are reported, never silently dropped")
 verified_records = Logic.Expression(
-    expression="lab_verified_records(analysis_records.result)"
+    expression="lab_verified_records(lab_merge_stored_analyses(analysis_records.result, chapter_cards.cards))"
   )
 #</node>
 
 
 #@node(description="Chapters whose analysis failed or whose evidence could not be verified")
 failed_chapters = Logic.Expression(
-    expression="lab_failed_chapters(analysis_records.result)"
+    expression="lab_failed_chapters(lab_merge_stored_analyses(analysis_records.result, chapter_cards.cards))"
   )
 #</node>
 
