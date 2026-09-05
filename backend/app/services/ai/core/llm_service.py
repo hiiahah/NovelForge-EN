@@ -197,6 +197,19 @@ async def _generate_structured_native(
             raise ValueError(f"Insufficient LLM quota: {reason}")
 
     last_exception = None
+    attempt_errors: list[str] = []
+    # Usage is recorded exactly once per logical request (success, abort or final
+    # failure), never once per retry attempt.
+    usage_recorded = False
+    in_tokens = calc_input_tokens(system_prompt, user_prompt)
+
+    def _record(out_tokens: int, *, aborted: bool, actual_in: Optional[int] = None) -> None:
+        nonlocal usage_recorded
+        if not track_stats or usage_recorded:
+            return
+        usage_recorded = True
+        record_usage(session, llm_config_id, actual_in if actual_in is not None else in_tokens, out_tokens, calls=1, aborted=aborted)
+
     for attempt in range(max_retries):
         try:
             model = build_chat_model(
@@ -207,65 +220,67 @@ async def _generate_structured_native(
                 timeout=timeout or 150,
             )
 
-            structured_llm = model.with_structured_output(output_type)
+            structured_llm = model.with_structured_output(output_type, include_raw=True)
 
             messages = []
             if system_prompt:
                 messages.append(SystemMessage(content=system_prompt))
             messages.append(HumanMessage(content=user_prompt))
 
-            response = await structured_llm.ainvoke(messages)
-
+            envelope = await structured_llm.ainvoke(messages)
+            raw = envelope.get("raw") if isinstance(envelope, dict) else None
+            response = envelope.get("parsed") if isinstance(envelope, dict) else envelope
+            parsing_error = envelope.get("parsing_error") if isinstance(envelope, dict) else None
+            if parsing_error is not None:
+                raise ValueError(f"structured output invalid: {parsing_error}")
             if response is None:
                 raise ValueError("LLM returned an empty response")
+            # Always hand back a validated instance of the requested schema.
+            if isinstance(response, dict):
+                response = output_type.model_validate(response)
+            elif not isinstance(response, output_type):
+                response = output_type.model_validate(response.model_dump() if hasattr(response, "model_dump") else response)
 
-            logger.info(f"[LangChain-Structured] response: {response}")
+            logger.info(f"[LangChain-Structured] response: {str(response)[:500]}")
 
-            if track_stats:
-                in_tokens = calc_input_tokens(system_prompt, user_prompt)
+            actual_in: Optional[int] = None
+            out_tokens: Optional[int] = None
+            usage_meta = getattr(raw, "usage_metadata", None) if raw is not None else None
+            if isinstance(usage_meta, dict) and usage_meta.get("output_tokens"):
+                actual_in = int(usage_meta.get("input_tokens") or in_tokens)
+                out_tokens = int(usage_meta.get("output_tokens") or 0)
+            if out_tokens is None:
                 try:
-                    out_text = (
-                        response
-                        if isinstance(response, str)
-                        else json.dumps(response, ensure_ascii=False)
-                    )
+                    out_text = json.dumps(response.model_dump(mode="json"), ensure_ascii=False)
                 except Exception:
                     out_text = str(response)
                 out_tokens = estimate_tokens(out_text)
-                record_usage(
-                    session, llm_config_id,
-                    in_tokens, out_tokens,
-                    calls=1, aborted=False
-                )
-
+            _record(out_tokens, aborted=False, actual_in=actual_in)
             return response
 
         except asyncio.CancelledError:
             logger.info("[LangChain-Structured] LLM call was cancelled (CancelledError), aborting immediately, no more retries.")
-            if track_stats:
-                in_tokens = calc_input_tokens(system_prompt, user_prompt)
-                record_usage(
-                    session, llm_config_id,
-                    in_tokens, 0,
-                    calls=1, aborted=True
-                )
+            _record(0, aborted=True)
             raise
         except Exception as e:
             last_exception = e
+            attempt_errors.append(f"attempt {attempt + 1}: {str(e)[:300]}")
             logger.warning(
                 f"[LangChain-Structured] call failed, retry {attempt + 1}/{max_retries}, llm_config_id={llm_config_id}: {e}"
             )
-
+            if "cancelled" in str(e).lower():
+                break
             if attempt < max_retries - 1:
                 retry_delay = min(2 ** attempt, 4)
                 logger.info(f"[LangChain-Structured] waiting {retry_delay} seconds before retry...")
                 await asyncio.sleep(retry_delay)
 
+    _record(0, aborted=True)
     logger.error(
-        f"[LangChain-Structured] call still failed after {max_retries} retries, llm_config_id={llm_config_id}. Last error: {last_exception}"
+        f"[LangChain-Structured] call still failed after {len(attempt_errors)} attempts, llm_config_id={llm_config_id}. Last error: {last_exception}"
     )
     raise ValueError(
-        f"LLM service call failed after {max_retries} retries: {str(last_exception)}"
+        f"LLM service call failed after {len(attempt_errors)} attempts: {str(last_exception)} | " + " ; ".join(attempt_errors)
     )
 
 

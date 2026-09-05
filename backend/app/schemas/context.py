@@ -13,6 +13,12 @@ class AssembleContextRequest(BaseModel):
 	chapter_number: Optional[int] = Field(default=None, description="Chapter number")
 	chapter_id: Optional[int] = Field(default=None, description="Chapter card ID (optional)")
 	participants: Optional[List[str]] = Field(default=None, description="List of participating entity names")
+	pov: Optional[str] = Field(default=None, description="POV character name (defaults to the first participant; always included as a participant)")
+	facts_quota_chars: Optional[int] = Field(default=None, ge=200, description="Override the facts budget (characters)")
+	bible_quota_chars: Optional[int] = Field(default=None, ge=200, description="Override the Bible budget (characters)")
+	relation_radius: Optional[int] = Field(default=None, ge=1, le=4, description="Relation traversal radius")
+	edge_type_whitelist: Optional[List[str]] = Field(default=None, description="Only include these relation kinds")
+	max_chapter_id: Optional[int] = Field(default=None, description="Ignore relation events after this chapter")
 	current_draft_tail: Optional[str] = Field(default=None, description="Context template (draft tail)")
 	recent_chapters_window: Optional[int] = Field(default=None, description="Recent window (kept for future extension)")
 

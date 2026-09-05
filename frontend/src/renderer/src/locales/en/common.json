@@ -87,6 +87,8 @@
     "category": "Category",
     "filter": "Filter",
     "sort": "Sort",
-    "info": "Info"
+    "aiGenerating": "AI generating…",
+    "interruptGeneration": "Interrupt generation",
+    "requestFailed": "Request failed: {status}"
   }
 }

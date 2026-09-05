@@ -85,7 +85,7 @@
       "subtitle": "Nothing is written to the Bible until you decide. Every change carries evidence, confidence and a truth status.",
       "pending": "pending",
       "partially_applied": "partially applied",
-      "applied": "applied",
+      "applied": "Applied {applied}, rejected {rejected}, postponed {postponed}",
       "chapter": "Chapter {n}",
       "changes": "{n} proposed changes",
       "open": "Review",
@@ -94,7 +94,6 @@
       "acceptLowRisk": "Accept all low-risk",
       "rejectAll": "Reject all",
       "apply": "Apply decisions",
-      "applied": "Applied {applied}, rejected {rejected}, postponed {postponed}",
       "errors": "Some changes failed",
       "decision": {
         "accept": "Accept",
@@ -181,7 +180,9 @@
         "front_matter": "front matter",
         "afterword": "afterword",
         "duplicate_title": "duplicate title",
-        "very_short": "very short"
+        "very_short": "very short",
+        "excluded": "excluded",
+        "side_story": "side story"
       },
       "actions": {
         "exclude": "Exclude",
@@ -193,16 +194,53 @@
       "splitPrompt": "Paste the first words of the new chapter (the split happens at their first occurrence)",
       "import": "Import {n} chapters",
       "importing": "Importing…",
-      "imported": "Imported {n} chapters ({words} words). Now run the Lab workflow.",
+      "imported": "Imported {n} chapters ({words} words), {excluded} sections excluded. Now analyse the manuscript.",
       "importFailed": "Import failed",
       "manuscript": "Imported manuscript",
       "noManuscript": "No manuscript imported yet.",
       "analysisStatus": "Analysis",
-      "runWorkflow": "Open the Lab workflow",
-      "runWorkflowHint": "Select this project and a model in the 'Narrative Reverse-Engineering Lab' workflow, then execute. Results appear in the Analysis section.",
+      "runWorkflow": "Run Lab workflow",
+      "runWorkflowHint": "Pick the model (AuthND is preselected) and start the Narrative Reverse-Engineering Lab. Progress, errors, cancel and resume are shown here; results appear in the Analysis section.",
       "legacy": "The legacy Book Teardown Workflow is still available for comparison.",
       "replaceExisting": "Replace previously imported chapters",
-      "genomeHint": "Once the Narrative Genome card exists, open it and use the 'Lab - Originality Transformation' prompt with an 'Originality Transformation' card to derive original premises."
+      "genomeHint": "Once the Narrative Genome card exists, open it and use the 'Lab - Originality Transformation' prompt with an 'Originality Transformation' card to derive original premises.",
+      "minChapterWords": "Minimum chapter words",
+      "mainEnding": "Main-story ending detected at section {index}: {title}",
+      "excludedSummary": "Excluded from analysis: {side} side stories, {bonus} bonus/extra stories, {other} other sections ({words} words). Review and override below if needed.",
+      "uncertain": "{n} section(s) could not be classified and are excluded pending your review.",
+      "filterAll": "All",
+      "filterIncluded": "Included",
+      "filterExcluded": "Excluded",
+      "undoCorrection": "Undo last correction ({n})",
+      "sectionType": "Section type",
+      "included": "Include",
+      "manual": "manual",
+      "concurrency": "Analysis concurrency",
+      "next": "Next",
+      "runStarted": "Lab workflow started (run #{id})",
+      "excludedStored": "{n} sections excluded ({words} words)",
+      "types": {
+        "front_matter": "front matter",
+        "preface": "preface",
+        "prologue": "prologue",
+        "main_chapter": "main chapter",
+        "main_interlude": "interlude (main)",
+        "main_epilogue": "epilogue (main)",
+        "afterword": "afterword",
+        "appendix": "appendix",
+        "side_story": "side story",
+        "bonus_story": "bonus story",
+        "extra": "extra",
+        "unknown": "unknown"
+      },
+      "run": {
+        "title": "Lab run #{id}",
+        "cancel": "Cancel",
+        "resume": "Resume / retry",
+        "currentNode": "Current step: {node}",
+        "chapters": "chapters {done}/{total} analysed, {failed} failed",
+        "nodes": "{n} workflow steps"
+      }
     }
   }
 }

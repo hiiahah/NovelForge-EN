@@ -202,7 +202,7 @@ export function applyAgentStreamEvent(
     ;(target as any)._agentLastEventType = 'error'
     target.toolsInProgress = undefined
     if (options?.appendErrorToContent !== false) {
-      target.content += `\n\n[错误] ${data.error || 'unknown error'}`
+      target.content += `\n\n${i18n.global.t('app.assistant.errorPrefix')} ${data.error || 'unknown error'}`
     }
   }
 }

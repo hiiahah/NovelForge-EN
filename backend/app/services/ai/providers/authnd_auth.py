@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import argparse
 import codecs
+import contextvars
 import json
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -26,9 +28,11 @@ import requests
 
 BUILD_BASE_URL = "https://build.nvidia.com"
 API_BASE_URL = "https://api.ngc.nvidia.com"
+PREDICT_API_BASE_URL = "https://buildapi.ngc.nvidia.com"
 DEFAULT_ORG_ID = "qc69jvmznzxy"
 DEFAULT_HCAPTCHA_SITEKEY = "0c6a1e45-75d7-43cc-b836-a0c9d886b8ee"
 DEFAULT_MODEL = "moonshotai/kimi-k3"
+DEFAULT_PUBLISHER = "moonshotai"
 DEFAULT_TIMEOUT = None
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -199,18 +203,114 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+class RequestControl:
+    """Per-request cancellation handle.
+
+    Each ``send_chat_completion`` call owns one control. Cancelling it only
+    affects that request (its HTTP stream, its browser helper subprocess), so
+    concurrent chapter analyses never interfere with each other.
+    """
+
+    def __init__(self, label: Optional[str] = None) -> None:
+        self.label = label or uuid.uuid4().hex[:8]
+        self._event = threading.Event()
+        self._lock = threading.Lock()
+        self._closers: List[Callable[[], None]] = []
+        self._processes: List[Any] = []
+
+    def cancel(self) -> None:
+        self._event.set()
+        with self._lock:
+            closers = list(self._closers)
+            procs = list(self._processes)
+        for closer in closers:
+            try:
+                closer()
+            except Exception:
+                pass
+        for proc in procs:
+            _terminate_process_tree(proc, kill=True)
+
+    def is_cancelled(self) -> bool:
+        return self._event.is_set()
+
+    def register_closer(self, closer: Callable[[], None]) -> None:
+        with self._lock:
+            self._closers.append(closer)
+
+    def unregister_closer(self, closer: Callable[[], None]) -> None:
+        with self._lock:
+            try:
+                self._closers.remove(closer)
+            except ValueError:
+                pass
+
+    def register_process(self, proc: Any) -> None:
+        with self._lock:
+            self._processes.append(proc)
+
+    def unregister_process(self, proc: Any) -> None:
+        with self._lock:
+            try:
+                self._processes.remove(proc)
+            except ValueError:
+                pass
+
+
+_current_control: contextvars.ContextVar[Optional[RequestControl]] = contextvars.ContextVar("authnd_request_control", default=None)
+
+
+def current_control() -> Optional[RequestControl]:
+    return _current_control.get()
+
+
+def _terminate_process_tree(proc: Any, *, kill: bool = False) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        if kill:
+            proc.kill()
+        else:
+            proc.terminate()
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=5)
+    except Exception:
+        pass
+
+
 def cancel_stream() -> None:
-    """Signal any active AuthND stream/request to stop."""
+    """Legacy global stop: cancels every in-flight AuthND request.
+
+    Prefer ``RequestControl.cancel()`` for a single request. The global flag is
+    reset by ``reset_cancel()``; request-scoped controls are unaffected by it.
+    """
     _cancel_event.set()
+    with _active_controls_lock:
+        controls = list(_active_controls)
+    for control in controls:
+        control.cancel()
 
 
 def reset_cancel() -> None:
-    """Clear the cancellation flag before a new request."""
+    """Clear the legacy global cancellation flag.
+
+    This never touches request-scoped controls, so a new request starting
+    cannot un-cancel another request that was just stopped.
+    """
     _cancel_event.clear()
 
 
 def _is_cancelled() -> bool:
+    control = _current_control.get()
+    if control is not None and control.is_cancelled():
+        return True
     return _cancel_event.is_set()
+
+
+_active_controls: "set[RequestControl]" = set()
+_active_controls_lock = threading.Lock()
 
 
 def _env_int(name: str, default: int) -> int:
@@ -319,9 +419,12 @@ def _normalize_model(model: str) -> Tuple[str, str, str]:
 
     if "/" in raw:
         publisher, model_id = raw.split("/", 1)
+        publisher = publisher.strip() or DEFAULT_PUBLISHER
         model_id = model_id.strip("/")
+        if not model_id:
+            raise ValueError(f"AuthND model has no model id: {model!r}")
     else:
-        publisher = os.getenv("AUTHND_DEFAULT_PUBLISHER", DEFAULT_PUBLISHER).strip("/") or DEFAULT_PUBLISHER
+        publisher = (os.getenv("AUTHND_DEFAULT_PUBLISHER") or DEFAULT_PUBLISHER).strip("/") or DEFAULT_PUBLISHER
         model_id = raw
 
     page_url = f"{BUILD_BASE_URL}/{publisher}/{_build_page_model_slug(model_id)}"
@@ -558,6 +661,7 @@ def _apply_reasoning_payload(
         kwargs.pop("enable_thinking", None)
         kwargs.pop("clear_thinking", None)
         payload["chat_template_kwargs"] = kwargs
+        payload["reasoning_effort"] = "high" if effort in ("high", "xhigh", "max", "heavy") else effort
         return
 
     kwargs = _kwargs()
@@ -662,16 +766,18 @@ def _mint_captcha_token_subprocess(page_url: str, timeout: int, proxy: Optional[
 
     subprocess_semaphore = _get_token_subprocess_semaphore()
     _acquire_semaphore(subprocess_semaphore)
+    control = _current_control.get()
+    proc = None
+    stdout_text = ""
     try:
         try:
-            proc = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 env=env,
-                timeout=helper_timeout + 20,
                 creationflags=creationflags,
             )
         except OSError as exc:
@@ -681,8 +787,44 @@ def _mint_captcha_token_subprocess(page_url: str, timeout: int, proxy: Optional[
                     "Lower AUTHND_TOKEN_SUBPROCESS_CONCURRENCY or raise ulimit -n."
                 ) from exc
             raise
+        if control is not None:
+            control.register_process(proc)
+        deadline = time.time() + helper_timeout + 20
+        # Drain stdout in a thread so a chatty helper cannot block on a full pipe.
+        out_chunks: List[str] = []
+
+        def _drain() -> None:
+            try:
+                out_chunks.append(proc.stdout.read() or "")
+            except Exception:
+                pass
+
+        reader = threading.Thread(target=_drain, daemon=True)
+        reader.start()
+        while proc.poll() is None:
+            if _is_cancelled():
+                _terminate_process_tree(proc, kill=True)
+                raise RuntimeError("stream cancelled")
+            if time.time() >= deadline:
+                _terminate_process_tree(proc, kill=True)
+                raise RuntimeError(f"AuthND token helper timed out after {helper_timeout}s")
+            time.sleep(0.1)
+        reader.join(timeout=5)
+        stdout_text = "".join(out_chunks)
+        if _is_cancelled():
+            # The control may have killed the child directly before this loop
+            # observed the flag; report cancellation, not a helper failure.
+            raise RuntimeError("stream cancelled")
     finally:
+        if proc is not None and control is not None:
+            control.unregister_process(proc)
         subprocess_semaphore.release()
+
+    class _Proc:  # minimal shim so the error path below can stay unchanged
+        returncode = proc.returncode
+        stdout = stdout_text
+
+    proc = _Proc()
     if proc.returncode != 0:
         try:
             result = _extract_json_from_process(proc.stdout)
@@ -726,18 +868,23 @@ def _mint_captcha_token_qt(page_url: str, timeout: int, proxy: Optional[str] = N
     os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = f"{existing_flags} {required_flags}".strip()
 
     # --- NEW INTERCEPTOR CLASS ---
+    from PySide6.QtWebEngineCore import QWebEngineUrlRequestInfo
+
+    _blocked_types = tuple(
+        getattr(QWebEngineUrlRequestInfo.ResourceType, name)
+        for name in ("ResourceTypeImage", "ResourceTypeStylesheet", "ResourceTypeFontResource", "ResourceTypeMedia")
+        if hasattr(QWebEngineUrlRequestInfo.ResourceType, name)
+    )
+
     class AssetBlocker(QWebEngineUrlRequestInterceptor):
         def interceptRequest(self, info):
-            res_type = info.resourceType()
             # Block Images, Stylesheets, Fonts, and Media
-            if res_type in (
-                QWebEngineUrlRequestInterceptor.ResourceType.ResourceTypeImage,
-                QWebEngineUrlRequestInterceptor.ResourceType.ResourceTypeStylesheet,
-                QWebEngineUrlRequestInterceptor.ResourceType.ResourceTypeFontResource,
-                QWebEngineUrlRequestInterceptor.ResourceType.ResourceTypeMedia,
-            ):
-                info.block(True)
-                return
+            try:
+                if info.resourceType() in _blocked_types:
+                    info.block(True)
+                    return
+            except Exception:
+                pass
             
             # Fallback string matching to kill rogue assets
             url = info.requestUrl().toString().lower()
@@ -775,8 +922,23 @@ def _mint_captcha_token_qt(page_url: str, timeout: int, proxy: Optional[str] = N
         pass
 
     page = QWebEnginePage(profile, app)
-    
-    # ... [The rest of the function remains exactly the same] ...
+
+    try:
+        return _mint_with_page(page, page_url, timeout)
+    finally:
+        try:
+            page.deleteLater()
+            profile.deleteLater()
+            cleanup_loop = QEventLoop()
+            QTimer.singleShot(100, cleanup_loop.quit)
+            cleanup_loop.exec()
+        except Exception:
+            pass
+        shutil.rmtree(profile_root, ignore_errors=True)
+
+
+def _mint_with_page(page: Any, page_url: str, timeout: int) -> str:
+    from PySide6.QtCore import QEventLoop, QTimer, QUrl
 
     def run_js(script: str, js_timeout_ms: int = 15000) -> Any:
         holder: Dict[str, Any] = {}
@@ -915,22 +1077,68 @@ def _mint_captcha_token_pool(page_url: str, timeout: int, proxy: Optional[str] =
     payload = {"url": page_url, "proxy": proxy}
     try:
         # Pointing to the local persistent token server
-        resp = requests.post("http://127.0.0.1:8080/get-token", json=payload, timeout=timeout)
+        pool_url = os.getenv("AUTHND_TOKEN_POOL_URL", "http://127.0.0.1:8080/get-token")
+        resp = requests.post(pool_url, json=payload, timeout=timeout)
         resp.raise_for_status()
-        return resp.json().get("token")
+        body = resp.json() if resp.content else {}
+        token = str((body or {}).get("token") or "").strip() if isinstance(body, dict) else ""
     except Exception as e:
         raise RuntimeError(f"Persistent token pool failed: {e}")
+    if not token:
+        raise RuntimeError("Persistent token pool returned an empty token")
+    return token
+
+class AuthNDDependencyError(RuntimeError):
+    """PySide6 / Qt WebEngine (needed to mint the hCaptcha token) is unavailable."""
+
+
+def token_helper_status() -> Dict[str, Any]:
+    """Diagnose whether a browser token can be minted in this environment."""
+    mode = os.getenv("AUTHND_TOKEN_MODE", "subprocess").strip().lower()
+    info: Dict[str, Any] = {"mode": mode, "available": False, "detail": ""}
+    if mode == "pool":
+        info["available"] = True
+        info["detail"] = f"external token pool at {os.getenv('AUTHND_TOKEN_POOL_URL', 'http://127.0.0.1:8080/get-token')}"
+        return info
+    try:
+        _import_qt_webengine()
+        info["available"] = True
+        info["detail"] = "PySide6 QtWebEngine importable"
+    except Exception as exc:  # ImportError or missing shared libraries (OSError)
+        info["detail"] = f"PySide6 QtWebEngine unavailable: {_short_error(exc, 300)}"
+    return info
+
+
+def _import_qt_webengine() -> None:
+    """Import hook kept separate so tests can simulate a missing dependency."""
+    import importlib
+
+    importlib.import_module("PySide6.QtWebEngineCore")
+    importlib.import_module("PySide6.QtWidgets")
+
+
+def _validate_token(token: Any) -> str:
+    value = str(token or "").strip()
+    if not value:
+        raise RuntimeError("AuthND captcha token is empty")
+    if len(value) < 20 or any(ch.isspace() for ch in value):
+        raise RuntimeError("AuthND captcha token is malformed")
+    return value
+
 
 def get_captcha_token(page_url: str, timeout: int = 90, proxy: Optional[str] = None) -> str:
     mode = os.getenv("AUTHND_TOKEN_MODE", "subprocess").strip().lower()
-    
-    if mode == "inline":
-        return _mint_captcha_token_qt(page_url, timeout, proxy=proxy)
-    elif mode == "pool":
+    if mode == "pool":
         # Routes traffic to the persistent tabs
-        return _mint_captcha_token_pool(page_url, timeout, proxy=proxy)
-        
-    return _mint_captcha_token_subprocess(page_url, timeout, proxy=proxy)
+        return _validate_token(_mint_captcha_token_pool(page_url, timeout, proxy=proxy))
+    helper = token_helper_status()
+    if not helper["available"]:
+        raise AuthNDDependencyError(
+            "AuthND cannot mint a browser token: " + str(helper["detail"]) + ". Install PySide6 (pip install PySide6) and the Qt runtime libraries."
+        )
+    if mode == "inline":
+        return _validate_token(_mint_captcha_token_qt(page_url, timeout, proxy=proxy))
+    return _validate_token(_mint_captcha_token_subprocess(page_url, timeout, proxy=proxy))
 
 def _extract_content_from_obj(obj: Any) -> str:
     if not isinstance(obj, dict):
@@ -1376,13 +1584,19 @@ def _log_non_stream_summary(
         _log(log_fn, "   🧮 Thinking tokens used: 0")
 
 
-def _raise_for_status(response: requests.Response) -> None:
-    if response.status_code < 400:
+def _raise_for_status(response: Any) -> None:
+    status = int(getattr(response, "status_code", 0) or 0)
+    if 200 <= status < 300:
         return
-    nv_error = response.headers.get("x-nv-error-msg") or response.headers.get("x-nv-error-code") or ""
-    body = (response.text or "").strip()
-    detail = _http_error_detail(response.status_code, response.reason, nv_error, body)
-    raise RuntimeError(f"AuthND HTTP {response.status_code}: {detail}")
+    headers = getattr(response, "headers", {}) or {}
+    if 300 <= status < 400:
+        # A redirect (e.g. to ngc.nvidia.com/404) is never a valid prediction
+        # response; surface it instead of trying to parse an HTML body as SSE.
+        raise RuntimeError(f"AuthND HTTP {status}: redirected to {headers.get('location') or 'an unknown location'}")
+    nv_error = headers.get("x-nv-error-msg") or headers.get("x-nv-error-code") or ""
+    body = (getattr(response, "text", "") or "").strip()
+    detail = _http_error_detail(status, getattr(response, "reason", "") or "", nv_error, body)
+    raise RuntimeError(f"AuthND HTTP {status}: {detail}")
 
 
 def _httpx_status_error(resp: Any) -> RuntimeError:
@@ -1424,7 +1638,7 @@ def _post_prediction(
     org_id = metadata.get("namespace") or DEFAULT_ORG_ID
     endpoint_id = metadata.get("endpoint_id") or model_id
     payload_model = metadata.get("payload_model") or _payload_model_name(model_path)
-    url = f"{API_BASE_URL}/v2/predict/models/{org_id}/{endpoint_id}"
+    url = f"{PREDICT_API_BASE_URL}/v2/predict/models/{org_id}/{endpoint_id}"
     payload: Dict[str, Any] = {
         "messages": messages,
         "model": payload_model,
@@ -1476,7 +1690,7 @@ def _post_prediction(
         "accept-encoding": "identity",
         "origin": BUILD_BASE_URL,
         "referer": page_url,
-        "host": "api.ngc.nvidia.com",
+        "host": "buildapi.ngc.nvidia.com",
         "nv-captcha-token": captcha_token,
         "user-agent": USER_AGENT,
     }
@@ -1533,12 +1747,18 @@ def _post_prediction(
                         f"🔎 AuthND debug response: status={response.status_code}, content_type={response.headers.get('content-type', '')}, transport=httpx",
                         debug_only=True,
                     )
-                    if response.status_code >= 400:
-                        exc = _httpx_status_error(response)
+                    if not 200 <= response.status_code < 300:
+                        if 300 <= response.status_code < 400:
+                            exc = RuntimeError(f"AuthND HTTP {response.status_code}: redirected to {response.headers.get('location') or 'an unknown location'}")
+                        else:
+                            exc = _httpx_status_error(response)
                         _log(log_fn, f"⚠️ AuthND HTTP failure: {_short_error(exc)}")
                         raise exc
                     if status_logs_enabled:
                         _log(log_fn, f"🌊 AuthND: Stream opened (status={response.status_code}, transport=httpx)")
+                    control = _current_control.get()
+                    if control is not None:
+                        control.register_closer(response.close)
                     return _parse_sse_lines(
                         _iter_utf8_lines(response.iter_raw()),
                         close_fn=response.close,
@@ -1568,20 +1788,18 @@ def _post_prediction(
         json=payload,
         timeout=request_timeout,
         stream=stream,
+        allow_redirects=False,
     )
+    control = _current_control.get()
+    if control is not None:
+        control.register_closer(response.close)
     _log(
         log_fn,
         f"🔎 AuthND debug response: status={response.status_code}, content_type={response.headers.get('content-type', '')}",
         debug_only=True,
     )
-    if response.status_code >= 400:
-        nv_error = response.headers.get("x-nv-error-msg") or response.headers.get("x-nv-error-code") or ""
-        body = (response.text or "").strip()
-        detail = _http_error_detail(response.status_code, response.reason, nv_error, body)
-        _log(
-            log_fn,
-            f"⚠️ AuthND HTTP failure: AuthND HTTP {response.status_code}: {detail}",
-        )
+    if not 200 <= response.status_code < 300:
+        _log(log_fn, f"⚠️ AuthND HTTP failure: status={response.status_code}")
     _raise_for_status(response)
     content_type = (response.headers.get("content-type") or "").lower()
     if stream or "text/event-stream" in content_type:
@@ -1622,8 +1840,50 @@ def send_chat_completion(
     reasoning_effort: Optional[str] = None,
     request_label: Optional[str] = None,
     chunk_callback: Optional[Callable[[str, Optional[str]], None]] = None,
+    control: Optional[RequestControl] = None,
 ) -> Dict[str, Any]:
     del account_id  # AuthND has no account slots; kept for unified handler symmetry.
+    if control is None:
+        control = RequestControl(label=request_label)
+    token = _current_control.set(control)
+    with _active_controls_lock:
+        _active_controls.add(control)
+    try:
+        return _send_chat_completion_inner(
+            messages=messages, model=model, temperature=temperature, max_tokens=max_tokens, top_p=top_p,
+            frequency_penalty=frequency_penalty, presence_penalty=presence_penalty, timeout=timeout, log_fn=log_fn,
+            connect_timeout=connect_timeout, stream=stream, log_stream=log_stream, progress_label=progress_label,
+            proxy=proxy, reasoning_enabled=reasoning_enabled, reasoning_effort=reasoning_effort,
+            request_label=request_label, chunk_callback=chunk_callback, control=control,
+        )
+    finally:
+        with _active_controls_lock:
+            _active_controls.discard(control)
+        _current_control.reset(token)
+
+
+def _send_chat_completion_inner(
+    *,
+    messages: Iterable[Dict[str, Any]],
+    model: str,
+    temperature: Optional[float],
+    max_tokens: Optional[int],
+    top_p: Optional[float],
+    frequency_penalty: Optional[float],
+    presence_penalty: Optional[float],
+    timeout: Optional[int],
+    log_fn: Optional[Callable[[str], None]],
+    connect_timeout: Optional[float],
+    stream: Optional[bool],
+    log_stream: Optional[bool],
+    progress_label: Optional[str],
+    proxy: Optional[str],
+    reasoning_enabled: Optional[bool],
+    reasoning_effort: Optional[str],
+    request_label: Optional[str],
+    chunk_callback: Optional[Callable[[str, Optional[str]], None]],
+    control: RequestControl,
+) -> Dict[str, Any]:
     if _is_cancelled():
         raise RuntimeError("stream cancelled")
 
@@ -1692,9 +1952,18 @@ def send_chat_completion(
         debug_only=True,
     )
     last_error: Optional[Exception] = None
-    token_retries = max(1, _env_int("AUTHND_TOKEN_RETRIES", _env_int("AUTHND_PROVIDER_RETRIES", 100)))
+    env_permanent = os.getenv("AUTHND_PERMANENT_RETRY")
+    if env_permanent is not None:
+        permanent_retry = env_permanent.strip().lower() in ("1", "true", "yes", "on")
+    else:
+        # Permanent retry enabled by default for runtime resilience, unless explicit test retry limit is set
+        permanent_retry = os.getenv("AUTHND_TOKEN_RETRIES") is None
 
-    for attempt in range(token_retries):
+    token_retries = max(1, _env_int("AUTHND_TOKEN_RETRIES", _env_int("AUTHND_PROVIDER_RETRIES", 6)))
+    attempts_log: List[str] = []
+
+    attempt = 0
+    while True:
         if _is_cancelled():
             raise RuntimeError("stream cancelled")
         try:
@@ -1703,19 +1972,26 @@ def send_chat_completion(
                 lambda: get_captcha_token(page_url, token_timeout, proxy=token_proxy),
                 proxy=token_proxy,
             )
-        except RuntimeError as exc:
+        except AuthNDDependencyError:
+            raise
+        except (RuntimeError, Exception) as exc:
+            if _is_cancelled() or "stream cancelled" in str(exc):
+                raise RuntimeError("stream cancelled") from exc
             last_error = exc
+            attempts_log.append(f"token attempt {attempt + 1}: {_short_error(exc, 200)}")
             sleep_for = _token_retry_sleep(exc, attempt + 1)
             _log(
                 log_fn,
                 f"⚠️ AuthND captcha token flow failed "
-                f"(attempt {attempt + 1}/{token_retries}, rerouting proxy retry in {sleep_for:.1f}s): "
+                f"(attempt {attempt + 1}{' [permanent retry]' if permanent_retry else f'/{token_retries}'}, retrying in {sleep_for:.1f}s): "
                 f"{_short_error(exc)}",
             )
-            if attempt + 1 >= token_retries:
+            if not permanent_retry and attempt + 1 >= token_retries:
                 raise
             time.sleep(sleep_for)
+            attempt += 1
             continue
+
         if _is_cancelled():
             raise RuntimeError("stream cancelled")
         _log(
@@ -1749,19 +2025,48 @@ def send_chat_completion(
                 proxy=proxy,
                 chunk_callback=chunk_callback,
             )
+            content = (result.get("content") or "").strip()
+            reasoning = (result.get("reasoning_content") or "").strip()
+            if not content and not reasoning:
+                raise RuntimeError("AuthND model returned empty content")
             result["model"] = model_id
             result["page_url"] = page_url
             return result
-        except RuntimeError as exc:
+        except (RuntimeError, Exception) as exc:
+            if _is_cancelled() or "stream cancelled" in str(exc):
+                raise RuntimeError("stream cancelled") from exc
             last_error = exc
             message = str(exc).lower()
-            if attempt + 1 < token_retries and ("captcha" in message or "400" in message):
+            attempts_log.append(f"request attempt {attempt + 1}: {_short_error(exc, 200)}")
+            retryable = (
+                "captcha" in message
+                or "400" in message
+                or "401" in message
+                or "403" in message
+                or "429" in message
+                or "500" in message
+                or "502" in message
+                or "503" in message
+                or "504" in message
+                or "retries exhausted" in message
+                or "internal server error" in message
+                or "timeout" in message
+                or "timed out" in message
+                or "empty content" in message
+                or "redirected" in message
+                or "connection" in message
+                or "closed" in message
+                or "network" in message
+            )
+            has_more = permanent_retry or (attempt + 1 < token_retries)
+            if has_more and retryable:
+                sleep_s = min(15.0, 2.0 * (1.2 ** min(attempt, 15)))
                 if log_fn:
-                    log_fn(f"⚠️ AuthND: captcha token was rejected; retrying with a fresh browser token ({_short_error(exc)})")
+                    log_fn(f"⚠️ AuthND: Transient failure / no output ({_short_error(exc)}); retrying in {sleep_s:.1f}s (attempt {attempt + 1}{' [permanent retry]' if permanent_retry else ''})...")
+                time.sleep(sleep_s)
+                attempt += 1
                 continue
-            raise
-
-    raise RuntimeError(f"AuthND request failed: {last_error}")
+            raise RuntimeError(f"{exc} | attempts: {'; '.join(attempts_log)}") from exc
 
 
 def _read_cli_text(value: Optional[str]) -> str:

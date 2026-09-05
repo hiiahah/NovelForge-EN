@@ -1,5 +1,7 @@
 ﻿{
     "editor":  {
+                    "modePromptOnly":  "提示词约束",
+                    "modeControlled":  "控制模式",
                     "editGroup":  "ç¼–è¾‘",
                     "aiGroup":  "AIåŠŸèƒ½",
                     "moreAI":  "æ›´å¤š AI",

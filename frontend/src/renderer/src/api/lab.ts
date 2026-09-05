@@ -7,6 +7,15 @@ export type ManuscriptImportRequest = components['schemas']['ManuscriptImportReq
 export type ManuscriptImportResponse = components['schemas']['ManuscriptImportResponse']
 export type ManuscriptListResponse = components['schemas']['ManuscriptListResponse']
 export type ChapterPreview = components['schemas']['ChapterPreview']
+export type LabRunRequest = Partial<components['schemas']['LabRunRequest']> & { project_id: number; llm_config_id: number }
+export interface LabRunNode { node_id?: string | null; status?: string | null; progress?: number | null; error?: string | null }
+export type LabRunStatus = Omit<components['schemas']['LabRunStatus'], 'nodes'> & { nodes?: LabRunNode[] }
+
+export type SectionCorrection =
+  | { op: 'exclude' | 'include' | 'merge_with_next'; section_id: string; reason?: string }
+  | { op: 'rename'; section_id: string; title: string }
+  | { op: 'split'; section_id: string; at_text: string; new_title?: string }
+  | { op: 'set_type'; section_id: string; section_type: string }
 
 const opts = { showLoading: false }
 
@@ -22,8 +31,28 @@ export function listManuscript(projectId: number): Promise<ManuscriptListRespons
   return request.get('/lab/manuscript', { project_id: projectId }, '/api', opts)
 }
 
-export function getManuscriptDefaults(): Promise<{ volume_pattern: string; pattern_candidates: Array<{ name: string; pattern: string }>; supported_extensions: string[] }> {
+export function getManuscriptDefaults(): Promise<{ volume_pattern: string; pattern_candidates: Array<{ name: string; pattern: string }>; supported_extensions: string[]; section_types: string[]; main_story_types: string[]; min_chapter_words: number }> {
   return request.get('/lab/manuscript/defaults', undefined, '/api', opts)
+}
+
+export function startLabWorkflow(body: LabRunRequest): Promise<LabRunStatus> {
+  return (request as any).request({ method: 'POST', url: '/api/lab/workflow/run', data: body, showLoading: false, timeout: 60_000 })
+}
+
+export function listLabRuns(projectId: number, limit = 10): Promise<LabRunStatus[]> {
+  return request.get('/lab/workflow/runs', { project_id: projectId, limit }, '/api', opts)
+}
+
+export function getLabRun(runId: number): Promise<LabRunStatus> {
+  return request.get(`/lab/workflow/runs/${runId}`, undefined, '/api', opts)
+}
+
+export function cancelLabRun(runId: number): Promise<LabRunStatus> {
+  return (request as any).request({ method: 'POST', url: `/api/lab/workflow/runs/${runId}/cancel`, showLoading: false })
+}
+
+export function resumeLabRun(runId: number): Promise<LabRunStatus> {
+  return (request as any).request({ method: 'POST', url: `/api/lab/workflow/runs/${runId}/resume`, showLoading: false })
 }
 
 export function fileToBase64(file: File): Promise<string> {
