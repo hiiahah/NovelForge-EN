@@ -863,6 +863,7 @@ def send_chat_completion(
     is_private: bool = True,
     project_id: Optional[str] = None,
     chunk_callback: Optional[Callable[[str, Optional[str]], None]] = None,
+    account: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Send chat completion to Genspark's hidden ask_proxy endpoint.
@@ -894,7 +895,7 @@ def send_chat_completion(
     retry_count = 0
 
     while retry_count < max_retries:
-        manager = pool.get_active_account()
+        manager = pool.get_active_account(preferred=account)
 
         # Verify or sync cookies from Firefox if not logged in
         if not manager.is_logged_in(proxy=active_proxy):
