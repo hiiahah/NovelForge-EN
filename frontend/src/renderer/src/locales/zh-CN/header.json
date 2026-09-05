@@ -4,6 +4,8 @@
     "ideas": "灵感",
     "workflow": "工作流",
     "toggleTheme": "切换主题",
-    "settings": "设置"
+    "settings": "设置",
+    "autonomous": "创作小说",
+    "autonomousTitle": "从 EPUB 生成一部完整的原创小说"
   }
 }

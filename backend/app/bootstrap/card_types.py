@@ -251,6 +251,9 @@ def create_default_card_types(session: Session) -> None:
         "Narrative Fingerprint": {"is_singleton": True, "is_ai_enabled": False, "description": "20-layer measurable narrative fingerprint built from the imported manuscript; consumed by the chapter context compiler and style validation", "default_ai_context_template": None},
         "Abstract Mechanism": {"is_singleton": False, "is_ai_enabled": False, "description": "Entity-free narrative mechanism transferred from a source Narrative Genome after passing the Originality Firewall", "default_ai_context_template": None},
         "Chapter State Packet": {"is_singleton": False, "is_ai_enabled": False, "description": "Next Chapter State Packet written by automatic synchronization after a chapter is committed", "default_ai_context_template": None},
+        # Autonomous novel pipeline.
+        "Novel Architecture": {"is_singleton": True, "is_ai_enabled": False, "description": "Complete original architecture (contract, cast, world, plot graph, timeline, setup/payoff schedule, chapter allocation) generated from the selected storyline", "default_ai_context_template": None},
+        "Source Analysis Record": {"is_singleton": False, "is_ai_enabled": False, "description": "Intermediate source-analysis record (entity resolution, Bible reconstruction digest) kept in the source project for provenance", "default_ai_context_template": None},
     }
 
     # Default AI parameter presets per type (does not include llm_config_id)
@@ -292,6 +295,8 @@ def create_default_card_types(session: Session) -> None:
         "Narrative Fingerprint": None,
         "Abstract Mechanism": None,
         "Chapter State Packet": None,
+        "Novel Architecture": None,
+        "Source Analysis Record": None,
     }
 
     # Mapping from type name to built-in response model (used directly to generate json_schema)

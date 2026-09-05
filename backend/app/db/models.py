@@ -507,3 +507,122 @@ class ChapterPipelineRun(SQLModel, table=True):
     error: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# Autonomous novel production (upload -> select -> finished novel)
+# ---------------------------------------------------------------------------
+
+class AutonomousNovelJob(SQLModel, table=True):
+    """Durable state of one 'Create Novel from EPUB' run.
+
+    ``stage`` is the next stage to execute (or the one executing while
+    ``status == 'running'``). Every transition is committed before the next
+    stage starts, so a restarted process resumes from ``stage``.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    idempotency_key: str = Field(index=True, unique=True)
+    status: str = Field(default="queued", index=True)  # queued|running|waiting_for_user|paused|failed|cancelled|completed
+    stage: str = Field(default="INGEST", index=True)
+    mode: str = Field(default="fully_automatic")  # fully_automatic|approval_gates|manual
+    source_project_id: Optional[int] = Field(default=None, index=True)
+    original_project_id: Optional[int] = Field(default=None, index=True)
+    llm_config_id: int = Field(default=0)
+    role_llm_config_ids: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    source_filename: str = Field(default="")
+    source_file_hash: str = Field(default="")
+    source_bytes: Optional[bytes] = Field(default=None, sa_column=Column(sa.LargeBinary))
+    options: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    selected_storyline_id: Optional[int] = Field(default=None)
+    chapter_count: int = Field(default=0)
+    chapters_committed: int = Field(default=0)
+    progress_percent: float = Field(default=0.0)
+    progress_message: str = Field(default="")
+    stage_results: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    warnings: List[dict] = Field(default_factory=list, sa_column=Column(JSON))
+    error: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    model_calls: int = Field(default=0)
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    lease_owner: Optional[str] = Field(default=None)
+    lease_expires_at: Optional[datetime] = Field(default=None)
+    heartbeat_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+
+class JobStageAttempt(SQLModel, table=True):
+    """One attempt at one stage of an autonomous job (audit trail + retry accounting)."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_id: int = Field(index=True)
+    stage: str = Field(index=True)
+    attempt: int = Field(default=1)
+    status: str = Field(default="running", index=True)  # running|succeeded|failed|paused
+    failure_category: Optional[str] = Field(default=None)
+    recovery_action: Optional[str] = Field(default=None)
+    detail: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    model_calls: int = Field(default=0)
+    started_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    finished_at: Optional[datetime] = None
+
+
+class ModelInvocation(SQLModel, table=True):
+    """Every model call made on behalf of an autonomous job: role, prompt version, usage, outcome."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_id: Optional[int] = Field(default=None, index=True)
+    project_id: Optional[int] = Field(default=None, index=True)
+    stage: str = Field(default="", index=True)
+    role: str = Field(default="", index=True)
+    llm_config_id: Optional[int] = Field(default=None)
+    model_name: str = Field(default="")
+    prompt_version: str = Field(default="")
+    schema_name: str = Field(default="")
+    temperature: Optional[float] = None
+    input_tokens_estimate: int = Field(default=0)
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    latency_ms: int = Field(default=0)
+    retries: int = Field(default=0)
+    validation_status: str = Field(default="ok")  # ok|invalid|error
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class StorylineCandidate(SQLModel, table=True):
+    """One generated original storyline option for a job."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_id: int = Field(index=True)
+    source_project_id: int = Field(index=True)
+    option_index: int = Field(default=0)
+    title: str = Field(default="")
+    content: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    originality_score: float = Field(default=0.0)
+    originality_report: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    similarity_to_others: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    recommended_chapters_min: int = Field(default=0)
+    recommended_chapters_max: int = Field(default=0)
+    rejected: bool = Field(default=False, index=True)
+    rejection_reason: Optional[str] = None
+    selected: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+
+
+class ExportArtifact(SQLModel, table=True):
+    """A produced deliverable (EPUB, DOCX, Markdown, text, report) stored for download."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    job_id: int = Field(index=True)
+    project_id: int = Field(index=True)
+    kind: str = Field(index=True)  # epub|docx|markdown|text|report
+    filename: str = Field(default="")
+    media_type: str = Field(default="application/octet-stream")
+    size_bytes: int = Field(default=0)
+    content_hash: str = Field(default="")
+    data: bytes = Field(default=b"", sa_column=Column(sa.LargeBinary))
+    created_at: datetime = Field(default_factory=datetime.now, nullable=False)

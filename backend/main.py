@@ -43,6 +43,17 @@ async def lifespan(app):
             cleanup_expired_runs(session)
     except Exception as e:
         print(f"Startup cleanup failed: {e}")
+
+    # Autonomous novel jobs are durable: requeue anything a previous process left running.
+    try:
+        from app.db.session import engine
+        from sqlmodel import Session
+        from app.services.autonomous.worker import autonomous_worker
+
+        with Session(engine) as session:
+            autonomous_worker.recover_on_startup(session)
+    except Exception as e:
+        print(f"Autonomous job recovery failed: {e}")
         
     yield
     # Execute on shutdown

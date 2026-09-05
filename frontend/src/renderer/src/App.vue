@@ -17,6 +17,7 @@ import { schemaService } from './api/schema'
 
 const IdeasHome = defineAsyncComponent(() => import('./views/IdeasHome.vue'))
 const CodeWorkflowEditor = defineAsyncComponent(() => import('./views/workflow/CodeWorkflowEditor.vue'))
+const AutonomousNovel = defineAsyncComponent(() => import('./views/AutonomousNovel.vue'))
 const WorkflowStatusBar = defineAsyncComponent(() => import('./components/workflow/WorkflowStatusBar.vue'))
 
 type Project = components['schemas']['ProjectRead']
@@ -39,6 +40,13 @@ function handleProjectSelected(project: Project) {
 function handleBackToDashboard() {
   projectStore.reset()
   appStore.goToDashboard()
+}
+
+async function handleOpenProjectById(projectId: number) {
+  const { getProjects } = await import('./api/projects')
+  const list = await getProjects()
+  const project = (list || []).find((p: Project) => p.id === projectId)
+  if (project) handleProjectSelected(project)
 }
 
 function handleOpenSettings() {
@@ -65,6 +73,9 @@ async function syncViewFromHash() {
   }
   if (hash.startsWith('#/code-workflows')) {
     appStore.goToCodeWorkflows()
+  }
+  if (hash.startsWith('#/autonomous')) {
+    appStore.goToAutonomous()
   }
 }
 
@@ -112,6 +123,7 @@ onBeforeUnmount(() => {
         />
         <IdeasHome v-else-if="currentView === 'ideas'" />
         <CodeWorkflowEditor v-else-if="currentView === 'workflows'" />
+        <AutonomousNovel v-else-if="currentView === 'autonomous'" @open-project="handleOpenProjectById" />
       </main>
 
       <SettingsDialog 
