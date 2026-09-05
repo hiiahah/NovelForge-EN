@@ -11,6 +11,8 @@ from typing import Any, Dict, List
 
 from app.services.workflow.expressions.functions import register_function
 
+ANALYSIS_PROMPT_VERSION = "Lab - Chapter Analysis@2"
+
 
 def _as_dict(value: Any) -> Dict[str, Any]:
     if isinstance(value, dict):
@@ -34,7 +36,31 @@ def _trim(text: Any, limit: int) -> str:
     priority=60,
     example="lab_chapter_items(chapters.cards)",
 )
-def fn_lab_chapter_items(cards: Any) -> List[Dict[str, Any]]:
+def fn_lab_chapter_items(
+    cards: Any,
+    start_chapter: int = 0,
+    end_chapter: int = 0,
+    include_chapters: Any = None,
+    exclude_chapters: Any = None,
+    only_missing: bool = False,
+    only_stale: bool = False,
+    prompt_version: str = "",
+) -> List[Dict[str, Any]]:
+    """Batch items for chapter analysis, scoped so a large manuscript is never analysed wholesale.
+
+    - ``start_chapter``/``end_chapter``: inclusive normalized-chapter range (0 = open).
+    - ``include_chapters``/``exclude_chapters``: explicit chapter numbers.
+    - ``only_missing``: skip chapters whose stored analysis is already ``done``.
+    - ``only_stale``: additionally re-analyse ``done`` chapters whose stored
+      ``analysis_source_hash`` or ``prompt_version`` no longer matches.
+    Chapters that were analysed by the same prompt against the same text are
+    never re-sent when ``only_missing`` is set, so a failure at chapter 27
+    never restarts chapters 1-26.
+    """
+    include = {int(x) for x in (include_chapters or []) if str(x).strip()}
+    exclude = {int(x) for x in (exclude_chapters or []) if str(x).strip()}
+    start = int(start_chapter or 0)
+    end = int(end_chapter or 0)
     items: List[Dict[str, Any]] = []
     for card in cards or []:
         card = _as_dict(card)
@@ -42,15 +68,34 @@ def fn_lab_chapter_items(cards: Any) -> List[Dict[str, Any]]:
         text = str(content.get("source_text") or "")
         if not text.strip():
             continue
+        chapter_no = int(content.get("chapter_number") or len(items) + 1)
+        if include and chapter_no not in include:
+            continue
+        if chapter_no in exclude:
+            continue
+        if start and chapter_no < start:
+            continue
+        if end and chapter_no > end:
+            continue
+        if only_missing or only_stale:
+            status = str(content.get("analysis_status") or "")
+            if status == "done":
+                current_hash = str(content.get("source_text_hash") or "")
+                analysed_hash = str(content.get("analysis_source_hash") or "")
+                analysed_prompt = str(content.get("prompt_version") or "")
+                stale = bool(current_hash and analysed_hash and analysed_hash != current_hash) or bool(prompt_version and analysed_prompt and analysed_prompt != prompt_version)
+                if not (only_stale and stale):
+                    continue
         items.append({
             "card_id": card.get("id"),
-            "chapter_no": int(content.get("chapter_number") or len(items) + 1),
+            "chapter_no": chapter_no,
             "title": str(content.get("title") or card.get("title") or ""),
             "volume": str(content.get("volume") or ""),
             "word_count": int(content.get("word_count") or 0),
             "manuscript_id": str(content.get("manuscript_id") or ""),
             "chapter_id": str(content.get("chapter_id") or ""),
             "language": str(content.get("language") or ""),
+            "source_text_hash": str(content.get("source_text_hash") or ""),
             "content": text,
         })
     items.sort(key=lambda it: it["chapter_no"])
@@ -94,6 +139,10 @@ def fn_lab_analysis_records(results: Any) -> List[Dict[str, Any]]:
         record["word_count"] = int(meta.get("word_count") or 0)
         record["card_id"] = meta.get("card_id")
         record["analysis_status"] = "done"
+        # Staleness anchors: which text and which prompt produced this analysis.
+        record["analysis_source_hash"] = str(meta.get("source_text_hash") or "")
+        record["prompt_version"] = ANALYSIS_PROMPT_VERSION
+        record["extraction_model"] = str(meta.get("model_name") or "")
         # Must match the title produced by ManuscriptImportService.store_manuscript.
         # Use the imported title (not the AI-rewritten one) so the upsert updates
         # the existing chapter card instead of creating a duplicate.
@@ -106,11 +155,39 @@ def fn_lab_analysis_records(results: Any) -> List[Dict[str, Any]]:
         if source_text:
             record = forge_evidence.verify_chapter_analysis(
                 record, source_text, manuscript_id=str(meta.get("manuscript_id") or ""), chapter_id=str(meta.get("chapter_id") or ""),
-                chapter_number=chapter_no, extraction_model=str(meta.get("model_name") or ""), prompt_version="Lab - Chapter Analysis@2",
+                chapter_number=chapter_no, extraction_model=str(meta.get("model_name") or ""), prompt_version=ANALYSIS_PROMPT_VERSION,
             )
         records.append(record)
     records.sort(key=lambda r: r["chapter_number"])
     return records
+
+
+@register_function(
+    "lab_merge_stored_analyses",
+    summary="Union of freshly analysed records and Chapter Analysis cards already marked done (fresh wins); keeps downstream stages whole when analysis is scoped",
+    scenario="Reverse-engineering lab",
+    priority=60,
+    example="lab_merge_stored_analyses(analysis_records.result, chapter_cards.cards)",
+)
+def fn_lab_merge_stored_analyses(records: Any, cards: Any) -> List[Dict[str, Any]]:
+    by_chapter: Dict[int, Dict[str, Any]] = {}
+    for card in cards or []:
+        card = _as_dict(card)
+        content = _as_dict(card.get("content"))
+        if content.get("analysis_status") != "done":
+            continue
+        chapter_no = int(content.get("chapter_number") or 0)
+        if not chapter_no:
+            continue
+        stored = {k: v for k, v in content.items() if k != "source_text"}
+        stored["card_id"] = card.get("id")
+        by_chapter[chapter_no] = stored
+    for rec in records or []:
+        rec = _as_dict(rec)
+        chapter_no = int(rec.get("chapter_number") or 0)
+        if chapter_no:
+            by_chapter[chapter_no] = rec
+    return [by_chapter[k] for k in sorted(by_chapter)]
 
 
 @register_function(

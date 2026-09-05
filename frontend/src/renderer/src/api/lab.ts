@@ -10,6 +10,7 @@ export type ChapterPreview = components['schemas']['ChapterPreview']
 export type LabRunRequest = Partial<components['schemas']['LabRunRequest']> & { project_id: number; llm_config_id: number }
 export interface LabRunNode { node_id?: string | null; status?: string | null; progress?: number | null; error?: string | null }
 export type LabRunStatus = Omit<components['schemas']['LabRunStatus'], 'nodes'> & { nodes?: LabRunNode[] }
+export type LabRunPlan = components['schemas']['LabRunPlan']
 
 export type SectionCorrection =
   | { op: 'exclude' | 'include' | 'merge_with_next'; section_id: string; reason?: string }
@@ -66,4 +67,8 @@ export function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error)
     reader.readAsDataURL(file)
   })
+}
+
+export function planLabWorkflow(body: LabRunRequest): Promise<LabRunPlan> {
+  return (request as any).request({ method: 'POST', url: '/api/lab/workflow/plan', data: body, showLoading: false, timeout: 60_000 })
 }

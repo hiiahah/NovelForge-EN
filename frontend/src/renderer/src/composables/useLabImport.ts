@@ -10,6 +10,8 @@
 import { computed, reactive, ref, type Ref } from 'vue'
 import type {
   ChapterPreview,
+  LabRunPlan,
+  LabRunRequest,
   LabRunStatus,
   ManuscriptImportResponse,
   ManuscriptListResponse,
@@ -22,7 +24,8 @@ export interface LabApi {
   previewManuscript: (body: ManuscriptPreviewRequest) => Promise<ManuscriptPreviewResponse>
   importManuscript: (body: any) => Promise<ManuscriptImportResponse>
   listManuscript: (projectId: number) => Promise<ManuscriptListResponse>
-  startLabWorkflow: (body: { project_id: number; llm_config_id: number; analysis_concurrency?: number }) => Promise<LabRunStatus>
+  startLabWorkflow: (body: LabRunRequest) => Promise<LabRunStatus>
+  planLabWorkflow?: (body: LabRunRequest) => Promise<LabRunPlan>
   listLabRuns: (projectId: number, limit?: number) => Promise<LabRunStatus[]>
   getLabRun: (runId: number) => Promise<LabRunStatus>
   cancelLabRun: (runId: number) => Promise<LabRunStatus>
@@ -54,6 +57,10 @@ export function useLabImport(api: LabApi, projectId: Ref<number | undefined>) {
   const runs = ref<LabRunStatus[]>([])
   const launching = ref(false)
   const runError = ref<string | null>(null)
+  const plan = ref<LabRunPlan | null>(null)
+  const planning = ref(false)
+  // Analysis scope: never analyse a whole 600-chapter manuscript by accident.
+  const scope = reactive({ start_chapter: 0, end_chapter: 0, only_missing: true, only_stale: false })
 
   const meta = reactive({ book_title: '', author: '', genre: '', language: '' })
   const detect = reactive({
@@ -167,13 +174,36 @@ export function useLabImport(api: LabApi, projectId: Ref<number | undefined>) {
     if (run.value && step.value < 3 && (run.value.status === 'succeeded' || ACTIVE_RUN_STATUSES.has(run.value.status))) step.value = 3
   }
 
+  function runBody(llmConfigId: number, concurrency = 2): LabRunRequest {
+    return {
+      project_id: projectId.value!, llm_config_id: llmConfigId, analysis_concurrency: concurrency,
+      start_chapter: scope.start_chapter || 0, end_chapter: scope.end_chapter || 0, only_missing: scope.only_missing, only_stale: scope.only_stale,
+    }
+  }
+
+  /** Cost preview (no model call): which chapters the scope selects and the estimated calls/tokens. */
+  async function planRun(llmConfigId: number, concurrency = 2): Promise<LabRunPlan | null> {
+    if (!projectId.value || !api.planLabWorkflow) return null
+    planning.value = true
+    try {
+      plan.value = await api.planLabWorkflow(runBody(llmConfigId, concurrency))
+      return plan.value
+    } catch (e: any) {
+      runError.value = e?.response?.data?.detail || e?.message || String(e)
+      plan.value = null
+      return null
+    } finally {
+      planning.value = false
+    }
+  }
+
   async function startRun(llmConfigId: number, concurrency = 2): Promise<LabRunStatus | null> {
     if (!projectId.value || launching.value) return null
     if (runActive.value) return run.value // duplicate launch guard (client side)
     launching.value = true
     runError.value = null
     try {
-      run.value = await api.startLabWorkflow({ project_id: projectId.value, llm_config_id: llmConfigId, analysis_concurrency: concurrency })
+      run.value = await api.startLabWorkflow(runBody(llmConfigId, concurrency))
       step.value = 3
       return run.value
     } catch (e: any) {
@@ -207,7 +237,7 @@ export function useLabImport(api: LabApi, projectId: Ref<number | undefined>) {
 
   return {
     step, file, previewing, importing, replaceExisting, preview, previewError, importResult, manuscript, corrections,
-    run, runs, launching, runError, meta, detect, analysedCount, includedChapters, excludedChapters, runActive, runResumable,
-    setFile, payload, runPreview, correct, undoLastCorrection, isExcluded, runImport, loadManuscript, loadRuns, startRun, refreshRun, cancelRun, resumeRun,
+    run, runs, launching, runError, plan, planning, scope, meta, detect, analysedCount, includedChapters, excludedChapters, runActive, runResumable,
+    setFile, payload, runPreview, correct, undoLastCorrection, isExcluded, runImport, loadManuscript, loadRuns, planRun, startRun, refreshRun, cancelRun, resumeRun,
   }
 }

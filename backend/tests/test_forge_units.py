@@ -278,8 +278,8 @@ def test_style_report_deterministic_targets():
 
 # ---------------------------------------------------------------------- models
 class _Cfg:
-    def __init__(self, provider, model):
-        self.provider, self.model_name = provider, model
+    def __init__(self, provider, model, api_key="", display_name=""):
+        self.provider, self.model_name, self.api_key, self.display_name = provider, model, api_key, display_name
 
 
 @pytest.mark.parametrize("provider,model,ok", [
@@ -292,7 +292,8 @@ class _Cfg:
     ("authnd", "kimi-k3-mini", False),
     ("authnd", "moonshotai/kimi", False),
     ("authnd", "deepseek-ai/deepseek-v3", False),
-    ("openai", "gpt-4o", False),
+    ("openai", "gpt-4o", False),  # no api key
+    ("anthropic", "", False),  # no model name
     ("authnd", "moonshotai/", False),
 ])
 def test_lab_model_validation_exact(provider, model, ok, monkeypatch):
@@ -300,3 +301,12 @@ def test_lab_model_validation_exact(provider, model, ok, monkeypatch):
     result, _ = validate_lab_llm_config(_Cfg(provider, model))
     assert result is ok
     assert "moonshotai/kimi-k3" in AUTHND_LAB_ALLOWED_MODELS
+
+
+@pytest.mark.parametrize("provider,model", [("anthropic", "claude-fable-5-1"), ("openai", "gpt-4o"), ("openai_compatible", "any/model"), ("google", "gemini-2.5-pro")])
+def test_lab_model_validation_api_key_providers(provider, model):
+    ok, reason = validate_lab_llm_config(_Cfg(provider, model, api_key="k"))
+    assert ok is True
+    assert reason == f"{provider}/{model}"
+    ok, reason = validate_lab_llm_config(_Cfg(provider, model, api_key="   "))
+    assert ok is False and "API key" in reason
