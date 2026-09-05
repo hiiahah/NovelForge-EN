@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.endpoints import ai, authnd, cards, genspark, llm_configs, projects, prompts
 from app.api.endpoints import assistant as assistant_ep
+from app.api.endpoints import autonomous as autonomous_ep
 from app.api.endpoints import bible as bible_ep
 from app.api.endpoints import chapter_reviews as chapter_reviews_ep
 from app.api.endpoints import context as context_ep
@@ -35,5 +36,6 @@ api_router.include_router(foreshadow_ep.router, prefix="/foreshadow", tags=["for
 api_router.include_router(bible_ep.router, prefix="/bible", tags=["bible"])
 api_router.include_router(lab_ep.router, prefix="/lab", tags=["lab"])
 api_router.include_router(forge_ep.router, prefix="/forge", tags=["forge"])
+api_router.include_router(autonomous_ep.router, prefix="/autonomous", tags=["autonomous"])
 api_router.include_router(knowledge_ep.router, prefix="/knowledge", tags=["knowledge"])
 api_router.include_router(workflows_ep.router, tags=["workflows"])
