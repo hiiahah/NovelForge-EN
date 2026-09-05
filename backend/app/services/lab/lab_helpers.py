@@ -48,6 +48,9 @@ def fn_lab_chapter_items(cards: Any) -> List[Dict[str, Any]]:
             "title": str(content.get("title") or card.get("title") or ""),
             "volume": str(content.get("volume") or ""),
             "word_count": int(content.get("word_count") or 0),
+            "manuscript_id": str(content.get("manuscript_id") or ""),
+            "chapter_id": str(content.get("chapter_id") or ""),
+            "language": str(content.get("language") or ""),
             "content": text,
         })
     items.sort(key=lambda it: it["chapter_no"])
@@ -62,15 +65,30 @@ def fn_lab_chapter_items(cards: Any) -> List[Dict[str, Any]]:
     example="lab_analysis_records(analysis_results.results)",
 )
 def fn_lab_analysis_records(results: Any) -> List[Dict[str, Any]]:
+    """Merge results; verify every evidence quote against the chapter text.
+
+    Failed items (no ``ai_result``) become explicit ``analysis_status="failed"``
+    records so the chapter card records the failure instead of silently
+    staying "pending" while the run reports success. Evidence verification
+    downgrades fabricated quotes (see ``forge.evidence``).
+    """
+    from app.services.forge import evidence as forge_evidence
+
     records: List[Dict[str, Any]] = []
     for row in results or []:
         row = _as_dict(row)
         meta = _as_dict(row.get("meta"))
         ai = _as_dict(row.get("ai_result"))
+        chapter_no = int(meta.get("chapter_no") or ai.get("chapter_number") or 0)
+        card_title = f"Ch {chapter_no:04d} · {meta.get('title') or ai.get('title') or ''}"[:200]
         if not ai:
+            records.append({
+                "chapter_number": chapter_no, "title": meta.get("title") or "", "volume": meta.get("volume") or "", "word_count": int(meta.get("word_count") or 0),
+                "card_id": meta.get("card_id"), "card_title": card_title, "analysis_status": "failed", "analysis_error": str(row.get("error") or "no structured result"),
+            })
             continue
         record = dict(ai)
-        record["chapter_number"] = int(meta.get("chapter_no") or ai.get("chapter_number") or 0)
+        record["chapter_number"] = chapter_no
         record["title"] = ai.get("title") or meta.get("title") or ""
         record["volume"] = ai.get("volume") or meta.get("volume") or ""
         record["word_count"] = int(meta.get("word_count") or 0)
@@ -79,14 +97,42 @@ def fn_lab_analysis_records(results: Any) -> List[Dict[str, Any]]:
         # Must match the title produced by ManuscriptImportService.store_manuscript.
         # Use the imported title (not the AI-rewritten one) so the upsert updates
         # the existing chapter card instead of creating a duplicate.
-        record["card_title"] = f"Ch {record['chapter_number']:04d} · {meta.get('title') or record['title']}"[:200]
+        record["card_title"] = card_title
         emo = _as_dict(record.get("emotion"))
         if emo and not emo.get("chapter_number"):
             emo["chapter_number"] = record["chapter_number"]
             record["emotion"] = emo
+        source_text = str(meta.get("content") or "")
+        if source_text:
+            record = forge_evidence.verify_chapter_analysis(
+                record, source_text, manuscript_id=str(meta.get("manuscript_id") or ""), chapter_id=str(meta.get("chapter_id") or ""),
+                chapter_number=chapter_no, extraction_model=str(meta.get("model_name") or ""), prompt_version="Lab - Chapter Analysis@2",
+            )
         records.append(record)
     records.sort(key=lambda r: r["chapter_number"])
     return records
+
+
+@register_function(
+    "lab_verified_records",
+    summary="Only analysis records whose evidence was verified (status done); failed chapters are excluded from downstream digests",
+    scenario="Reverse-engineering lab",
+    priority=60,
+    example="lab_verified_records(analysis_records.result)",
+)
+def fn_lab_verified_records(records: Any) -> List[Dict[str, Any]]:
+    return [_as_dict(r) for r in (records or []) if _as_dict(r).get("analysis_status") == "done"]
+
+
+@register_function(
+    "lab_failed_chapters",
+    summary="Chapter numbers whose analysis failed or whose evidence could not be verified",
+    scenario="Reverse-engineering lab",
+    priority=60,
+    example="lab_failed_chapters(analysis_records.result)",
+)
+def fn_lab_failed_chapters(records: Any) -> List[int]:
+    return sorted(int(_as_dict(r).get("chapter_number") or 0) for r in (records or []) if _as_dict(r).get("analysis_status") == "failed")
 
 
 @register_function(

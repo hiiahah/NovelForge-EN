@@ -149,6 +149,13 @@ class ReviewResultCardContent(BaseModel):
     target_snapshot: Optional[str] = Field(default=None, description="Snapshot of reviewed content")
     meta: Optional[dict[str, Any]] = Field(default_factory=dict, description="Extended metadata")
 
+class ChapterBeat(BaseModel):
+    """One ordered beat of a chapter (consumed by the Forge context compiler, outline validation and example retrieval)."""
+    function: str = Field(default="", description="Beat function tag, e.g. cold_open, dialogue_heavy_scene, threat_escalation, reveal, chapter_cliffhanger")
+    description: str = Field(description="What happens in this beat, concretely and in order")
+    keywords: List[str] = Field(default_factory=list, description="2-6 distinctive words a validator can look for to confirm the beat was written")
+
+
 class ChapterOutline(BaseModel):
     """Chapter outline"""
     volume_number: int = Field(description="Volume number; if not found, set to 0")
@@ -160,6 +167,13 @@ class ChapterOutline(BaseModel):
     entity_list: List[str] = Field(
         description="List of important entities appearing in the chapter; can only be selected from the organization / character / scene card entities provided in the context, and must not be added or invented; entity names must be pure names (no parentheses / remarks). Note: to streamline the context, avoid redundant entities in the entity list that do not appear in this chapter",
     )
+    # Forge generation contract (explicit POV + ordered beats + outcome classes).
+    pov: str = Field(default="", description="Explicit POV character name (must be a Character Card); required before chapter generation")
+    participants: List[str] = Field(default_factory=list, description="Characters present in the chapter (subset of entity_list)")
+    beats: List[ChapterBeat] = Field(default_factory=list, description="Ordered beats; generation may not go beyond the last beat")
+    allowed_outcomes: List[str] = Field(default_factory=list, description="Persistent facts this chapter is allowed to establish (planned facts)")
+    forbidden_outcomes: List[str] = Field(default_factory=list, description="Outcomes reserved for later chapters that must not happen here")
+    word_target: Optional[int] = Field(default=None, description="Target length in words / eojeol")
 
 
 

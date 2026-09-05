@@ -32,6 +32,7 @@ import posixpath
 import re
 import zipfile
 from dataclasses import dataclass, field
+from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from xml.etree import ElementTree
@@ -44,7 +45,9 @@ from app.db.models import Card, CardType
 from app.schemas.card import CardCreate
 from app.services.card_service import CardService
 
-SUPPORTED_EXTENSIONS = (".txt", ".md", ".markdown", ".epub", ".docx")
+SUPPORTED_EXTENSIONS = (".txt", ".md", ".markdown", ".epub", ".docx", ".pdf")
+# Bump whenever splitting/classification output can change for the same bytes.
+PARSER_VERSION = "manuscript-parser-2"
 
 # Archive safety limits (zip bombs / pathological EPUBs).
 MAX_ARCHIVE_ENTRIES = 5000
@@ -56,12 +59,15 @@ DEFAULT_MIN_CHAPTER_WORDS = 80
 CHAPTER_PATTERN_CANDIDATES: List[Tuple[str, str]] = [
     ("chapter_word", r"^\s*(?:#+\s*)?Chapter\s+(\d+|[IVXLCivxlc]+|[A-Za-z\-]+)\b.*$"),
     ("cjk_chapter", r"^\s*第\s*([零一二三四五六七八九十百千0-9]+)\s*[章节回].*$"),
+    # Korean web-novel headings: "제 12 화", "12화", "제3장", "에피소드 4", "EP.4"
+    ("korean_hwa", r"^\s*(?:#+\s*)?(?:제\s*)?(\d{1,4})\s*[화장회편막절](?:\s|[.:：\-)]|$).*$"),
+    ("korean_episode", r"^\s*(?:#+\s*)?(?:에피소드|EP|Ep|ep)\.?\s*(\d{1,4})\b.*$"),
     ("numbered_heading", r"^\s*#{1,3}\s*(\d+)[\.\):]?\s+.*$"),
     ("bare_number_title", r"^\s*(\d{1,4})[\.\)]\s+\S.*$"),
     ("markdown_h1", r"^\s*#\s+(.+)$"),
 ]
 
-VOLUME_PATTERN_DEFAULT = r"^\s*(?:#+\s*)?(?:Volume|Book|Part|Arc)\s+(\d+|[IVXLCivxlc]+|[A-Za-z\-]+)\b.*$|^\s*第\s*([零一二三四五六七八九十百千0-9]+)\s*[卷部纪].*$"
+VOLUME_PATTERN_DEFAULT = r"^\s*(?:#+\s*)?(?:Volume|Book|Part|Arc)\s+(\d+|[IVXLCivxlc]+|[A-Za-z\-]+)\b.*$|^\s*第\s*([零一二三四五六七八九十百千0-9]+)\s*[卷部纪].*$|^\s*(?:제\s*)?(\d{1,3})\s*[권부]\s*(?:[.:：\-)]|$).*$"
 
 # Section type vocabulary (see classify_sections).
 SECTION_TYPES = (
@@ -484,6 +490,26 @@ def _docx_text(data: bytes) -> str:
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
+def _pdf_text(data: bytes) -> str:
+    """Page-ordered text extraction for user-supplied PDFs (no OCR)."""
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:  # pragma: no cover - dependency is pinned in requirements
+        raise ValueError("PDF import requires the 'pypdf' package") from exc
+    reader = PdfReader(io.BytesIO(data))
+    pages: List[str] = []
+    for page in reader.pages:
+        try:
+            text = page.extract_text() or ""
+        except Exception:
+            text = ""
+        pages.append(text.strip())
+    joined = "\n\n".join(p for p in pages if p)
+    # Reflow hard-wrapped PDF lines inside paragraphs; keep blank-line breaks.
+    joined = re.sub(r"(?<![.!?…。！？\"”」』:])\n(?!\n)", " ", joined)
+    return re.sub(r"\n{3,}", "\n\n", joined).strip()
+
+
 def extract_text(filename: str, data: bytes, encoding: Optional[str] = None) -> str:
     """Plain-text extraction (kept for callers that only need text)."""
     name = (filename or "").lower()
@@ -492,6 +518,8 @@ def extract_text(filename: str, data: bytes, encoding: Optional[str] = None) -> 
         return "\n\n".join(s.text for s in sections if s.text)
     if name.endswith(".docx"):
         return _docx_text(data)
+    if name.endswith(".pdf"):
+        return _pdf_text(data)
     if name.endswith(SUPPORTED_EXTENSIONS[:3]):
         return _decode(data, encoding)
     raise ValueError(f"Unsupported file type: {filename}. Supported: {', '.join(SUPPORTED_EXTENSIONS)}")
@@ -673,6 +701,8 @@ def extract_sections(filename: str, data: bytes, encoding: Optional[str] = None,
         return sections, info
     if name.endswith(".docx"):
         text = _docx_text(data)
+    elif name.endswith(".pdf"):
+        text = _pdf_text(data)
     elif name.endswith(SUPPORTED_EXTENSIONS[:3]):
         text = _decode(data, encoding)
     else:
@@ -1087,27 +1117,75 @@ class ManuscriptImportService:
         chapters: List[DetectedChapter],
         replace_existing: bool = True,
         source_filename: str = "",
+        source_bytes: Optional[bytes] = None,
+        corrections: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Persist included chapters as Chapter Analysis cards in ONE transaction.
 
+        Identity: ``manuscript_id`` = sha256(file hash + ordered chapter text
+        hashes). Re-importing identical bytes with identical corrections is a
+        no-op (idempotent). Importing different content replaces the chapter
+        cards and marks every artifact derived from the previous manuscript
+        stale (analysis cards, fingerprint, genome, reference examples).
+
         Excluded sections (side stories, front/back matter) are never stored as
-        chapters; only their identity is recorded in the folder metadata so the
-        UI can show what was left out.
+        chapters; only their identity is recorded in the folder metadata.
         """
+        from app.services.forge import corpus as forge_corpus
+
         kept = included_chapters(chapters)
         if not kept:
             raise ValueError("No included chapters to import")
         excluded = [c for c in chapters if not c.included]
+        file_hash = hashlib.sha256(source_bytes).hexdigest() if source_bytes is not None else ""
+        chapter_hashes = [hashlib.sha256(ch.text.encode("utf-8")).hexdigest() for ch in kept]
+        manuscript_id = hashlib.sha256(("\x1f".join([file_hash] + chapter_hashes)).encode("utf-8")).hexdigest()[:24]
+        now = datetime.now().isoformat(timespec="seconds")
+        invalidated = 0
         try:
             analysis_type = self._card_type("Chapter Analysis")
             folder = self._get_or_create_folder(project_id, MANUSCRIPT_FOLDER_TITLE)
+            previous_id = (folder.content or {}).get("manuscript_id") if isinstance(folder.content, dict) else None
+            existing_cards = self.session.exec(select(Card).where(Card.project_id == project_id, Card.card_type_id == analysis_type.id, Card.parent_id == folder.id).order_by(Card.display_order, Card.id)).all()
+
+            prev_meta = {k: (folder.content or {}).get(k) for k in ("book_title", "author", "genre", "language", "source_filename")} if isinstance(folder.content, dict) else {}
+            same_meta = prev_meta == {"book_title": title, "author": author, "genre": genre, "language": language, "source_filename": source_filename}
+            if previous_id == manuscript_id and same_meta and existing_cards and len(existing_cards) == len(kept):
+                # Idempotent re-import: identical bytes, corrections and metadata.
+                self.session.rollback()
+                return {
+                    "folder_card_id": folder.id,
+                    "chapter_card_ids": [c.id for c in existing_cards],
+                    "chapter_count": len(existing_cards),
+                    "total_words": sum(c.word_count for c in kept),
+                    "excluded_count": len(excluded),
+                    "excluded_words": sum(c.word_count for c in excluded),
+                    "manuscript_id": manuscript_id,
+                    "unchanged": True,
+                    "invalidated": 0,
+                }
+
+            if existing_cards and not replace_existing:
+                raise ValueError("A manuscript is already imported in this project; set replace_existing to replace it")
+
+            if existing_cards:
+                for c in existing_cards:
+                    self.session.delete(c)
+                self.session.flush()
+                if previous_id and previous_id != manuscript_id:
+                    invalidated = forge_corpus.invalidate_manuscript_dependents(self.session, project_id, previous_id, reason=f"manuscript replaced by {manuscript_id}")
+
             folder.content = {
                 **(folder.content or {}),
+                "manuscript_id": manuscript_id,
                 "book_title": title,
                 "author": author,
                 "genre": genre,
                 "language": language,
                 "source_filename": source_filename,
+                "source_file_hash": file_hash,
+                "parser_version": PARSER_VERSION,
+                "imported_at": now,
                 "chapter_count": len(kept),
                 "main_story_word_count": sum(c.word_count for c in kept),
                 "excluded_sections": [
@@ -1115,19 +1193,17 @@ class ManuscriptImportService:
                     for c in excluded
                 ],
                 "excluded_word_count": sum(c.word_count for c in excluded),
+                "corrections": list(corrections or []),
+                "previous_manuscript_id": previous_id if previous_id and previous_id != manuscript_id else (folder.content or {}).get("previous_manuscript_id"),
             }
             flag_modified(folder, "content")
             self.session.add(folder)
 
-            if replace_existing:
-                old = self.session.exec(select(Card).where(Card.project_id == project_id, Card.card_type_id == analysis_type.id, Card.parent_id == folder.id)).all()
-                for c in old:
-                    self.session.delete(c)
-                self.session.flush()
-
             service = CardService(self.session)
             card_ids: List[int] = []
             for seq, ch in enumerate(kept, start=1):
+                text_hash = chapter_hashes[seq - 1]
+                chapter_language = language or forge_corpus.detect_language(ch.text)
                 content = {
                     "chapter_number": seq,
                     "title": ch.title,
@@ -1144,6 +1220,23 @@ class ManuscriptImportService:
                     "included": True,
                     "is_main_story": ch.is_main_story,
                     "analysis_status": "pending",
+                    # Corpus identity (Phase 2)
+                    "manuscript_id": manuscript_id,
+                    "source_project_id": project_id,
+                    "source_filename": source_filename,
+                    "source_file_hash": file_hash,
+                    "chapter_id": forge_corpus.chapter_id(manuscript_id, seq, text_hash),
+                    "original_chapter_number": ch.number,
+                    "normalized_chapter_number": seq,
+                    "source_order": seq,
+                    "language": chapter_language,
+                    "char_count": len(ch.text),
+                    "unit_count": forge_corpus.count_units(ch.text, chapter_language),
+                    "source_text_hash": text_hash,
+                    "imported_at": now,
+                    "parser_version": PARSER_VERSION,
+                    "correction_history": [c for c in (corrections or []) if str(c.get("section_id") or "") == ch.section_id],
+                    "flags": list(ch.flags),
                 }
                 card = service.create(CardCreate(title=f"Ch {seq:04d} · {ch.title}"[:200], content=content, card_type_id=analysis_type.id, parent_id=folder.id), project_id, commit=False)
                 card_ids.append(card.id)
@@ -1152,7 +1245,7 @@ class ManuscriptImportService:
             self.session.rollback()
             logger.exception(f"[ManuscriptImport] import failed for project {project_id}; rolled back")
             raise
-        logger.info(f"[ManuscriptImport] stored {len(card_ids)} chapters for project {project_id} ({len(excluded)} sections excluded)")
+        logger.info(f"[ManuscriptImport] stored {len(card_ids)} chapters for project {project_id} manuscript {manuscript_id} ({len(excluded)} sections excluded, {invalidated} dependents invalidated)")
         return {
             "folder_card_id": folder.id,
             "chapter_card_ids": card_ids,
@@ -1160,6 +1253,9 @@ class ManuscriptImportService:
             "total_words": sum(c.word_count for c in kept),
             "excluded_count": len(excluded),
             "excluded_words": sum(c.word_count for c in excluded),
+            "manuscript_id": manuscript_id,
+            "unchanged": False,
+            "invalidated": invalidated,
         }
 
     def list_manuscript(self, project_id: int) -> Dict[str, Any]:
@@ -1182,5 +1278,13 @@ class ManuscriptImportService:
                 "source_label": content.get("source_label") or content.get("title") or c.title,
                 "analysis_status": content.get("analysis_status") or ("done" if content.get("summary") else "pending"),
                 "scene_count": len(content.get("scenes") or []),
+                "chapter_id": content.get("chapter_id"),
+                "manuscript_id": content.get("manuscript_id"),
+                "source_text_hash": content.get("source_text_hash"),
+                "language": content.get("language"),
+                "char_count": content.get("char_count"),
+                "evidence_verified": content.get("evidence_verified"),
+                "evidence_total": content.get("evidence_total"),
+                "flags": content.get("flags") or [],
             })
         return {"folder_card_id": folder.id, "meta": {k: v for k, v in (folder.content or {}).items()}, "chapters": chapters}

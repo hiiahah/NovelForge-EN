@@ -120,6 +120,9 @@ class ManuscriptImportResponse(BaseModel):
     total_words: int
     excluded_count: int = 0
     excluded_words: int = 0
+    manuscript_id: str = ""
+    unchanged: bool = False
+    invalidated: int = 0
 
 
 class ManuscriptListResponse(BaseModel):
@@ -262,6 +265,8 @@ def import_manuscript(req: ManuscriptImportRequest, session: Session = Depends(g
             chapters=chapters,
             replace_existing=req.replace_existing,
             source_filename=req.filename,
+            source_bytes=_decode_upload(req.content_base64),
+            corrections=req.corrections,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -383,18 +388,11 @@ async def start_lab_workflow(req: LabRunRequest, session: Session = Depends(get_
     llm_cfg = session.get(LLMConfig, req.llm_config_id)
     if not llm_cfg:
         raise HTTPException(status_code=400, detail=f"LLM configuration {req.llm_config_id} not found")
-    provider = (llm_cfg.provider or "").strip().lower()
-    if provider not in {"authnd", "genspark"}:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Lab reverse-engineering workflow requires an AuthND or Genspark configuration (got provider '{llm_cfg.provider}')",
-        )
-    target_model = (llm_cfg.model_name or "").strip().lower()
-    if provider == "authnd" and target_model and "kimi" not in target_model and target_model != "moonshotai/kimi-k3":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Lab reverse-engineering workflow requires the AuthND Kimi model (got '{llm_cfg.model_name}')",
-        )
+    from app.services.forge.models import validate_lab_llm_config
+
+    ok, reason = validate_lab_llm_config(llm_cfg)
+    if not ok:
+        raise HTTPException(status_code=400, detail=reason)
     manuscript = ManuscriptImportService(session).list_manuscript(req.project_id)
     if not manuscript.get("chapters"):
         raise HTTPException(status_code=400, detail="No imported manuscript in this project. Import chapters first.")

@@ -72,6 +72,7 @@
 
             <BibleUpdateReview v-else-if="section === 'updates'" ref="updateReviewRef" :project-id="projectId" :open-review-id="openReviewId" @applied="refresh" />
             <LabImportWizard v-else-if="section === 'lab'" :project-id="projectId" @open-card="(id) => emit('open-card', id)" @imported="refresh" />
+            <ForgePipelinePanel v-else-if="section === 'forge'" :project-id="projectId" @open-card="(id) => emit('open-card', id)" />
           </div>
         </el-scrollbar>
       </div>
@@ -105,6 +106,7 @@ import { deepenCharacter, getBibleDashboard, getKnowledgeMatrix, getRelationship
 import { useCardStore } from '@renderer/stores/useCardStore'
 import BibleUpdateReview from './BibleUpdateReview.vue'
 import KnowledgeMatrix from './KnowledgeMatrix.vue'
+import ForgePipelinePanel from './ForgePipelinePanel.vue'
 import LabImportWizard from './LabImportWizard.vue'
 import RelationshipMatrix from './RelationshipMatrix.vue'
 
@@ -113,8 +115,8 @@ const emit = defineEmits<{ (e: 'open-card', id: number): void }>()
 const { t } = useI18n()
 const cardStore = useCardStore()
 
-const CREATE_SECTIONS = ['foundation', 'characters', 'relationships', 'world', 'threads', 'promises', 'knowledge', 'timeline', 'updates', 'audits']
-const EXTRACT_SECTIONS = ['lab', 'analysis', 'characters', 'relationships', 'threads', 'promises', 'knowledge', 'timeline', 'audits']
+const CREATE_SECTIONS = ['forge', 'foundation', 'characters', 'relationships', 'world', 'threads', 'promises', 'knowledge', 'timeline', 'updates', 'audits']
+const EXTRACT_SECTIONS = ['lab', 'forge', 'analysis', 'characters', 'relationships', 'threads', 'promises', 'knowledge', 'timeline', 'audits']
 const CARD_SECTIONS = new Set(['foundation', 'characters', 'world', 'threads', 'promises', 'timeline', 'analysis'])
 
 const mode = ref<'create' | 'extract'>('create')
