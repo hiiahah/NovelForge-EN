@@ -207,6 +207,35 @@ class WorkflowSettings(BaseSettings):
         extra = "ignore"
 
 
+class AutonomousSettings(BaseSettings):
+    """Autonomous novel job durability and budget settings."""
+
+    # Lease held by a worker on a job; must exceed the longest single provider call.
+    lease_seconds: int = Field(default=300, alias="AUTONOMOUS_LEASE_SECONDS")
+    # Independent heartbeat renews the lease this often (30-60 s recommended).
+    heartbeat_seconds: int = Field(default=45, alias="AUTONOMOUS_HEARTBEAT_SECONDS")
+    # Default job budgets (0 = unlimited); a job's own ``budget`` overrides these.
+    default_max_calls: int = Field(default=0, alias="AUTONOMOUS_DEFAULT_MAX_CALLS")
+    default_max_total_tokens: int = Field(default=0, alias="AUTONOMOUS_DEFAULT_MAX_TOTAL_TOKENS")
+    default_max_repair_calls: int = Field(default=0, alias="AUTONOMOUS_DEFAULT_MAX_REPAIR_CALLS")
+    # Test-only failpoints (never enabled in production); comma-separated failpoint names.
+    failpoints: str = Field(default="", alias="AUTONOMOUS_FAILPOINTS")
+    # Upload hardening.
+    max_upload_bytes: int = Field(default=60 * 1024 * 1024, alias="AUTONOMOUS_MAX_UPLOAD_BYTES")
+    max_zip_entries: int = Field(default=5000, alias="AUTONOMOUS_MAX_ZIP_ENTRIES")
+    max_expanded_bytes: int = Field(default=400 * 1024 * 1024, alias="AUTONOMOUS_MAX_EXPANDED_BYTES")
+    max_compression_ratio: int = Field(default=200, alias="AUTONOMOUS_MAX_COMPRESSION_RATIO")
+    max_entry_bytes: int = Field(default=20 * 1024 * 1024, alias="AUTONOMOUS_MAX_ENTRY_BYTES")
+    max_chapters: int = Field(default=2000, alias="AUTONOMOUS_MAX_CHAPTERS")
+    max_text_chars: int = Field(default=30_000_000, alias="AUTONOMOUS_MAX_TEXT_CHARS")
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False
+        extra = "ignore"
+
+
 class Settings:
     """Global configuration object"""
     
@@ -217,6 +246,7 @@ class Settings:
         self.ai = AISettings()
         self.bootstrap = BootstrapSettings()
         self.workflow = WorkflowSettings()
+        self.autonomous = AutonomousSettings()
         self.context = ContextSettings()
         self.app = AppSettings()
     

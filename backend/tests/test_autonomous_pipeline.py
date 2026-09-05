@@ -18,6 +18,7 @@ import json
 import os
 import sys
 import zipfile
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
 
 import pytest
@@ -308,9 +309,10 @@ def test_04_chapter_loop_interrupt_and_resume_without_duplicates(fake, state):
         assert job.chapters_committed == 2 and job.stage == "CHAPTER_GENERATION_LOOP"
         ch1 = job.stage_results["CHAPTER_GENERATION_LOOP"]["1"]
         assert ch1["repair_attempts"] >= 1  # the leaked source name was caught and repaired in-run
-        # Simulate a crash: the process dies while the job row says running.
+        # Simulate a crash: the process dies while the job row says running and its lease is stale.
         job.status = "running"
         job.lease_owner = "dead-process"
+        job.lease_expires_at = datetime.now() - timedelta(seconds=1)
         s.add(job)
         s.commit()
     with Session(engine) as s:

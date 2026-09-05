@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
@@ -262,17 +263,32 @@ def repairable_chapters(audit: Dict[str, Any]) -> List[int]:
     return sorted(chs)
 
 
-async def global_repair(session: Session, *, project_id: int, chapter_count: int, client: ModelClient, audit: Dict[str, Any]) -> Dict[str, Any]:
-    """Rewrite blocking chapters, re-validate, and rebuild canon forward from the first changed chapter."""
+async def global_repair(session: Session, *, project_id: int, chapter_count: int, client: ModelClient, audit: Dict[str, Any], lease_check: Optional[Callable[[], None]] = None, checkpoint: Optional[Dict[str, Any]] = None, save_checkpoint: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
+    """Rewrite blocking chapters, re-validate, then rewind canon/ledgers to the first changed chapter and replay forward.
+
+    ``checkpoint`` (persisted by the caller through ``save_checkpoint``) makes the
+    operation resumable: repaired chapters and the last replayed chapter are
+    recorded so an interrupted run continues without repeating model calls or
+    duplicating ledger mutations.
+    """
+    from app.services.autonomous import rewind as rewind_mod
+
+    check = lease_check or (lambda: None)
+    cp: Dict[str, Any] = dict(checkpoint or {})
+    persist = save_checkpoint or (lambda d: None)
     targets = repairable_chapters(audit)[:MAX_GLOBAL_REPAIR_CHAPTERS]
-    if not targets:
-        return {"repaired": [], "rebuilt_from": None, "audit": audit}
+    repaired: List[int] = list(cp.get("repaired") or [])
+    if not targets and not repaired:
+        return {"repaired": [], "rebuilt_from": None, "audit": audit, "repaired_findings": 0}
     profile = source_profile_for(session, project_id)
     fingerprint = _c(BibleService(session).singleton(project_id, "Narrative Fingerprint"))
     compiler = ChapterContextCompiler(session)
-    repaired: List[int] = []
     by_chapter = {n: (card, text) for n, card, text in chapter_texts(session, project_id)}
+    repaired_findings = int(cp.get("repaired_findings") or 0)
     for n in targets:
+        if n in repaired or n in (cp.get("skipped") or []):
+            continue
+        check()
         card, text = by_chapter[n]
         issues = [v.Issue(layer="audit", code=f["kind"], severity=f["severity"], message=f["message"], span=None, hint="Rewrite only what is needed to remove this problem; keep every fact, beat and the chapter's ending state.") for f in audit["findings"] if f.get("chapter") == n and f["severity"] in ("critical", "high")]
         if not issues:
@@ -283,11 +299,15 @@ async def global_repair(session: Session, *, project_id: int, chapter_count: int
         except Exception as exc:  # noqa: BLE001 - compile for an already committed chapter should work; report otherwise
             raise fail.StageFailure(fail.STALE_DEPENDENCY, f"Cannot recompile chapter {n} for global repair: {exc}")
         raw = await client.text(role="whole_novel_editor", system_prompt=REPAIR_SYSTEM_PROMPT, user_prompt=build_repair_prompt(ctx, text, issues), prompt_version=GLOBAL_REPAIR_PROMPT_VERSION, stage=f"GLOBAL_REPAIR:ch{n}")
+        check()
         prose, model_claims = claims_mod.split_prose_and_claims(raw)
         report, all_claims, model_claims = validate_draft(session, ctx, raw, profile=profile, fingerprint=fingerprint)
         if report.blocking:
+            cp.setdefault("skipped", []).append(n)
+            persist(cp)
             continue  # keep the original; the finding stays in the report
         c = _c(card)
+        c.setdefault("revisions", []).append({"replaced_at": datetime.now().isoformat(timespec="seconds"), "reason": "global_repair", "issues": [i.code for i in issues], "previous_hash": provenance.content_hash(text)})
         c["content"] = prose
         c["sync_status"] = "pending"
         c["repaired_by_global_audit"] = True
@@ -296,24 +316,25 @@ async def global_repair(session: Session, *, project_id: int, chapter_count: int
         session.add(card)
         session.commit()
         repaired.append(n)
+        repaired_findings += len(issues)
+        cp.update({"repaired": repaired, "repaired_findings": repaired_findings})
+        persist(cp)
+    rebuild: Optional[Dict[str, Any]] = None
     rebuilt_from = None
     if repaired:
-        # Rebuild canon forward from the earliest repaired chapter by re-syncing each chapter in order.
         rebuilt_from = min(repaired)
-        current = {m: (c_, t_) for m, c_, t_ in chapter_texts(session, project_id)}
-        for n in range(rebuilt_from, chapter_count + 1):
-            if n not in current:
-                continue
-            card, text = current[n]
-            c = _c(card)
-            outline = next((o for o in BibleService(session).cards_of_type(project_id, "Chapter Outline") if int(_c(o).get("chapter_number") or 0) == n), None)
-            oc = _c(outline)
-            allowed = list(oc.get("allowed_outcomes") or []) + [str(b.get("description") or "") for b in oc.get("beats") or [] if isinstance(b, dict)]
-            claims = claims_mod.extract_claims(text)
-            sync_mod.synchronize_chapter(session, project_id=project_id, chapter_number=n, chapter_card_id=card.id, pov=str(c.get("pov") or oc.get("pov") or ""), participants=list(c.get("participants") or oc.get("participants") or []), prose=text, claims=claims, model_claims=None, allowed_outcomes=allowed, outline_card_id=outline.id if outline else None)
-            session.commit()
+        resume_after = int(cp.get("replayed_through") or 0)
+
+        def _ckpt(n: int) -> None:
+            check()
+            cp["replayed_through"] = n
+            persist(cp)
+
+        rebuild = rewind_mod.rebuild_forward(session, project_id, from_chapter=rebuilt_from, to_chapter=chapter_count, checkpoint=_ckpt, resume_after=resume_after)
+        if not rebuild["verification"]["ok"]:
+            raise fail.StageFailure(fail.INTERNAL_CONTRADICTION, "Canon rebuild left stale references", detail=rebuild["verification"])
     final_audit = whole_novel_audit(session, project_id, chapter_count)
-    return {"repaired": repaired, "rebuilt_from": rebuilt_from, "audit": final_audit}
+    return {"repaired": repaired, "skipped": cp.get("skipped") or [], "rebuilt_from": rebuilt_from, "rebuild": rebuild, "audit": final_audit, "repaired_findings": repaired_findings}
 
 
 __all__ = ["AUDIT_VERSION", "GLOBAL_REPAIR_PROMPT_VERSION", "MAX_GLOBAL_REPAIR_CHAPTERS", "chapter_texts", "character_audit", "continuity_audit", "global_repair", "originality_audit", "prose_audit", "repairable_chapters", "structural_audit", "whole_novel_audit"]
