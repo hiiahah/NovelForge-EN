@@ -6,7 +6,7 @@ Unified management of all configuration items, supporting environment variables 
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -159,8 +159,16 @@ class AppSettings(BaseSettings):
     # API prefix
     api_prefix: str = Field(default="/api", alias="API_PREFIX")
     
-    # CORS allowed origins
-    cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
+    # Server bind address. NovelForge has no authentication or per-user authorization:
+    # it is a local, single-user application. The default binds to loopback only;
+    # exposing it on other interfaces (HOST=0.0.0.0) is unsupported and unsafe.
+    host: str = Field(default="127.0.0.1", alias="HOST")
+    port: int = Field(default=54321, alias="PORT")
+    
+    # CORS allowed origins (comma separated). The default is the local-only policy:
+    # loopback dev-server origins on any port plus the "null" origin Electron sends for
+    # file:// pages. Set CORS_ORIGINS="*" only when the backend is unreachable from other hosts.
+    cors_origins: str = Field(default="local", alias="CORS_ORIGINS")
     
     class Config:
         env_file = ".env"
@@ -168,15 +176,21 @@ class AppSettings(BaseSettings):
         case_sensitive = False
         extra = "ignore"  # Ignore extra fields
     
+    LOCAL_ORIGIN_REGEX: ClassVar[str] = r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
+
     def get_cors_origins_list(self) -> list:
-        """Get CORS origin list
-        
-        Returns:
-            Origin list
-        """
+        """Explicit origin list; ``local`` adds only the Electron ``null`` origin (loopback origins come from the regex)."""
         if self.cors_origins == "*":
             return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        if self.cors_origins.strip() == "local":
+            return ["null"]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def get_cors_origin_regex(self) -> Optional[str]:
+        return self.LOCAL_ORIGIN_REGEX if self.cors_origins.strip() == "local" else None
+
+    def is_loopback_host(self) -> bool:
+        return self.host.strip() in ("127.0.0.1", "localhost", "::1")
 
 
 class ContextSettings(BaseSettings):
