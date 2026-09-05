@@ -185,10 +185,11 @@ def main():
         12: "The First Evaluation Exam (Announcement)",
         13: "Dawn Sparring with the Ashen Sword",
         14: "Decryption Session #2: Controlled Detonation",
+        15: "The Uninvited Guest",
     }
 
     modified_count = 0
-    for ch_num in range(1, 15):
+    for ch_num in range(1, 16):
         ch_file = os.path.join(CHAPTERS_DIR, f"Chapter_{ch_num:03d}.md")
         if not os.path.exists(ch_file):
             continue
