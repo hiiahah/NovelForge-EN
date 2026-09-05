@@ -439,3 +439,29 @@ def test_lab_run_plan_and_empty_scope_rejected(client, project, fixture_epub):
     r_empty = client.post("/api/lab/workflow/run", json={"project_id": project["id"], "llm_config_id": cfg_id, "start_chapter": 900})
     assert r_empty.status_code == 400
     assert "selects no chapters" in r_empty.json()["detail"]
+
+
+def test_project_lab_workflow_uses_shipped_file_over_stale_db_row(client, project, fixture_epub):
+    """A stale built-in row (no BOOTSTRAP_OVERWRITE) must not silently drop the analysis scope."""
+    from app.api.endpoints.lab import LAB_WORKFLOW_NAME, LabRunRequest, _project_lab_workflow
+    from app.db.models import Workflow
+    from app.db.session import engine
+    from sqlmodel import Session, select
+
+    r_imp = client.post("/api/lab/manuscript/import", json={**_payload(fixture_epub), "project_id": project["id"], "book_title": "Stale WF"})
+    assert r_imp.status_code == 200
+    with Session(engine) as s:
+        base = s.exec(select(Workflow).where(Workflow.name == LAB_WORKFLOW_NAME)).first()
+        assert base is not None
+        original = base.definition_code
+        base.definition_code = "project = Logic.SelectProject(project_id=1)\nllm = Logic.SelectLLM(llm_config_id=1)\n"  # pre-scope legacy row
+        s.add(base)
+        s.commit()
+        try:
+            wf = _project_lab_workflow(s, LabRunRequest(project_id=project["id"], llm_config_id=1, start_chapter=2, end_chapter=3))
+            assert "'start_chapter': 2" in wf.definition_code and "'end_chapter': 3" in wf.definition_code
+            assert "lab_merge_stored_analyses" in wf.definition_code
+        finally:
+            base.definition_code = original
+            s.add(base)
+            s.commit()

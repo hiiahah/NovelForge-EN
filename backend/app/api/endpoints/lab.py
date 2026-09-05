@@ -352,15 +352,31 @@ def _plan_run(session: Session, req: LabRunRequest) -> LabRunPlan:
     )
 
 
+def _builtin_lab_workflow_code() -> Optional[str]:
+    from app.bootstrap.workflows import get_all_workflow_files
+
+    try:
+        return (get_all_workflow_files().get(LAB_WORKFLOW_NAME) or {}).get("code") or None
+    except Exception as exc:  # pragma: no cover - filesystem problems fall back to the DB row
+        logger.warning(f"[Lab] could not read built-in workflow file: {exc}")
+        return None
+
+
 def _project_lab_workflow(session: Session, req: LabRunRequest) -> Workflow:
     """Return the project-scoped copy of the built-in Lab workflow (created/updated on demand)."""
-    base = session.exec(select(Workflow).where(Workflow.name == LAB_WORKFLOW_NAME)).first()
-    if not base or not base.definition_code:
+    # The shipped .wf file is the source of truth: built-in rows are only refreshed
+    # at startup when BOOTSTRAP_OVERWRITE is set, and a stale row would silently
+    # ignore the analysis scope (and analyse the whole manuscript).
+    base_code = _builtin_lab_workflow_code()
+    if not base_code:
+        base = session.exec(select(Workflow).where(Workflow.name == LAB_WORKFLOW_NAME)).first()
+        base_code = base.definition_code if base else None
+    if not base_code:
         raise HTTPException(status_code=500, detail=f"Built-in workflow '{LAB_WORKFLOW_NAME}' is missing")
     name = f"{LAB_WORKFLOW_NAME} · project {req.project_id}"
     wf = session.exec(select(Workflow).where(Workflow.name == name)).first()
     code = _lab_workflow_code(
-        base.definition_code, project_id=req.project_id, llm_config_id=req.llm_config_id,
+        base_code, project_id=req.project_id, llm_config_id=req.llm_config_id,
         concurrency=req.analysis_concurrency, window_size=req.window_size, max_stage_count=req.max_stage_count,
         scope=_scope_of(req),
     )
