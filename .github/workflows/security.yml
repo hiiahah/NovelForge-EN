@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gitleaks scans the PR commit range; a shallow clone breaks the range
       - name: Forbidden tracked files
         run: |
           set -euo pipefail
