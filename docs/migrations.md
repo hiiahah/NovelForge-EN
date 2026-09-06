@@ -1,7 +1,7 @@
 # Alembic migration chain and duplicate-data safety
 
 ```
-0001_baseline -> 0002_forge -> 0003_autonomous -> 0004_fencing -> 0005_budget_ledger (head)
+0001_baseline -> 0002_forge -> 0003_autonomous -> 0004_fencing -> 0005_budget_ledger -> 0006_budget_dispatch (head)
 ```
 
 `app.db.migrations.upgrade_database(engine)` runs at application startup and in
@@ -47,6 +47,15 @@ columns on `autonomousnoveljob` (`reserved_input_tokens`,
 `max_tokens` on `modelinvocationattempt`. All new columns have server defaults,
 so existing rows are backfilled with zeros. Pre-existing jobs therefore report
 cost `unknown` (no priced calls recorded) rather than `0`.
+
+## 0006_budget_dispatch
+
+Adds `reserved_repair_calls` (integer, server_default 0) to `autonomousnoveljob`
+and `dispatched_at` (datetime, nullable) to `budgetreservation`.
+Pre-existing open ledger rows are conservatively transitioned to `dispatched`
+so recovery never releases capacity that might have reached a provider.
+Supports concurrency-hard CAS repair-call enforcement and conservative worst-case
+charging of dead-worker in-flight requests.
 
 ## Tests
 

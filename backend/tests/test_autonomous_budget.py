@@ -351,7 +351,7 @@ def test_restart_with_stale_reservations_is_repaired_deterministically(app_clien
         s.refresh(job)
         assert job.reserved_calls == 0 and job.reserved_tokens == 0 and job.reserved_input_tokens == 0 and job.reserved_output_tokens == 0
         rows = s.exec(select(BudgetReservation).where(BudgetReservation.job_id == job.id)).all()
-        assert sorted(r.status for r in rows) == ["abandoned", "abandoned"]
+        assert sorted(r.status for r in rows) == ["released", "released"]
         budget.reconcile(s, r1, input_tokens=40, output_tokens=40, succeeded=True)  # late reconcile is a no-op
         s.refresh(job)
         assert job.model_calls == 0 and job.reserved_calls == 0 and job.input_tokens == 0
@@ -360,7 +360,7 @@ def test_restart_with_stale_reservations_is_repaired_deterministically(app_clien
         budget.reconcile(s, r3, input_tokens=40, output_tokens=40, succeeded=True)  # idempotent
         s.refresh(job)
         assert job.model_calls == 1 and job.input_tokens == 40
-        assert budget.rebuild_reserved_counters(s, job.id) == {"reserved_calls": 0, "reserved_input_tokens": 0, "reserved_output_tokens": 0, "reserved_cost_usd": 0.0, "reserved_tokens": 0}
+        assert budget.rebuild_reserved_counters(s, job.id) == {"reserved_calls": 0, "reserved_repair_calls": 0, "reserved_input_tokens": 0, "reserved_output_tokens": 0, "reserved_cost_usd": 0.0, "reserved_tokens": 0}
 
 
 def test_accounting_failure_is_surfaced_not_swallowed(app_client):

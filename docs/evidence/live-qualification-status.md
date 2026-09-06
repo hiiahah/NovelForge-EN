@@ -45,3 +45,13 @@ To execute it, export `NF_KIMI_PROVIDER`, `NF_KIMI_MODEL`, `NF_KIMI_API_BASE`,
 `docs/live-qualification.md`. The default canary budget is 400 calls /
 4 M total tokens / 800 k output tokens / 40 repair calls, plus a `max_cost_usd`
 cap of 25 USD when `NF_PRICE_INPUT` / `NF_PRICE_OUTPUT` are supplied.
+
+## Controlled Beta Status & Operational Boundaries
+
+- **Verdict**: `CONTROLLED BETA — DETERMINISTIC CHECKS PASS; LIVE KIMI/EPUB QUALIFICATION NOT RUN`
+- **Deterministic suite**: All tests pass cleanly across Python 3.11 and Python 3.12 (222 backend unit/integration tests, 13 migration tests, 12 concurrency/recovery tests, 22 frontend vitest tests, web and electron builds).
+- **Concurrency-Safe Repair**: `max_repair_calls` is enforced via an atomic Compare-And-Set `reserved_repair_calls` counter on `autonomousnoveljob`, guaranteeing that concurrent repair attempts never jointly exceed the repair budget.
+- **Conservative Recovery**: Worker crash recovery differentiates undispatched reservations (safely released) from dispatched reservations (conservatively charged at 1 model call, full reserved output tokens, estimated input tokens, and worst-case or unknown cost). Capacity consumed by uncertain attempts is never released to replacement workers, and late responses are idempotent no-ops.
+- **Loopback-Only / No Auth**: System is designed strictly for local loopback operation; production multi-user authentication/authorization is not implemented.
+- **Database Scope**: Verified on SQLite; PostgreSQL migration and dialect semantics are not exercised.
+- **Security & Lint Debt**: Gitleaks and pip-audit pass strictly; 15 inherited npm high advisories documented in allowlist (`docs/ci.md`); legacy lint cleanup tracked in ratchet plan.
