@@ -392,6 +392,9 @@ class LLMModelClient:
                     self.recorder.record_attempt(inv_id, attempt=attempts, provider=self._provider(cid), model_name=self._model_name(cid), llm_config_id=cid, fallback=cid != primary_cid, role=role, stage=stage, completed_at=datetime.now(), status="budget_refused", error_category=fail.BUDGET_EXCEEDED, diagnostic=redact(str(exc)))
                     self.recorder.close_invocation(inv_id, input_tokens=total_in, output_tokens=total_out, latency_ms=int((time.monotonic() - started) * 1000), retries=attempts - 1, total_attempts=attempts, fallback_used=fallback_used, validation_status="error", error=redact(str(exc)))
                     raise
+            if reservation is not None:
+                with self._budget_factory() as bs:
+                    budget_mod.mark_dispatched(bs, reservation)
             a_started = time.monotonic()
             a_status, a_cat, a_pstatus, a_diag, a_retry_after, a_req_id = "ok", None, None, None, None, None
             a_in = a_out = 0

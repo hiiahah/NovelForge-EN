@@ -75,6 +75,7 @@ class Reservation:
     stage: str
     llm_config_id: Optional[int]
     released: bool = False
+    dispatched: bool = False
 
     @property
     def max_output_tokens(self) -> int:
@@ -143,7 +144,7 @@ def usage_snapshot(session: Session, job: AutonomousNovelJob) -> Dict[str, Any]:
         "input_tokens": {"used": used_in, "reserved": int(job.reserved_input_tokens), "limit": _limit(b, "max_input_tokens")},
         "output_tokens": {"used": used_out, "reserved": int(job.reserved_output_tokens), "limit": _limit(b, "max_output_tokens")},
         "total_tokens": {"used": used_in + used_out, "reserved": int(job.reserved_tokens), "limit": _limit(b, "max_total_tokens")},
-        "repair_calls": {"used": int(job.repair_calls), "limit": _limit(b, "max_repair_calls")},
+        "repair_calls": {"used": int(job.repair_calls), "reserved": int(getattr(job, "reserved_repair_calls", 0) or 0), "limit": _limit(b, "max_repair_calls")},
         "cost_usd": {"known": cost, "reserved": round(float(job.reserved_cost_usd or 0.0), COST_PRECISION), "limit": float(b.get("max_cost_usd") or 0.0), "unknown_calls": int(job.cost_unknown_calls), "status": "unknown" if cost is None else ("estimated" if int(job.usage_estimated_calls) > 0 else "reported")},
         "usage_estimated_calls": int(job.usage_estimated_calls),
         # Backward compatible alias: None means unknown, never zero.
@@ -157,13 +158,13 @@ def _stage_key(stage: str) -> str:
 
 def _ledger_totals(session: Session, job_id: int, *, stage_key: Optional[str] = None, stage: Optional[str] = None) -> Dict[str, int]:
     """Calls and tokens already used *or in flight* for a stage (or exact chapter stage), from the ledger."""
-    q = select(func.count(BudgetReservation.id), func.coalesce(func.sum(BudgetReservation.charged_input_tokens + BudgetReservation.charged_output_tokens), 0), func.coalesce(func.sum(BudgetReservation.reserved_input_tokens + BudgetReservation.reserved_output_tokens), 0)).where(BudgetReservation.job_id == job_id, BudgetReservation.status != "abandoned")
+    q = select(func.count(BudgetReservation.id), func.coalesce(func.sum(BudgetReservation.charged_input_tokens + BudgetReservation.charged_output_tokens), 0), func.coalesce(func.sum(BudgetReservation.reserved_input_tokens + BudgetReservation.reserved_output_tokens), 0)).where(BudgetReservation.job_id == job_id, BudgetReservation.status.not_in(["abandoned", "released"]))
     if stage is not None:
         q = q.where(BudgetReservation.stage == stage)
     elif stage_key is not None:
         q = q.where(BudgetReservation.stage_key == stage_key)
     count, charged, reserved_open = session.exec(q).one()
-    open_q = select(func.coalesce(func.sum(BudgetReservation.reserved_input_tokens + BudgetReservation.reserved_output_tokens), 0)).where(BudgetReservation.job_id == job_id, BudgetReservation.status == "open")
+    open_q = select(func.coalesce(func.sum(BudgetReservation.reserved_input_tokens + BudgetReservation.reserved_output_tokens), 0)).where(BudgetReservation.job_id == job_id, BudgetReservation.status.in_(["open", "dispatched"]))
     if stage is not None:
         open_q = open_q.where(BudgetReservation.stage == stage)
     elif stage_key is not None:
@@ -190,13 +191,15 @@ def reserve(session: Session, job_id: int, *, role: str, stage: str, estimated_i
         problems: List[str] = []
         used_in, used_out = int(job.input_tokens), int(job.output_tokens)
         res_in, res_out, res_calls = int(job.reserved_input_tokens), int(job.reserved_output_tokens), int(job.reserved_calls)
+        res_repair = int(getattr(job, "reserved_repair_calls", 0) or 0)
+        is_repair = 1 if role in REPAIR_ROLES else 0
 
         max_calls = _limit(b, "max_calls")
         if max_calls and job.model_calls + res_calls + 1 > max_calls:
             problems.append(f"max_calls {max_calls} reached ({job.model_calls} used, {res_calls} reserved)")
         max_repair = _limit(b, "max_repair_calls")
-        if max_repair and role in REPAIR_ROLES and job.repair_calls + 1 > max_repair:
-            problems.append(f"max_repair_calls {max_repair} reached")
+        if max_repair and is_repair and job.repair_calls + res_repair + 1 > max_repair:
+            problems.append(f"max_repair_calls {max_repair} reached ({job.repair_calls} used, {res_repair} reserved)")
 
         # Output allowance: the smallest remaining headroom across every token limit.
         allow_out = want_out
@@ -255,8 +258,8 @@ def reserve(session: Session, job_id: int, *, role: str, stage: str, estimated_i
         t = AutonomousNovelJob.__table__
         stmt = (
             update(t)
-            .where(t.c.id == job_id, t.c.reserved_calls == res_calls, t.c.reserved_input_tokens == res_in, t.c.reserved_output_tokens == res_out, t.c.model_calls == job.model_calls, t.c.input_tokens == used_in, t.c.output_tokens == used_out)
-            .values(reserved_calls=t.c.reserved_calls + 1, reserved_input_tokens=t.c.reserved_input_tokens + est_in, reserved_output_tokens=t.c.reserved_output_tokens + allow_out, reserved_tokens=t.c.reserved_tokens + est_in + allow_out, reserved_cost_usd=t.c.reserved_cost_usd + reserve_cost)
+            .where(t.c.id == job_id, t.c.reserved_calls == res_calls, t.c.reserved_repair_calls == res_repair, t.c.reserved_input_tokens == res_in, t.c.reserved_output_tokens == res_out, t.c.model_calls == job.model_calls, t.c.input_tokens == used_in, t.c.output_tokens == used_out)
+            .values(reserved_calls=t.c.reserved_calls + 1, reserved_repair_calls=t.c.reserved_repair_calls + is_repair, reserved_input_tokens=t.c.reserved_input_tokens + est_in, reserved_output_tokens=t.c.reserved_output_tokens + allow_out, reserved_tokens=t.c.reserved_tokens + est_in + allow_out, reserved_cost_usd=t.c.reserved_cost_usd + reserve_cost)
         )
         if session.execute(stmt).rowcount != 1:
             session.rollback()
@@ -265,8 +268,65 @@ def reserve(session: Session, job_id: int, *, role: str, stage: str, estimated_i
         session.add(row)
         session.commit()
         session.refresh(row)
-        return Reservation(id=int(row.id), job_id=job_id, calls=1, input_tokens=est_in, output_tokens=allow_out, cost_usd=reserve_cost, role=role, stage=stage, llm_config_id=llm_config_id)
+        return Reservation(id=int(row.id), job_id=job_id, calls=1, input_tokens=est_in, output_tokens=allow_out, cost_usd=reserve_cost, role=role, stage=stage, llm_config_id=llm_config_id, dispatched=False)
     raise fail.StageFailure(fail.INTERNAL_ERROR, f"budget reservation for job {job_id} kept losing the compare-and-set race")
+
+
+def mark_dispatched(session: Session, res: Reservation) -> None:
+    """Durably mark a reservation as dispatched before provider network I/O begins.
+
+    Idempotent. Raises BudgetAccountingError if reservation is not found or cannot transition.
+    """
+    if res.dispatched:
+        return
+    row = session.get(BudgetReservation, res.id)
+    if row is None:
+        raise BudgetAccountingError(f"reservation {res.id} not found")
+    if row.status == "dispatched":
+        res.dispatched = True
+        return
+    if row.status != "open":
+        raise BudgetAccountingError(f"cannot dispatch reservation {res.id} in state '{row.status}'")
+    row.status = "dispatched"
+    row.dispatched_at = datetime.now()
+    session.add(row)
+    session.commit()
+    res.dispatched = True
+
+
+def release(session: Session, res: Reservation) -> None:
+    """Safely release a reservation that was NEVER dispatched."""
+    if res.released:
+        return
+    row = session.get(BudgetReservation, res.id)
+    if row is None or row.status != "open":
+        res.released = True
+        return
+    job = session.get(AutonomousNovelJob, res.job_id)
+    if job is None:
+        raise BudgetAccountingError(f"job {res.job_id} disappeared during release")
+    session.refresh(job)
+    is_repair = 1 if res.role in REPAIR_ROLES else 0
+    t = AutonomousNovelJob.__table__
+    values: Dict[str, Any] = {
+        "reserved_calls": t.c.reserved_calls - res.calls,
+        "reserved_repair_calls": t.c.reserved_repair_calls - is_repair,
+        "reserved_input_tokens": t.c.reserved_input_tokens - res.input_tokens,
+        "reserved_output_tokens": t.c.reserved_output_tokens - res.output_tokens,
+        "reserved_tokens": t.c.reserved_tokens - res.input_tokens - res.output_tokens,
+        "reserved_cost_usd": t.c.reserved_cost_usd - res.cost_usd,
+    }
+    try:
+        session.execute(update(t).where(t.c.id == res.job_id).values(**values))
+        row.status = "released"
+        row.closed_at = datetime.now()
+        session.add(row)
+        _clamp_non_negative(session, res.job_id)
+        session.commit()
+    except Exception as exc:  # noqa: BLE001
+        session.rollback()
+        raise BudgetAccountingError(f"budget release failed for job {res.job_id}: {type(exc).__name__}") from exc
+    res.released = True
 
 
 def reconcile(session: Session, res: Reservation, *, input_tokens: int, output_tokens: int, succeeded: bool, output_known: bool = True, usage_reported: bool = True, price: Optional[Dict[str, float]] = None) -> None:
@@ -279,8 +339,8 @@ def reconcile(session: Session, res: Reservation, *, input_tokens: int, output_t
     if res.released:
         return
     row = session.get(BudgetReservation, res.id)
-    if row is None or row.status != "open":
-        res.released = True  # abandoned by recovery (counters already rebuilt) or closed by an earlier call
+    if row is None or row.status not in ("open", "dispatched"):
+        res.released = True  # already closed or transitioned by recovery
         return
     job = session.get(AutonomousNovelJob, res.job_id)
     if job is None:
@@ -290,9 +350,11 @@ def reconcile(session: Session, res: Reservation, *, input_tokens: int, output_t
     a_out = max(0, int(output_tokens)) if output_known else max(max(0, int(output_tokens)), res.output_tokens)
     table = price if price is not None else price_for(job, res.llm_config_id)
     actual_cost = cost_of(table, a_in, a_out)
+    is_repair = 1 if res.role in REPAIR_ROLES else 0
     t = AutonomousNovelJob.__table__
     values: Dict[str, Any] = {
         "reserved_calls": t.c.reserved_calls - res.calls,
+        "reserved_repair_calls": t.c.reserved_repair_calls - is_repair,
         "reserved_input_tokens": t.c.reserved_input_tokens - res.input_tokens,
         "reserved_output_tokens": t.c.reserved_output_tokens - res.output_tokens,
         "reserved_tokens": t.c.reserved_tokens - res.input_tokens - res.output_tokens,
@@ -307,7 +369,7 @@ def reconcile(session: Session, res: Reservation, *, input_tokens: int, output_t
         values["cost_usd"] = t.c.cost_usd + actual_cost
     if not usage_reported:
         values["usage_estimated_calls"] = t.c.usage_estimated_calls + 1
-    if res.role in REPAIR_ROLES:
+    if is_repair:
         values["repair_calls"] = t.c.repair_calls + 1
     try:
         session.execute(update(t).where(t.c.id == res.job_id).values(**values))
@@ -329,16 +391,18 @@ def reconcile(session: Session, res: Reservation, *, input_tokens: int, output_t
 
 def _clamp_non_negative(session: Session, job_id: int) -> None:
     t = AutonomousNovelJob.__table__
-    for col in (t.c.reserved_calls, t.c.reserved_input_tokens, t.c.reserved_output_tokens, t.c.reserved_tokens):
+    for col in (t.c.reserved_calls, t.c.reserved_repair_calls, t.c.reserved_input_tokens, t.c.reserved_output_tokens, t.c.reserved_tokens):
         session.execute(update(t).where(t.c.id == job_id, col < 0).values({col.name: 0}))
     session.execute(update(t).where(t.c.id == job_id, t.c.reserved_cost_usd < 0).values(reserved_cost_usd=0.0))
 
 
 def rebuild_reserved_counters(session: Session, job_id: int) -> Dict[str, Any]:
-    """Recompute the job's reserved counters from the open ledger rows (deterministic repair)."""
-    rows = session.exec(select(BudgetReservation).where(BudgetReservation.job_id == job_id, BudgetReservation.status == "open")).all()
+    """Recompute the job's reserved counters from the open/dispatched ledger rows (deterministic repair)."""
+    rows = session.exec(select(BudgetReservation).where(BudgetReservation.job_id == job_id, BudgetReservation.status.in_(["open", "dispatched"]))).all()
+    repair_count = sum(1 for r in rows if r.role in REPAIR_ROLES)
     values = {
         "reserved_calls": len(rows),
+        "reserved_repair_calls": repair_count,
         "reserved_input_tokens": sum(int(r.reserved_input_tokens) for r in rows),
         "reserved_output_tokens": sum(int(r.reserved_output_tokens) for r in rows),
         "reserved_cost_usd": round(sum(float(r.reserved_cost_usd or 0.0) for r in rows), COST_PRECISION),
@@ -351,20 +415,78 @@ def rebuild_reserved_counters(session: Session, job_id: int) -> Dict[str, Any]:
 
 
 def clear_reservations(session: Session, job_id: int) -> int:
-    """Startup recovery / resume: open reservations of a dead worker are abandoned; actual usage is already recorded.
+    """Startup recovery / resume:
 
-    Returns the number of abandoned rows. Counters are rebuilt from the ledger
-    (all zero afterwards), so a stale reservation can neither block the job nor
-    be released a second time by a late ``reconcile``.
+    - Not-dispatched reservations (status == 'open') are safely released.
+    - Dispatched reservations (status == 'dispatched') whose outcome is uncertain
+      are conservatively charged (1 call, full reserved output tokens, reserved input tokens,
+      reserved cost or unknown-cost marker, and repair_calls if applicable) and transitioned
+      to 'uncertain_charged'.
+
+    Returns the total number of cleared reservations (released + uncertain_charged).
     """
-    rows = session.exec(select(BudgetReservation).where(BudgetReservation.job_id == job_id, BudgetReservation.status == "open")).all()
+    job = session.get(AutonomousNovelJob, job_id)
+    if job is None:
+        return 0
+    session.refresh(job)
+
+    rows = session.exec(select(BudgetReservation).where(BudgetReservation.job_id == job_id, BudgetReservation.status.in_(["open", "dispatched"]))).all()
+    if not rows:
+        rebuild_reserved_counters(session, job_id)
+        return 0
+
     now = datetime.now()
-    for r in rows:
-        r.status = "abandoned"
+    t = AutonomousNovelJob.__table__
+
+    not_dispatched = [r for r in rows if r.status == "open"]
+    dispatched = [r for r in rows if r.status == "dispatched"]
+
+    for r in not_dispatched:
+        r.status = "released"
         r.closed_at = now
         session.add(r)
+
+    for r in dispatched:
+        r.status = "uncertain_charged"
+        r.closed_at = now
+        r.charged_input_tokens = int(r.reserved_input_tokens)
+        r.charged_output_tokens = int(r.reserved_output_tokens)
+        r.usage_reported = False
+        r.succeeded = False
+
+        table = price_for(job, r.llm_config_id)
+        if table is not None or float(r.reserved_cost_usd or 0.0) > 0:
+            r.charged_cost_usd = round(float(r.reserved_cost_usd or 0.0), COST_PRECISION)
+            cost_val = r.charged_cost_usd
+            cost_unknown = 0
+        else:
+            r.charged_cost_usd = None
+            cost_val = 0.0
+            cost_unknown = 1
+
+        is_repair = 1 if r.role in REPAIR_ROLES else 0
+
+        upd_vals: Dict[str, Any] = {
+            "model_calls": t.c.model_calls + 1,
+            "input_tokens": t.c.input_tokens + r.charged_input_tokens,
+            "output_tokens": t.c.output_tokens + r.charged_output_tokens,
+            "usage_estimated_calls": t.c.usage_estimated_calls + 1,
+        }
+        if cost_unknown:
+            upd_vals["cost_unknown_calls"] = t.c.cost_unknown_calls + 1
+        elif cost_val > 0:
+            upd_vals["cost_usd"] = t.c.cost_usd + cost_val
+
+        if is_repair:
+            upd_vals["repair_calls"] = t.c.repair_calls + 1
+
+        session.execute(update(t).where(t.c.id == job_id).values(**upd_vals))
+        session.add(r)
+
     session.commit()
     rebuild_reserved_counters(session, job_id)
+    _clamp_non_negative(session, job_id)
+    session.commit()
     return len(rows)
 
 
@@ -379,4 +501,4 @@ def validate_budget_spec(spec: Dict[str, Any]) -> List[str]:
     return problems
 
 
-__all__ = ["BudgetAccountingError", "BudgetExceeded", "MIN_OUTPUT_TOKENS", "REPAIR_ROLES", "Reservation", "clear_reservations", "cost_of", "effective_budget", "estimate_cost", "price_for", "rebuild_reserved_counters", "reconcile", "reserve", "usage_snapshot", "validate_budget_spec"]
+__all__ = ["BudgetAccountingError", "BudgetExceeded", "MIN_OUTPUT_TOKENS", "REPAIR_ROLES", "Reservation", "clear_reservations", "cost_of", "effective_budget", "estimate_cost", "mark_dispatched", "price_for", "rebuild_reserved_counters", "reconcile", "release", "reserve", "usage_snapshot", "validate_budget_spec"]

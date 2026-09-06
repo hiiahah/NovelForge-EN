@@ -564,6 +564,7 @@ class AutonomousNovelJob(SQLModel, table=True):
     cost_unknown_calls: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
     usage_estimated_calls: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
     repair_calls: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
+    reserved_repair_calls: int = Field(default=0, sa_column=Column(sa.Integer, nullable=False, server_default="0"))
     # Terminal quality verdict: completed | completed_with_warnings | quality_gate_failed | manual_review_required
     quality_status: Optional[str] = Field(default=None, index=True)
     quality_summary: dict = Field(default_factory=dict, sa_column=Column(JSON))
@@ -668,7 +669,7 @@ class BudgetReservation(SQLModel, table=True):
     stage: str = Field(default="", index=True)
     stage_key: str = Field(default="", index=True)
     llm_config_id: Optional[int] = Field(default=None)
-    status: str = Field(default="open", index=True)  # open|closed|abandoned
+    status: str = Field(default="open", index=True)  # open|dispatched|closed|released|uncertain_charged
     reserved_input_tokens: int = Field(default=0)
     reserved_output_tokens: int = Field(default=0)
     reserved_cost_usd: float = Field(default=0.0)
@@ -678,6 +679,7 @@ class BudgetReservation(SQLModel, table=True):
     succeeded: Optional[bool] = Field(default=None)
     usage_reported: Optional[bool] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    dispatched_at: Optional[datetime] = Field(default=None)
     closed_at: Optional[datetime] = Field(default=None)
 
 
