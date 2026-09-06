@@ -33,7 +33,17 @@ jobs:
       - name: Typecheck (node + web)
         run: npm run typecheck
       - name: Lint (autonomous workflow, scoped; see docs/ci.md for the ratchet plan)
-        run: npx eslint --no-cache --max-warnings 1000 src/renderer/src/api/autonomous.ts src/renderer/src/composables/useAutonomousNovel.ts src/renderer/src/composables/__tests__/useAutonomousNovel.test.ts src/renderer/src/components/autonomous --rule '@typescript-eslint/no-explicit-any: off' --rule '@typescript-eslint/explicit-function-return-type: off' --rule 'prettier/prettier: off'
+        run: |
+          npx eslint \
+            --no-cache \
+            --max-warnings 1000 \
+            src/renderer/src/api/autonomous.ts \
+            src/renderer/src/composables/useAutonomousNovel.ts \
+            src/renderer/src/composables/__tests__/useAutonomousNovel.test.ts \
+            src/renderer/src/components/autonomous \
+            --rule '@typescript-eslint/no-explicit-any: off' \
+            --rule '@typescript-eslint/explicit-function-return-type: off' \
+            --rule 'prettier/prettier: off'
       - name: Vitest
         run: npx vitest run
       - name: Web build
