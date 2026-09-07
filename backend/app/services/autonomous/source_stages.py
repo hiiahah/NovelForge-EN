@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
@@ -205,6 +206,22 @@ async def stage_source_analysis(session: Session, ctx: SourceContext) -> Dict[st
     done = 0
     results: List[Dict[str, Any]] = []
     sem = asyncio.Semaphore(max(1, int(ctx.analysis_concurrency)))
+    rate_lock = asyncio.Lock()
+    last_dispatch = 0.0
+    is_test = bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    default_interval = 0.0 if is_test else 1.0
+    min_interval = float((ctx.options or {}).get("analysis_dispatch_interval", default_interval))
+
+    async def wait_for_rate_limit() -> None:
+        nonlocal last_dispatch
+        if min_interval <= 0:
+            return
+        async with rate_lock:
+            now = asyncio.get_running_loop().time()
+            elapsed = now - last_dispatch
+            if elapsed < min_interval:
+                await asyncio.sleep(min_interval - elapsed)
+            last_dispatch = asyncio.get_running_loop().time()
 
     async def one(item: Dict[str, Any]) -> Dict[str, Any]:
         nonlocal done
@@ -212,6 +229,7 @@ async def stage_source_analysis(session: Session, ctx: SourceContext) -> Dict[st
         for k, v in item.items():
             prompt = prompt.replace(f"{{{{item.{k}}}}}", str(v))
         async with sem:
+            await wait_for_rate_limit()
             try:
                 ai = await ctx.client.structured(role="source_analyst", schema=ChapterAnalysis, system_prompt="You extract evidence-backed structure from one chapter. Output must validate against the schema.", user_prompt=prompt, prompt_version=ANALYSIS_PROMPT_VERSION, stage=f"SOURCE_ANALYSIS:ch{item['chapter_no']}")
                 out = {"ai_result": ai.model_dump(mode="json", exclude={"source_text", "source_chapter_label", "analysis_status", "card_id", "card_title", "word_count"}), "meta": item}

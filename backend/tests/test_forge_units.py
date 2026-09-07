@@ -468,5 +468,64 @@ def test_chapter_plan_active_thread_continuity_and_forbidden_clues():
     assert any("hint or clue" in f for f in outline["forbidden_outcomes"])
 
 
+def test_stage_source_analysis_dispatch_pacing():
+    import time
+    from unittest.mock import AsyncMock, MagicMock
+    from app.services.autonomous.source_stages import stage_source_analysis, SourceContext
+
+    timestamps = []
+
+    class MockClient:
+        async def structured(self, **kwargs):
+            timestamps.append(time.monotonic())
+            class Res:
+                def model_dump(self, **kw):
+                    return {"scenes": []}
+            return Res()
+
+    # Simulate 3 items with 0.05s dispatch interval
+    session = MagicMock()
+    session.exec = MagicMock()
+    # Mock loaded chapters
+    mock_ch1 = MagicMock(card_id=1, text="ch1 text", chapter_number=1, text_hash="h1", title="Ch1", manuscript_id="m1", chapter_id=1, language="en", analysis=None)
+    mock_ch2 = MagicMock(card_id=2, text="ch2 text", chapter_number=2, text_hash="h2", title="Ch2", manuscript_id="m1", chapter_id=2, language="en", analysis=None)
+    mock_ch3 = MagicMock(card_id=3, text="ch3 text", chapter_number=3, text_hash="h3", title="Ch3", manuscript_id="m1", chapter_id=3, language="en", analysis=None)
+
+    import app.services.autonomous.source_stages as src_stages
+
+    orig_load = src_stages.load_source_chapters
+    orig_prompt = src_stages.get_prompt_by_name
+    orig_records = src_stages.fn_lab_analysis_records
+    try:
+        src_stages.load_source_chapters = lambda s, pid: [mock_ch1, mock_ch2, mock_ch3]
+        mock_prompt = MagicMock()
+        mock_prompt.template = "{{content}}"
+        src_stages.get_prompt_by_name = lambda s, name: mock_prompt
+        src_stages.fn_lab_analysis_records = lambda results: []
+
+        ctx = SourceContext(
+            source_project_id=1,
+            filename="test.epub",
+            data=b"",
+            client=MockClient(),
+            options={"analysis_dispatch_interval": 0.05, "analysis_concurrency": 10},
+            progress=lambda m, p: None,
+            analysis_concurrency=10
+        )
+        import asyncio
+        asyncio.run(stage_source_analysis(session, ctx))
+
+        assert len(timestamps) == 3
+        # Intervals between consecutive dispatches should be at least ~0.045s
+        diff1 = timestamps[1] - timestamps[0]
+        diff2 = timestamps[2] - timestamps[1]
+        assert diff1 >= 0.04, f"diff1 was {diff1}"
+        assert diff2 >= 0.04, f"diff2 was {diff2}"
+    finally:
+        src_stages.load_source_chapters = orig_load
+        src_stages.get_prompt_by_name = orig_prompt
+        src_stages.fn_lab_analysis_records = orig_records
+
+
 
 
