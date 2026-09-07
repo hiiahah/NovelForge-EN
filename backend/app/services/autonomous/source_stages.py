@@ -203,9 +203,11 @@ async def stage_source_analysis(session: Session, ctx: SourceContext) -> Dict[st
         raise fail.StageFailure(fail.INTERNAL_ERROR, "Prompt 'Lab - Chapter Analysis' is missing")
     template_text = template.template
     total = len(items)
+    dispatched = 0
     done = 0
     results: List[Dict[str, Any]] = []
-    sem = asyncio.Semaphore(max(1, int(ctx.analysis_concurrency)))
+    ceiling = (ctx.options or {}).get("analysis_concurrency_ceiling")
+    sem = asyncio.Semaphore(int(ceiling)) if ceiling and int(ceiling) > 0 else None
     rate_lock = asyncio.Lock()
     last_dispatch = 0.0
     is_test = bool(os.environ.get("PYTEST_CURRENT_TEST"))
@@ -223,21 +225,28 @@ async def stage_source_analysis(session: Session, ctx: SourceContext) -> Dict[st
                 await asyncio.sleep(min_interval - elapsed)
             last_dispatch = asyncio.get_running_loop().time()
 
-    async def one(item: Dict[str, Any]) -> Dict[str, Any]:
-        nonlocal done
+    async def _execute_analysis(item: Dict[str, Any]) -> Dict[str, Any]:
+        nonlocal done, dispatched
         prompt = template_text.replace("{{content}}", item["content"])
         for k, v in item.items():
             prompt = prompt.replace(f"{{{{item.{k}}}}}", str(v))
-        async with sem:
-            await wait_for_rate_limit()
-            try:
-                ai = await ctx.client.structured(role="source_analyst", schema=ChapterAnalysis, system_prompt="You extract evidence-backed structure from one chapter. Output must validate against the schema.", user_prompt=prompt, prompt_version=ANALYSIS_PROMPT_VERSION, stage=f"SOURCE_ANALYSIS:ch{item['chapter_no']}")
-                out = {"ai_result": ai.model_dump(mode="json", exclude={"source_text", "source_chapter_label", "analysis_status", "card_id", "card_title", "word_count"}), "meta": item}
-            except fail.StageFailure as exc:
-                out = {"error": str(exc), "meta": item}
+        await wait_for_rate_limit()
+        dispatched += 1
+        ctx.progress(f"Dispatched chapter {item['chapter_no']} ({dispatched}/{total} sent, {done}/{total} done)", done / max(1, total))
+        try:
+            ai = await ctx.client.structured(role="source_analyst", schema=ChapterAnalysis, system_prompt="You extract evidence-backed structure from one chapter. Output must validate against the schema.", user_prompt=prompt, prompt_version=ANALYSIS_PROMPT_VERSION, stage=f"SOURCE_ANALYSIS:ch{item['chapter_no']}")
+            out = {"ai_result": ai.model_dump(mode="json", exclude={"source_text", "source_chapter_label", "analysis_status", "card_id", "card_title", "word_count"}), "meta": item}
+        except fail.StageFailure as exc:
+            out = {"error": str(exc), "meta": item}
         done += 1
-        ctx.progress(f"Analysed chapter {item['chapter_no']} ({done}/{total})", done / max(1, total))
+        ctx.progress(f"Analysed chapter {item['chapter_no']} ({done}/{total} done, {dispatched}/{total} sent)", done / max(1, total))
         return out
+
+    async def one(item: Dict[str, Any]) -> Dict[str, Any]:
+        if sem:
+            async with sem:
+                return await _execute_analysis(item)
+        return await _execute_analysis(item)
 
     if items:
         results = list(await asyncio.gather(*[one(it) for it in items]))

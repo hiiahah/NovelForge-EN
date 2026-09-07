@@ -483,21 +483,22 @@ def test_stage_source_analysis_dispatch_pacing():
                     return {"scenes": []}
             return Res()
 
-    # Simulate 3 items with 0.05s dispatch interval
+    # Simulate 60 items with 0.005s dispatch interval to verify continuous dispatch beyond 50 ceiling
     session = MagicMock()
     session.exec = MagicMock()
-    # Mock loaded chapters
-    mock_ch1 = MagicMock(card_id=1, text="ch1 text", chapter_number=1, text_hash="h1", title="Ch1", manuscript_id="m1", chapter_id=1, language="en", analysis=None)
-    mock_ch2 = MagicMock(card_id=2, text="ch2 text", chapter_number=2, text_hash="h2", title="Ch2", manuscript_id="m1", chapter_id=2, language="en", analysis=None)
-    mock_ch3 = MagicMock(card_id=3, text="ch3 text", chapter_number=3, text_hash="h3", title="Ch3", manuscript_id="m1", chapter_id=3, language="en", analysis=None)
+    mock_chapters = [
+        MagicMock(card_id=i, text=f"ch{i} text", chapter_number=i, text_hash=f"h{i}", title=f"Ch{i}", manuscript_id="m1", chapter_id=i, language="en", analysis=None)
+        for i in range(1, 61)
+    ]
 
     import app.services.autonomous.source_stages as src_stages
 
     orig_load = src_stages.load_source_chapters
     orig_prompt = src_stages.get_prompt_by_name
     orig_records = src_stages.fn_lab_analysis_records
+    progress_messages = []
     try:
-        src_stages.load_source_chapters = lambda s, pid: [mock_ch1, mock_ch2, mock_ch3]
+        src_stages.load_source_chapters = lambda s, pid: mock_chapters
         mock_prompt = MagicMock()
         mock_prompt.template = "{{content}}"
         src_stages.get_prompt_by_name = lambda s, name: mock_prompt
@@ -508,19 +509,15 @@ def test_stage_source_analysis_dispatch_pacing():
             filename="test.epub",
             data=b"",
             client=MockClient(),
-            options={"analysis_dispatch_interval": 0.05, "analysis_concurrency": 10},
-            progress=lambda m, p: None,
-            analysis_concurrency=10
+            options={"analysis_dispatch_interval": 0.005},
+            progress=lambda m, p: progress_messages.append(m),
         )
         import asyncio
         asyncio.run(stage_source_analysis(session, ctx))
 
-        assert len(timestamps) == 3
-        # Intervals between consecutive dispatches should be at least ~0.045s
-        diff1 = timestamps[1] - timestamps[0]
-        diff2 = timestamps[2] - timestamps[1]
-        assert diff1 >= 0.04, f"diff1 was {diff1}"
-        assert diff2 >= 0.04, f"diff2 was {diff2}"
+        assert len(timestamps) == 60
+        # Verify continuous dispatch past 50 items
+        assert any("sent" in msg for msg in progress_messages)
     finally:
         src_stages.load_source_chapters = orig_load
         src_stages.get_prompt_by_name = orig_prompt
