@@ -527,5 +527,47 @@ def test_stage_source_analysis_dispatch_pacing():
         src_stages.fn_lab_analysis_records = orig_records
 
 
+def test_create_job_restarts_after_cancelled_or_failed_job(tmp_path):
+    from sqlmodel import SQLModel, create_engine, Session
+    from app.services.autonomous import runner as runner_mod
+    from app.db.models import LLMConfig
+
+    engine = create_engine(f"sqlite:///{tmp_path}/test_restart.db")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        cfg = LLMConfig(provider="custom", model_name="test-model", api_key="", display_name="Test")
+        session.add(cfg)
+        session.commit()
+        session.refresh(cfg)
+
+    # 1. Create first job with explicit idempotency key
+    job1 = runner_mod.create_job(session, filename="test.epub", data=b"epub_bytes_1", llm_config_id=cfg.id, idempotency_key="ui-fixed-key-1")
+    assert job1.status == "queued"
+
+    # 2. Re-submitting with active job returns job1 (idempotent duplicate prevention)
+    job1_again = runner_mod.create_job(session, filename="test.epub", data=b"epub_bytes_1", llm_config_id=cfg.id, idempotency_key="ui-fixed-key-1")
+    assert job1_again.id == job1.id
+
+    # 3. Cancel job1
+    runner_mod.cancel(session, job1)
+    session.refresh(job1)
+    assert job1.status == "cancelled"
+
+    # 4. Re-submitting with the same key must NOT return the cancelled job; it must create a new job
+    job2 = runner_mod.create_job(session, filename="test.epub", data=b"epub_bytes_1", llm_config_id=cfg.id, idempotency_key="ui-fixed-key-1")
+    assert job2.id != job1.id
+    assert job2.status == "queued"
+    assert job2.idempotency_key != job1.idempotency_key
+
+    # 5. Cancel job2 and verify job3 is created
+    runner_mod.cancel(session, job2)
+    session.refresh(job2)
+    job3 = runner_mod.create_job(session, filename="test.epub", data=b"epub_bytes_1", llm_config_id=cfg.id, idempotency_key="ui-fixed-key-1")
+    assert job3.id not in (job1.id, job2.id)
+    assert job3.status == "queued"
+
+
+
 
 

@@ -125,7 +125,7 @@
 
     <!-- Screen 2: Analysis progress -->
     <div v-else-if="auto.screen.value === 'analysis'" class="screen" data-testid="screen-analysis">
-      <JobProgressCard :job="auto.job.value!" :active="auto.isActive.value" :stages="ANALYSIS_STAGES" :busy="auto.busy.value" @pause="auto.action('pause')" @resume="auto.action('resume')" @cancel="auto.action('cancel')" @refresh="auto.refresh()" />
+      <JobProgressCard :job="auto.job.value!" :active="auto.isActive.value" :stages="ANALYSIS_STAGES" :busy="auto.busy.value" @pause="auto.action('pause')" @resume="auto.action('resume')" @cancel="auto.action('cancel')" @refresh="auto.refresh()" @newRun="auto.reset()" />
       <el-alert v-if="ingestion" :type="ingestion.ok ? 'success' : 'warning'" :closable="false" show-icon class="top-alert" :title="t('autonomous.ingestion', { chapters: ingestion.detected_chapter_count, words: Number(ingestion.extracted_word_count).toLocaleString(), fraction: Math.round(ingestion.story_content_fraction * 100), confidence: Math.round(ingestion.chapter_boundary_confidence * 100) })" />
     </div>
 
@@ -199,7 +199,7 @@
 
     <!-- Screen 4: Novel generation -->
     <div v-else-if="auto.screen.value === 'generating'" class="screen" data-testid="screen-generating">
-      <JobProgressCard :job="auto.job.value!" :active="auto.isActive.value" :stages="GENERATION_STAGES" :busy="auto.busy.value" @pause="auto.action('pause')" @resume="auto.action('resume')" @cancel="auto.action('cancel')" @approve="auto.action('approve')" @refresh="auto.refresh()" />
+      <JobProgressCard :job="auto.job.value!" :active="auto.isActive.value" :stages="GENERATION_STAGES" :busy="auto.busy.value" @pause="auto.action('pause')" @resume="auto.action('resume')" @cancel="auto.action('cancel')" @approve="auto.action('approve')" @refresh="auto.refresh()" @newRun="auto.reset()" />
       <el-card shadow="never" class="chapters">
         <template #header><b>{{ t('autonomous.chapters', { done: auto.job.value?.chapters_committed || 0, total: auto.job.value?.chapter_count || 0 }) }}</b></template>
         <el-empty v-if="!auto.chapters.value.length" :description="t('autonomous.noChaptersYet')" :image-size="60" />

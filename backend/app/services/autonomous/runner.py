@@ -487,10 +487,11 @@ def create_job(session: Session, *, filename: str, data: bytes, llm_config_id: i
     file_hash = hashlib.sha256(data).hexdigest()
     key = (idempotency_key or "").strip()[:64] or hashlib.sha256(f"{file_hash}|{llm_config_id}|{mode}|{json.dumps(options or {}, sort_keys=True)}".encode()).hexdigest()[:32]
     existing = session.exec(select(AutonomousNovelJob).where(AutonomousNovelJob.idempotency_key == key)).first()
-    if existing and (existing.status not in TERMINAL or idempotency_key):
-        return existing
-    if existing:
+    while existing and existing.status in TERMINAL:
         key = hashlib.sha256(f"{key}|{existing.id}".encode()).hexdigest()[:32]
+        existing = session.exec(select(AutonomousNovelJob).where(AutonomousNovelJob.idempotency_key == key)).first()
+    if existing and existing.status not in TERMINAL:
+        return existing
     job = AutonomousNovelJob(idempotency_key=key, status="queued", stage="INGEST", mode=mode, llm_config_id=int(llm_config_id), role_llm_config_ids=role_llm_config_ids or {}, source_filename=filename, source_file_hash=file_hash, source_bytes=data, options=options or {}, budget=budget or {})
     session.add(job)
     session.commit()

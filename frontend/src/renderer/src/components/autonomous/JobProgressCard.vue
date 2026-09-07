@@ -12,6 +12,7 @@
         <el-button v-if="active" size="small" type="warning" :loading="busy === 'pause'" data-testid="pause-btn" @click="emit('pause')">{{ t('autonomous.pause') }}</el-button>
         <el-button v-if="job.status === 'paused'" size="small" type="primary" :loading="busy === 'resume'" data-testid="resume-btn" @click="emit('resume')">{{ t('autonomous.resume') }}</el-button>
         <el-button v-if="!['completed', 'cancelled', 'failed'].includes(job.status)" size="small" type="danger" plain :loading="busy === 'cancel'" @click="emit('cancel')">{{ t('autonomous.cancel') }}</el-button>
+        <el-button v-if="['completed', 'cancelled', 'failed'].includes(job.status)" size="small" type="primary" @click="emit('newRun')">{{ t('autonomous.newRun') }}</el-button>
       </div>
     </div>
     <el-progress :percentage="Math.round(job.progress_percent || 0)" :stroke-width="14" :status="job.status === 'failed' ? 'exception' : job.status === 'completed' ? 'success' : undefined" />
@@ -43,7 +44,7 @@ import { Check, Loading } from '@element-plus/icons-vue'
 import type { AutonomousJob } from '@renderer/api/autonomous'
 
 const props = defineProps<{ job: AutonomousJob; active: boolean; stages: string[]; busy: string | null }>()
-const emit = defineEmits<{ (e: 'pause'): void; (e: 'resume'): void; (e: 'cancel'): void; (e: 'approve'): void; (e: 'refresh'): void }>()
+const emit = defineEmits<{ (e: 'pause'): void; (e: 'resume'): void; (e: 'cancel'): void; (e: 'approve'): void; (e: 'refresh'): void; (e: 'newRun'): void }>()
 const { t } = useI18n()
 
 const statusType = computed(() => {
