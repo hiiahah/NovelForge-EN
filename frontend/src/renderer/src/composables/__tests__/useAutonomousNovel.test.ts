@@ -82,7 +82,7 @@ describe('useAutonomousNovel', () => {
     auto.chapterCount.value = 20
     expect(auto.chapterCountWarning.value).toBeNull()
     await auto.confirmSelection()
-    expect(api.selectStoryline).toHaveBeenCalledWith(1, { storyline_id: 1, chapter_count: 20 })
+    expect(api.selectStoryline).toHaveBeenCalledWith(1, { storyline_id: 1, chapter_count: 20, words_per_chapter: 2000 })
     expect(auto.screen.value).toBe('generating')
     auto.stopPolling()
   })

@@ -178,7 +178,12 @@ def validate_draft(session: Session, ctx: CompiledChapterContext, prose: str, *,
 def build_draft_prompt(ctx: CompiledChapterContext) -> str:
     return (
         ctx.prompt_text()
-        + "\n\n[OUTPUT REQUIREMENTS]\n"
+        + "\n\n[KOREAN WEBNOVEL STYLE & PACING DIRECTIVES]\n"
+        "- Breathing Room & Pacing: Do not rush through beats like an obstacle course. Let scenes breathe. Give each beat ample sensory detail, dialogue, and inner reaction (typically 400-600 words per beat).\n"
+        "- Dual-Layer Internal Monologue vs. Spoken Dialogue: The protagonist's spoken dialogue should remain measured, aristocratic, or composed, while their internal monologue is sharp, analytical, cynical, or humorous about their absurd circumstances. Contrast outer composure with inner calculation.\n"
+        "- Misunderstanding & Tension Dynamics: Side characters frequently misread the protagonist's silence, exhaustion, or pragmatic caution as unfathomable genius, hidden power, or deep schematics.\n"
+        "- Visual Paragraph Flow: Avoid monolithic walls of text. Webnovel formatting favors 1-3 sentence paragraphs, crisp dialogue spacing, and punchy narrative beats optimized for serialized reading.\n\n"
+        "[OUTPUT REQUIREMENTS]\n"
         "Write the complete chapter now in original, immersive webnovel prose.\n\n"
         "Immediately after the prose, provide the chapter summary and scene handoff blocks:\n"
         "<chapter_summary>\n"

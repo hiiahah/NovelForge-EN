@@ -241,8 +241,35 @@ def cmd_select(args: argparse.Namespace) -> int:
         else:
             best = sorted(cands, key=lambda c: (-float(c.originality_score or 0.0), max([v for v in (c.similarity_to_others or {}).values()] or [0.0]), c.id))[0]
             basis = "highest originality score among non-rejected candidates; tie-break lowest max similarity"
-        job = runner_mod.select_storyline(s, job, storyline_id=int(best.id), chapter_count=int(args.chapters), options={"words_per_chapter": int(args.words)})
-        _record("selection", {"job_id": job.id, "storyline_id": best.id, "title": best.title, "originality_score": best.originality_score, "basis": basis, "chapter_count": args.chapters, "words_per_chapter": args.words})
+        # Interactive prompts with recommendations if not provided via flags:
+        chapters = args.chapters
+        if chapters is None:
+            if sys.stdin.isatty():
+                print("\n================ Chapter Count Selection ================")
+                print("  Recommended Scope Ranges:")
+                print("  • 25 – 40 chapters   : Single-volume arc / novella")
+                print("  • 50 – 100 chapters  : Multi-stage standard arc")
+                print("  • 200 – 500+ chapters: Full serialized webnovel (Novelpia / Munpia scale, max 1,000)")
+                val = input("Enter target chapter count [default: 25]: ").strip()
+                chapters = int(val) if val else 25
+            else:
+                chapters = 25
+
+        words = args.words
+        if words is None:
+            if sys.stdin.isatty():
+                print("\n============== Words Per Chapter Selection ==============")
+                print("  Recommended Webnovel Ranges:")
+                print("  • 1,800 – 2,200 words : Fast-paced action / shorter chapters")
+                print("  • 2,200 – 3,000 words : Standard Korean webnovel (★ OPTIMAL: 2,500 words)")
+                print("  • 3,000 – 4,000 words : Deep exposition & lore-heavy chapters")
+                val = input("Enter words per chapter [default: 2500]: ").strip()
+                words = int(val) if val else 2500
+            else:
+                words = 2500
+
+        job = runner_mod.select_storyline(s, job, storyline_id=int(best.id), chapter_count=int(chapters), options={"words_per_chapter": int(words)})
+        _record("selection", {"job_id": job.id, "storyline_id": best.id, "title": best.title, "originality_score": best.originality_score, "basis": basis, "chapter_count": int(chapters), "words_per_chapter": int(words)})
     return 0
 
 
@@ -463,8 +490,8 @@ def main() -> int:
     sub.add_parser("analyze").set_defaults(fn=cmd_analyze)
     p = sub.add_parser("select")
     p.add_argument("--storyline-id", type=int, default=None, help="Explicit storyline ID to select (defaults to highest-originality, lowest-similarity candidate)")
-    p.add_argument("--chapters", type=int, default=6)
-    p.add_argument("--words", type=int, default=1500)
+    p.add_argument("--chapters", type=int, default=None, help="Target chapter count (e.g. 25-40 for novella, 100-500 for webnovel serial)")
+    p.add_argument("--words", type=int, default=None, help="Target words per chapter (recommended: 2200-3000, optimal: 2500)")
     p.set_defaults(fn=cmd_select)
     p = sub.add_parser("ideate")
     p.add_argument("--genre", type=str, default="")

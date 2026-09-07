@@ -82,7 +82,7 @@ class CreateJobRequest(BaseModel):
 
 class SelectStorylineRequest(BaseModel):
     storyline_id: int
-    chapter_count: int = Field(ge=1, le=400)
+    chapter_count: int = Field(ge=1, le=1000)
     words_per_chapter: Optional[int] = Field(default=None, ge=300, le=20000)
     title: Optional[str] = None
 

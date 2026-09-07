@@ -67,6 +67,7 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
   const file = ref<{ name: string; size: number; base64: string } | null>(null)
   const selectedStorylineId = ref<number | null>(null)
   const chapterCount = ref<number>(24)
+  const wordsPerChapter = ref<number>(2500)
   const preflight = ref<PreflightResult | null>(null)
   const pollFailures = ref(0)
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -85,8 +86,8 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
     if (chapterCount.value > r[1]) return 'above'
     return null
   })
-  const canSelect = computed(() => !!selectedOption.value && !selectedOption.value.rejected && chapterCount.value >= 1 && chapterCount.value <= 400 && !busy.value)
-  const estimatedWords = computed(() => chapterCount.value * Number((job.value?.options as any)?.words_per_chapter || 2500))
+  const canSelect = computed(() => !!selectedOption.value && !selectedOption.value.rejected && chapterCount.value >= 1 && chapterCount.value <= 1000 && !busy.value)
+  const estimatedWords = computed(() => chapterCount.value * Number(wordsPerChapter.value || (job.value?.options as any)?.words_per_chapter || 2500))
 
   function stopPolling() {
     if (timer) clearTimeout(timer)
@@ -106,6 +107,9 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
     job.value = res.job
     active.value = res.active
     pollFailures.value = 0
+    if ((res.job.options as any)?.words_per_chapter) {
+      wordsPerChapter.value = Number((res.job.options as any).words_per_chapter)
+    }
     const s = screenFor(res.job)
     if (s === 'choose' && storylines.value.length === 0) storylines.value = await api.listStorylines(res.job.id, true)
     if (s === 'generating' || s === 'finished') {
@@ -202,7 +206,14 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
     busy.value = 'select'
     error.value = null
     try {
-      await applyResponse(await api.selectStoryline(job.value.id, { storyline_id: selectedStorylineId.value, chapter_count: chapterCount.value, ...extra }))
+      await applyResponse(
+        await api.selectStoryline(job.value.id, {
+          storyline_id: selectedStorylineId.value,
+          chapter_count: chapterCount.value,
+          words_per_chapter: wordsPerChapter.value,
+          ...extra,
+        })
+      )
     } catch (e) {
       error.value = errorMessage(e)
     } finally {
@@ -232,6 +243,8 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
     artifacts.value = []
     report.value = null
     selectedStorylineId.value = null
+    wordsPerChapter.value = 2500
+    chapterCount.value = 24
     error.value = null
     preflight.value = null
     pollFailures.value = 0
@@ -241,7 +254,7 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
   if (getCurrentInstance()) onBeforeUnmount(stopPolling)
 
   return {
-    job, active, storylines, chapters, artifacts, report, jobs, busy, error, file, selectedStorylineId, chapterCount, preflight, pollFailures,
+    job, active, storylines, chapters, artifacts, report, jobs, busy, error, file, selectedStorylineId, chapterCount, wordsPerChapter, preflight, pollFailures,
     screen, isActive, selectedOption, acceptedOptions, recommendedRange, chapterCountWarning, canSelect, estimatedWords,
     pickFile, runPreflight, start, refresh, open, loadJobs, reloadStorylines, confirmSelection, action, reset, stopPolling,
   }

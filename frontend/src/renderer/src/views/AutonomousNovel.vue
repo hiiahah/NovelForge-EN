@@ -169,7 +169,12 @@
               <b>{{ auto.selectedOption.value?.title || t('autonomous.noneSelected') }}</b>
             </div>
             <el-form-item :label="t('autonomous.chapterCount')" class="count">
-              <el-input-number v-model="auto.chapterCount.value" :min="1" :max="400" data-testid="chapter-count" />
+              <el-input-number v-model="auto.chapterCount.value" :min="1" :max="1000" data-testid="chapter-count" />
+              <div class="field-hint">{{ t('autonomous.chapterRangeHint') }}</div>
+            </el-form-item>
+            <el-form-item :label="t('autonomous.wordsPerChapter')" class="count">
+              <el-input-number v-model="auto.wordsPerChapter.value" :min="500" :max="10000" :step="250" data-testid="words-per-chapter" />
+              <div class="field-hint">{{ t('autonomous.wordsRecommended') }}</div>
             </el-form-item>
             <div class="muted estimate">
               <div v-if="auto.recommendedRange.value">{{ t('autonomous.recommended', { min: auto.recommendedRange.value[0], max: auto.recommendedRange.value[1] }) }}</div>
@@ -362,6 +367,7 @@ onMounted(async () => {
 .select-row > div:first-child { min-width: 180px; max-width: 320px; }
 .select-row > div:first-child b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .count { margin: 0; }
+.field-hint { font-size: 11px; color: var(--el-text-color-secondary); margin-top: 3px; max-width: 200px; line-height: 1.25; }
 .estimate { flex: 1; }
 .warn { color: var(--el-color-warning); }
 .ch-title { flex: 1; }

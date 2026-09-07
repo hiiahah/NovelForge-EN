@@ -493,8 +493,8 @@ def select_storyline(session: Session, job: AutonomousNovelJob, *, storyline_id:
         raise ValueError("Storyline does not belong to this job")
     if row.rejected:
         raise ValueError(f"Storyline was rejected: {row.rejection_reason}")
-    if chapter_count < 1 or chapter_count > 400:
-        raise ValueError("chapter_count must be between 1 and 400")
+    if chapter_count < 1 or chapter_count > 1000:
+        raise ValueError("chapter_count must be between 1 and 1000")
     for other in session.exec(select(StorylineCandidate).where(StorylineCandidate.job_id == job.id)).all():
         other.selected = other.id == row.id
         session.add(other)
