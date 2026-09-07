@@ -105,8 +105,18 @@ def source_brief(session: Session, source_project_id: int, *, preferences: Dict[
         lines.append(f"Source stage count: {len(stages)}; chapters: {total}")
     prefs = {k: v for k, v in preferences.items() if v not in (None, "", [], {})}
     if prefs:
-        lines.append("\n[USER PREFERENCES]")
-        lines += [f"- {k}: {v}" for k, v in prefs.items()]
+        lines.append("\n[USER PREFERENCES & CREATIVE DIRECTIVES]")
+        if "protagonist_name" in prefs:
+            lines.append(f"- Protagonist Name: '{prefs['protagonist_name']}'. All generated storyline options must feature this protagonist.")
+        if "summary" in prefs:
+            lines.append(f"- Core Premise / Summary: '{prefs['summary']}'. Develop storyline variations built upon this concept.")
+        if "similarity_to_original" in prefs:
+            lines.append(f"- Similarity to Reference: {prefs['similarity_to_original']}. (loose = abstract structural inspiration only; moderate = balanced thematic/pacing homage; close = close structural parallel while changing all entities).")
+        if "tags" in prefs:
+            lines.append(f"- Required Tags / Tropes: {prefs['tags']}")
+        for k, v in prefs.items():
+            if k not in ("protagonist_name", "summary", "similarity_to_original", "tags"):
+                lines.append(f"- {k}: {v}")
     return "\n".join(lines)
 
 

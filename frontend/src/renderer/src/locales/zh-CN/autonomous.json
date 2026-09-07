@@ -15,7 +15,17 @@
     "preferences": "可选偏好",
     "pref": {
       "genre": "类型", "genre_intensity": "类型强度", "content_rating": "内容分级", "ending_preference": "结局偏好", "romance_level": "感情线比重",
-      "words_per_chapter": "每章字数", "storyline_count": "故事线数量", "title": "暂定书名", "author": "作者名", "notes": "给构思模型的备注"
+      "words_per_chapter": "每章字数", "storyline_count": "故事线数量", "title": "暂定书名", "author": "作者名", "notes": "给构思模型的备注",
+      "protagonist_name": "主角姓名", "protagonist_placeholder": "例如：卢森·鲁克",
+      "summary": "基本小说梗概 / 核心设定", "summary_placeholder": "例如：审计师穿越到负债累累的贵族子弟身上，依靠账目审计扭转乾坤...",
+      "tags": "题材标签 / 元素", "tags_placeholder": "例如：穿越、学院、权谋、种田",
+      "genre_placeholder": "例如：西幻 / 领地建设 / 智斗",
+      "similarity_to_original": "与参考作品的相似度",
+      "similarity": {
+        "loose": "宽松（15–25% 相似度 — 仅借鉴结构与节奏）",
+        "moderate": "适中（25–35% 相似度 — 风格致敬与平衡）",
+        "close": "紧密（35–45% 相似度 — 平行剧情脉络）"
+      }
     },
     "rightsNotice": "仅处理你有权分析的稿件。参考作品的人名、设定、场景、反转与措辞不会被复用，只有抽象的结构特征会影响新小说。",
     "startAnalysis": "开始分析",

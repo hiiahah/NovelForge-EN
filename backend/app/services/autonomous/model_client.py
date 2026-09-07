@@ -55,8 +55,8 @@ class RolePolicy:
 
 
 ROLE_POLICIES: Dict[str, RolePolicy] = {
-    "source_extractor": RolePolicy("source_extractor", 0.2, 12000, 1800, 3),
-    "source_analyst": RolePolicy("source_analyst", 0.3, 16000, 1800, 3),
+    "source_extractor": RolePolicy("source_extractor", 0.2, 12000, 2000, 3),
+    "source_analyst": RolePolicy("source_analyst", 0.3, 16000, 2000, 3),
     "fingerprint_synthesizer": RolePolicy("fingerprint_synthesizer", 0.3, 12000, 1800, 3),
     "storyline_ideator": RolePolicy("storyline_ideator", 0.9, 65536, 2400, 3),
     "originality_critic": RolePolicy("originality_critic", 0.2, 8000, 600, 2),

@@ -220,7 +220,7 @@ class JobRunner:
 
     def _source_ctx(self, job: AutonomousNovelJob, client: ModelClient) -> src.SourceContext:
         opts = job.options or {}
-        return src.SourceContext(source_project_id=int(job.source_project_id), filename=job.source_filename, data=job.source_bytes or b"", client=client, options=opts, progress=self._progress, analysis_concurrency=int(opts.get("analysis_concurrency") or 4), window_size=int(opts.get("window_size") or 40), max_stage_count=int(opts.get("max_stage_count") or 24))
+        return src.SourceContext(source_project_id=int(job.source_project_id), filename=job.source_filename, data=job.source_bytes or b"", client=client, options=opts, progress=self._progress, analysis_concurrency=int(opts.get("analysis_concurrency") or 50), window_size=int(opts.get("window_size") or 40), max_stage_count=int(opts.get("max_stage_count") or 24))
 
     def _storyline(self, job: AutonomousNovelJob) -> Dict[str, Any]:
         row = self.session.get(StorylineCandidate, int(job.selected_storyline_id or 0))
@@ -230,7 +230,22 @@ class JobRunner:
 
     def _preferences(self, job: AutonomousNovelJob) -> Dict[str, Any]:
         opts = job.options or {}
-        return {k: opts.get(k) for k in ("genre_intensity", "content_rating", "ending_preference", "romance_level", "genre", "notes") if opts.get(k)}
+        return {
+            k: opts.get(k)
+            for k in (
+                "genre_intensity",
+                "content_rating",
+                "ending_preference",
+                "romance_level",
+                "genre",
+                "notes",
+                "protagonist_name",
+                "summary",
+                "tags",
+                "similarity_to_original",
+            )
+            if opts.get(k)
+        }
 
     # --------------------------------------------------------------- stages
     async def _run_stage(self, job: AutonomousNovelJob, stage: str) -> Dict[str, Any]:

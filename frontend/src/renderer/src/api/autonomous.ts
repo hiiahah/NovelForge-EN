@@ -34,6 +34,10 @@ export interface CreateJobRequest {
   storyline_count?: number
   fallback_llm_config_id?: number
   notes?: string
+  protagonist_name?: string
+  summary?: string
+  tags?: string
+  similarity_to_original?: string
   budget?: BudgetSpec
   idempotency_key?: string
   preflight_acknowledged?: boolean

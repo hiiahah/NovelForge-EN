@@ -61,7 +61,7 @@ class SourceContext:
     client: ModelClient
     options: Dict[str, Any] = field(default_factory=dict)
     progress: Callable[[str, float], None] = lambda msg, pct: None
-    analysis_concurrency: int = 4
+    analysis_concurrency: int = 50
     window_size: int = 40
     max_stage_count: int = 24
 

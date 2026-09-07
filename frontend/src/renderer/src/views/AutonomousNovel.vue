@@ -55,7 +55,16 @@
         <el-collapse class="prefs">
           <el-collapse-item :title="t('autonomous.preferences')">
             <div class="grid">
-              <el-form-item :label="t('autonomous.pref.genre')"><el-input v-model="form.genre" /></el-form-item>
+              <el-form-item :label="t('autonomous.pref.similarity_to_original')">
+                <el-select v-model="form.similarity_to_original" clearable>
+                  <el-option value="loose" :label="t('autonomous.pref.similarity.loose')" />
+                  <el-option value="moderate" :label="t('autonomous.pref.similarity.moderate')" />
+                  <el-option value="close" :label="t('autonomous.pref.similarity.close')" />
+                </el-select>
+              </el-form-item>
+              <el-form-item :label="t('autonomous.pref.protagonist_name')"><el-input v-model="form.protagonist_name" :placeholder="t('autonomous.pref.protagonist_placeholder')" /></el-form-item>
+              <el-form-item :label="t('autonomous.pref.genre')"><el-input v-model="form.genre" :placeholder="t('autonomous.pref.genre_placeholder')" /></el-form-item>
+              <el-form-item :label="t('autonomous.pref.tags')"><el-input v-model="form.tags" :placeholder="t('autonomous.pref.tags_placeholder')" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.genre_intensity')"><el-select v-model="form.genre_intensity" clearable><el-option v-for="v in ['subtle', 'moderate', 'intense']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.content_rating')"><el-select v-model="form.content_rating" clearable><el-option v-for="v in ['all ages', 'teen', 'mature']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.ending_preference')"><el-select v-model="form.ending_preference" clearable><el-option v-for="v in ['triumphant', 'bittersweet', 'tragic', 'open', 'no preference']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
@@ -65,6 +74,7 @@
               <el-form-item :label="t('autonomous.pref.title')"><el-input v-model="form.title" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.author')"><el-input v-model="form.author" /></el-form-item>
             </div>
+            <el-form-item :label="t('autonomous.pref.summary')"><el-input v-model="form.summary" type="textarea" :rows="2" :placeholder="t('autonomous.pref.summary_placeholder')" /></el-form-item>
             <el-form-item :label="t('autonomous.pref.notes')"><el-input v-model="form.notes" type="textarea" :rows="2" /></el-form-item>
           </el-collapse-item>
         </el-collapse>
@@ -274,8 +284,26 @@ const llmConfigs = ref<LLMConfigRead[]>([])
 const dragging = ref(false)
 const showRejected = ref(false)
 const fileInput = ref<HTMLInputElement>()
-const form = reactive<{ llm_config_id: number | undefined; mode: api.AutonomousMode; quality_preset: 'economy' | 'balanced' | 'quality'; genre: string; genre_intensity: string; content_rating: string; ending_preference: string; romance_level: string; words_per_chapter: number | undefined; storyline_count: number; title: string; author: string; notes: string }>({
-  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, storyline_count: 7, title: '', author: '', notes: '',
+const form = reactive<{
+  llm_config_id: number | undefined
+  mode: api.AutonomousMode
+  quality_preset: 'economy' | 'balanced' | 'quality'
+  genre: string
+  genre_intensity: string
+  content_rating: string
+  ending_preference: string
+  romance_level: string
+  words_per_chapter: number | undefined
+  storyline_count: number
+  title: string
+  author: string
+  notes: string
+  protagonist_name: string
+  summary: string
+  tags: string
+  similarity_to_original: string
+}>({
+  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '', similarity_to_original: 'moderate',
 })
 
 const stepIndex = computed(() => ['upload', 'analysis', 'choose', 'generating', 'finished'].indexOf(auto.screen.value))
@@ -318,7 +346,7 @@ async function start() {
   const params: Record<string, unknown> = { llm_config_id: form.llm_config_id, mode: form.mode, quality_preset: form.quality_preset, storyline_count: form.storyline_count, preflight_acknowledged: auto.preflight.value?.passed !== true }
   const spec = budgetSpec()
   if (spec) params.budget = spec
-  for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'title', 'author', 'notes'] as const) {
+  for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'title', 'author', 'notes', 'protagonist_name', 'summary', 'tags', 'similarity_to_original'] as const) {
     if (form[k]) params[k] = form[k]
   }
   await auto.start(params as Omit<api.CreateJobRequest, 'filename' | 'content_base64'>)

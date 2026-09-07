@@ -75,6 +75,10 @@ class CreateJobRequest(BaseModel):
     storyline_count: int = Field(default=7, ge=5, le=10)
     fallback_llm_config_id: Optional[int] = None
     notes: Optional[str] = None
+    protagonist_name: Optional[str] = None
+    summary: Optional[str] = None
+    tags: Optional[str] = None
+    similarity_to_original: Optional[str] = None
     budget: Optional[BudgetSpec] = Field(default=None, description="Hard job limits; 0 = unlimited")
     idempotency_key: Optional[str] = Field(default=None, max_length=64, description="Client-supplied key; repeated identical requests return the existing job")
     preflight_acknowledged: bool = Field(default=False, description="Set when the user confirms starting without a passing preflight")
@@ -154,7 +158,7 @@ def _response(session: Session, job: AutonomousNovelJob) -> JobResponse:
 
 
 def _quality_options(preset: str) -> Dict[str, Any]:
-    return {"economy": {"max_repairs": 1, "analysis_concurrency": 6}, "quality": {"max_repairs": 3, "analysis_concurrency": 2}}.get(preset, {"max_repairs": 2, "analysis_concurrency": 4})
+    return {"economy": {"max_repairs": 1, "analysis_concurrency": 50}, "quality": {"max_repairs": 3, "analysis_concurrency": 50}}.get(preset, {"max_repairs": 2, "analysis_concurrency": 50})
 
 
 @router.post("/preflight", response_model=Dict[str, Any], summary="Provider preflight: validate an LLM configuration (reachability, model availability, text + structured output, usage, fallback) before a long job")

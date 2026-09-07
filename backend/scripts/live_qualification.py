@@ -186,7 +186,7 @@ def cmd_analyze(_: argparse.Namespace) -> int:
     digest = hashlib.sha256(data).hexdigest()
     with Session(engine) as s:
         cfg = _config(s)
-        job = runner_mod.create_job(s, filename=os.path.basename(path), data=data, llm_config_id=int(cfg.id), mode="fully_automatic", options={"quality_preset": "balanced", "max_repairs": 2, "analysis_concurrency": 4, "storyline_count": 7, "live_qualification": True}, budget=_budget(), idempotency_key=f"live-qual-{digest[:16]}")
+        job = runner_mod.create_job(s, filename=os.path.basename(path), data=data, llm_config_id=int(cfg.id), mode="fully_automatic", options={"quality_preset": "balanced", "max_repairs": 2, "analysis_concurrency": 50, "storyline_count": 7, "live_qualification": True}, budget=_budget(), idempotency_key=f"live-qual-{digest[:16]}")
         _save_state(job_id=int(job.id))
         _record("epub", {"filename_sanitized": re.sub(r"[^A-Za-z0-9._-]+", "_", os.path.basename(path)), "bytes": len(data), "sha256": digest, "job_id": job.id})
     job = _run(int(job.id), owner="qual-analyze")
@@ -204,12 +204,51 @@ def cmd_ideate(args: argparse.Namespace) -> int:
         job = _job(s)
         client = runner_mod.default_client_factory(s, job, InvocationRecorder(job_id=job.id, project_id=job.source_project_id, session_factory=lambda: Session(engine)))
         prefs: Dict[str, Any] = {}
-        if args.genre:
-            prefs["genre"] = args.genre
+
+        similarity = getattr(args, "similarity", "") or ""
+        genre = getattr(args, "genre", "") or ""
+        tags = getattr(args, "tags", "") or ""
+        protagonist = getattr(args, "protagonist", "") or ""
+        summary = getattr(args, "summary", "") or ""
+
+        if sys.stdin.isatty():
+            if not similarity:
+                print("\n================ Storyline Ideation Setup ================")
+                print("  Similarity to Reference:")
+                print("  • loose    : Abstract structural/tension inspiration only (15–25% similarity)")
+                print("  • moderate : Balanced thematic homage & pacing (25–35% similarity)")
+                print("  • close    : Close structural parallel with new entities (35–45% similarity)")
+                val = input("Enter similarity preference [loose | moderate | close, default: moderate]: ").strip()
+                similarity = val if val else "moderate"
+            if not genre:
+                val = input("Enter primary genre (e.g. Fantasy / Academy / Transmigration) [optional]: ").strip()
+                if val:
+                    genre = val
+            if not tags:
+                val = input("Enter tags/tropes (comma-separated, e.g. villain, regression, politics) [optional]: ").strip()
+                if val:
+                    tags = val
+            if not protagonist:
+                val = input("Enter main character name [optional]: ").strip()
+                if val:
+                    protagonist = val
+            if not summary:
+                val = input("Enter basic novel summary/premise [optional]: ").strip()
+                if val:
+                    summary = val
+
+        if genre:
+            prefs["genre"] = genre
         if args.theme:
             prefs["theme"] = args.theme
-        if args.tags:
-            prefs["tags"] = [t.strip() for t in args.tags.split(",") if t.strip()]
+        if tags:
+            prefs["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+        if protagonist:
+            prefs["protagonist_name"] = protagonist
+        if summary:
+            prefs["summary"] = summary
+        if similarity:
+            prefs["similarity_to_original"] = similarity
         if args.notes:
             prefs["notes"] = args.notes
         job.options = {**(job.options or {}), **prefs}
@@ -497,6 +536,9 @@ def main() -> int:
     p.add_argument("--genre", type=str, default="")
     p.add_argument("--theme", type=str, default="")
     p.add_argument("--tags", type=str, default="")
+    p.add_argument("--protagonist", type=str, default="", help="Main character name preference")
+    p.add_argument("--summary", type=str, default="", help="Basic novel premise / summary")
+    p.add_argument("--similarity", type=str, default="", help="Similarity to original (loose | moderate | close)")
     p.add_argument("--notes", type=str, default="")
     p.add_argument("--count", type=int, default=7)
     p.set_defaults(fn=cmd_ideate)

@@ -15,7 +15,17 @@
     "preferences": "Optional preferences",
     "pref": {
       "genre": "Genre", "genre_intensity": "Genre intensity", "content_rating": "Content rating", "ending_preference": "Ending preference", "romance_level": "Romance level",
-      "words_per_chapter": "Words per chapter", "storyline_count": "Storyline options", "title": "Working title", "author": "Author name", "notes": "Notes for the ideator"
+      "words_per_chapter": "Words per chapter", "storyline_count": "Storyline options", "title": "Working title", "author": "Author name", "notes": "Notes for the ideator",
+      "protagonist_name": "Main character name", "protagonist_placeholder": "e.g. Lucen Rooke",
+      "summary": "Basic novel premise / summary", "summary_placeholder": "e.g. A corporate accountant transmigrates into an indebted noble heir and uses forensic ledger analysis...",
+      "tags": "Tags / Tropes", "tags_placeholder": "e.g. Transmigration, Academy, Economics, Politics",
+      "genre_placeholder": "e.g. Low Fantasy / Nobles / Mystery",
+      "similarity_to_original": "Similarity to original",
+      "similarity": {
+        "loose": "Loose (15–25% similarity — structural inspiration only)",
+        "moderate": "Moderate (25–35% similarity — balanced thematic homage)",
+        "close": "Close (35–45% similarity — parallel arc beats)"
+      }
     },
     "rightsNotice": "Only manuscripts you have the right to analyse are processed. The reference's names, settings, scenes, twists and wording are never reused; only abstract structural qualities inform the new novel.",
     "startAnalysis": "Start analysis",
