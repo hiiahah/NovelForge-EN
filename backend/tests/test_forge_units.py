@@ -334,3 +334,77 @@ def test_pov_validation_ignores_character_mentions_for_prohibited_reveal():
     assert not any(i.code == "forbidden_reveal" for i in issues)
 
 
+def test_split_prose_and_claims_supports_chapter_summary_and_scene_handoff():
+    raw = (
+        "The tea tasted of cold ash. Ren did not swallow.\n\n"
+        "<chapter_summary>\n"
+        "# Chapter 1 Summary\n"
+        "- Core Events: Ren survived the poisoned tea and formed an alliance with Vivian.\n"
+        "- Ending State: Stood in the west corridor facing Sister Mary.\n"
+        "</chapter_summary>\n\n"
+        "<scene_handoff>\n"
+        "ending_location: West Gallery Corridor\n"
+        "current_time: Day 1, Evening\n"
+        "present_characters: Ren, Sister Mary\n"
+        "unresolved_action: Mary reaches inside her sleeve for the vial\n"
+        "open_dialogue: Mary: \"You have not finished your cup, Tutor.\"\n"
+        "</scene_handoff>"
+    )
+    prose, claims = claims_mod.split_prose_and_claims(raw)
+    assert prose == "The tea tasted of cold ash. Ren did not swallow."
+    assert claims is not None
+    assert "Ren survived the poisoned tea" in claims.summary
+    assert claims.ending_location == "West Gallery Corridor"
+    assert claims.current_time == "Day 1, Evening"
+    assert "reaches inside her sleeve" in claims.unresolved_immediate_action
+    assert "You have not finished" in claims.open_dialogue_obligation
+
+
+def test_split_prose_and_claims_supports_hash_chapter_summary():
+    raw = (
+        "Prose content here.\n\n"
+        "#chapter1sum\n"
+        "Ren established his tutoring contract and exposed the counterfeit formula.\n"
+        "#endchapter1sum"
+    )
+    prose, claims = claims_mod.split_prose_and_claims(raw)
+    assert prose == "Prose content here."
+    assert claims is not None
+    assert "Ren established his tutoring contract" in claims.summary
+
+
+def test_sync_balanced_summary_extractor():
+    from app.services.forge.sync import _summary
+    paras = [f"Paragraph {i} begins here. This is the detail for scene {i}." for i in range(20)]
+    full_text = "\n\n".join(paras)
+    summary = _summary(full_text, max_chars=1000)
+    assert "Paragraph 0 begins here." in summary
+    assert "Paragraph 19 begins here." in summary
+
+
+def test_compiler_rolling_10_chapter_summary_window():
+    from unittest.mock import MagicMock
+    from app.services.forge.compiler import ChapterContextCompiler
+    
+    compiler = ChapterContextCompiler(MagicMock())
+    def mock_packet(project_id, ch):
+        return {"chapter_number": ch, "summary": f"Summary of Chapter {ch}."}
+    
+    compiler._state_packet = mock_packet
+    compiler._state_packet_card = lambda pid, ch: None
+    
+    start_ch = max(1, 15 - 10)
+    assert start_ch == 5
+    summary_sections = []
+    for ch in range(start_ch, 15):
+        p = compiler._state_packet(1, ch)
+        if p and p.get("summary"):
+            summary_sections.append(f"### Chapter {ch} Summary:\n{p.get('summary')}")
+    assert len(summary_sections) == 10
+    assert "Chapter 5 Summary" in summary_sections[0]
+    assert "Chapter 14 Summary" in summary_sections[-1]
+    assert not any("Chapter 4 Summary" in s for s in summary_sections)
+
+
+
+

@@ -26,7 +26,31 @@ from pydantic import BaseModel, Field
 from app.services.forge.textmetrics import detect_language, split_sentences
 
 CLAIMS_VERSION = "claims-1"
-CLAIMS_BLOCK_RX = re.compile(r"<claims>\s*(\{.*?\})\s*</claims>", re.S)
+CLAIMS_BLOCK_RX = re.compile(r"<claims>\s*([\s\S]*?)\s*</claims>", re.S | re.I)
+CHAPTER_SUMMARY_RX = re.compile(r"<chapter_summary>\s*([\s\S]*?)\s*</chapter_summary>", re.S | re.I)
+CHAPTER_SUM_HASH_RX = re.compile(r"(?:^|\n)\s*#chapter\d*sum[:\s]*\n?([\s\S]*?)(?:(?:\n\s*)?#endchapter\d*sum|(?=(?:^|\n)\s*#(?:scenehandoff|claims))|\Z)", re.I)
+SCENE_HANDOFF_RX = re.compile(r"<scene_handoff>\s*([\s\S]*?)\s*</scene_handoff>", re.S | re.I)
+
+
+def _clean_json_payload(raw_json: str) -> str:
+    text = raw_json.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    return text.strip()
+
+
+def _parse_scene_handoff_text(text: str) -> Dict[str, str]:
+    kv: Dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if ":" in line:
+            k, v = line.split(":", 1)
+            kv[k.strip().lower()] = v.strip()
+    return kv
+
 _CAP_NAME = re.compile(r"\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\b")
 _HANGUL_NAME = re.compile(r"[\uac00-\ud7a3]{2,4}(?=(?:은|는|이|가|을|를|의|에게|과|와|도|만|께서|이가)?\s)")
 _COMMON_CAP = {
@@ -87,16 +111,60 @@ class Claim:
 
 
 def split_prose_and_claims(raw: str) -> Tuple[str, Optional[ChapterClaims]]:
-    """Separate the visible prose from an optional <claims>{json}</claims> block."""
-    m = CLAIMS_BLOCK_RX.search(raw or "")
-    if not m:
-        return (raw or "").strip(), None
-    prose = (raw[: m.start()] + raw[m.end():]).strip()
-    try:
-        data = json.loads(m.group(1))
-        return prose, ChapterClaims.model_validate(data)
-    except Exception:
-        return prose, None
+    """Separate the visible prose from optional <claims>, <chapter_summary>, and <scene_handoff> blocks."""
+    if not raw:
+        return "", None
+
+    prose = raw
+    model_claims: Optional[ChapterClaims] = None
+
+    # 1. Try extracting <claims> block
+    m_claims = CLAIMS_BLOCK_RX.search(prose)
+    if m_claims:
+        claims_text = m_claims.group(1)
+        prose = (prose[: m_claims.start()] + prose[m_claims.end():]).strip()
+        try:
+            cleaned = _clean_json_payload(claims_text)
+            data = json.loads(cleaned)
+            model_claims = ChapterClaims.model_validate(data)
+        except Exception:
+            model_claims = None
+
+    # 2. Extract <chapter_summary> or #chapterXsum block
+    summary_text = ""
+    m_sum = CHAPTER_SUMMARY_RX.search(prose)
+    if m_sum:
+        summary_text = m_sum.group(1).strip()
+        prose = (prose[: m_sum.start()] + prose[m_sum.end():]).strip()
+    else:
+        m_sum_hash = CHAPTER_SUM_HASH_RX.search(prose)
+        if m_sum_hash:
+            summary_text = m_sum_hash.group(1).strip()
+            prose = (prose[: m_sum_hash.start()] + prose[m_sum_hash.end():]).strip()
+
+    # 3. Extract <scene_handoff> block
+    handoff_kv: Dict[str, str] = {}
+    m_handoff = SCENE_HANDOFF_RX.search(prose)
+    if m_handoff:
+        handoff_kv = _parse_scene_handoff_text(m_handoff.group(1))
+        prose = (prose[: m_handoff.start()] + prose[m_handoff.end():]).strip()
+
+    # If any structured continuity was extracted, ensure ChapterClaims exists and is populated
+    if summary_text or handoff_kv:
+        if model_claims is None:
+            model_claims = ChapterClaims()
+        if summary_text and not model_claims.summary:
+            model_claims.summary = summary_text
+        if not model_claims.ending_location:
+            model_claims.ending_location = handoff_kv.get("ending_location") or handoff_kv.get("location") or ""
+        if not model_claims.current_time:
+            model_claims.current_time = handoff_kv.get("current_time") or handoff_kv.get("time") or ""
+        if not model_claims.unresolved_immediate_action:
+            model_claims.unresolved_immediate_action = handoff_kv.get("unresolved_action") or handoff_kv.get("unresolved_immediate_action") or ""
+        if not model_claims.open_dialogue_obligation:
+            model_claims.open_dialogue_obligation = handoff_kv.get("open_dialogue") or handoff_kv.get("open_dialogue_obligation") or ""
+
+    return prose.strip(), model_claims
 
 
 def _find(prose: str, needle: str, start: int = 0) -> Tuple[int, int]:

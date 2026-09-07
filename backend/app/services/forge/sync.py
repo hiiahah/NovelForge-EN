@@ -130,20 +130,38 @@ def decide(proposals: List[ProposedUpdate], locked: Dict[Tuple[str, str], canon_
     return proposals
 
 
-def _summary(prose: str, max_chars: int = 900) -> str:
-    """Deterministic extractive summary: first sentence of each paragraph, capped."""
+def _summary(prose: str, max_chars: int = 1500) -> str:
+    """Balanced extractive summary covering opening, progression, climax, and resolution."""
+    paras = [p.strip() for p in split_paragraphs(prose) if p.strip()]
+    if not paras:
+        return ""
+    if len(paras) <= 5:
+        parts = []
+        for p in paras:
+            sents = split_sentences(p)
+            if sents:
+                parts.append(sents[0])
+        return " ".join(parts)[:max_chars]
+
+    n = len(paras)
+    indices = sorted(set([0, 1, n // 4, n // 2, (3 * n) // 4, n - 2, n - 1]))
     parts: List[str] = []
     total = 0
-    for p in split_paragraphs(prose):
-        sents = split_sentences(p)
-        if not sents:
-            continue
-        s = sents[0]
-        if total + len(s) > max_chars:
-            break
-        parts.append(s)
-        total += len(s) + 1
+    for idx in indices:
+        if 0 <= idx < n:
+            sents = split_sentences(paras[idx])
+            if sents:
+                s = sents[0]
+                if idx == n - 1 and len(sents) > 1:
+                    s = f"{sents[0]} {sents[-1]}"
+                if total + len(s) > max_chars:
+                    if not parts:
+                        parts.append(s[:max_chars])
+                    break
+                parts.append(s)
+                total += len(s) + 1
     return " ".join(parts)
+
 
 
 def _ensure_type(session: Session, name: str) -> CardType:
@@ -167,16 +185,17 @@ def build_state_packet(
     state_after: Dict[Tuple[str, str], canon_store.FactView],
     next_outline: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    ending_location = (model_claims.ending_location if model_claims else "") or next((str(p.value) for p in committed if p.attribute == "location"), "") or next((str(fv.value) for (s, a), fv in state_after.items() if a == "location" and s == pov.lower()), "")
+    ending_location = (model_claims.ending_location if model_claims else "").strip() or next((str(p.value).strip() for p in committed if p.attribute == "location"), "") or next((str(fv.value).strip() for (s, a), fv in state_after.items() if a == "location" and s == pov.lower()), "")
     physical = {n: {a: fv.value for (s, a), fv in state_after.items() if s == n.lower() and a in ("injuries", "conditions", "status")} for n in participants}
     emotional = {}
     for p in observations:
         if p.attribute in ("emotional_state",):
             emotional[p.subject] = p.value
+    loc_target = ending_location or f"the location where chapter {chapter_number} ended"
     return {
         "chapter_number": chapter_number,
         "canon_revision": canon_revision,
-        "summary": (model_claims.summary if model_claims and model_claims.summary else "") or _summary(prose),
+        "summary": (model_claims.summary if model_claims and model_claims.summary else "").strip() or _summary(prose),
         "scene_state": {
             "ending_location": ending_location,
             "current_time": model_claims.current_time if model_claims else "",
@@ -191,7 +210,7 @@ def build_state_packet(
             "open_dialogue_obligation": model_claims.open_dialogue_obligation if model_claims else "",
         },
         "setup_payoff_state": [p.as_dict() for p in committed if p.attribute == "open_questions"],
-        "next_chapter_constraints": [f"Chapter {chapter_number + 1} starts from: {ending_location or 'the location where chapter %d ended' % chapter_number}"] + ([f"Next outline title: {next_outline.get('title')}"] if next_outline else []),
+        "next_chapter_constraints": [f"Chapter {chapter_number + 1} starts from: {loc_target}"] + ([f"Next outline title: {next_outline.get('title')}"] if next_outline else []),
         "noncanonical_observations": [p.as_dict() for p in observations],
         "sync_version": SYNC_VERSION,
     }

@@ -88,3 +88,5 @@ backend/**/*.db-shm
 backend/**/*.db-wal
 .hoplite/archive/
 .hoplite/shots/
+docs/evidence/
+

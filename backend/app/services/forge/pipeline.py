@@ -47,8 +47,10 @@ DRAFT_SYSTEM_PROMPT = (
     "FLEXIBLE details may be invented but must not persist; UNKNOWN facts stay unknown. Keep the explicit POV for the whole chapter. Preserve each character's voice rules. "
     "REFERENCE TECHNIQUE EXAMPLES demonstrate technique only: their names, places, events and sentences are not part of this story and must not be reproduced or paraphrased. "
     "Write only original prose that matches the NARRATIVE FINGERPRINT targets. Output the chapter body only (no title, no notes). "
-    "After the prose, on a new line, output a <claims>{json}</claims> block with: claims (list of {kind, subject, value, evidence}; evidence must be a verbatim sentence from your prose), "
-    "summary (<= 120 words), ending_location, current_time, unresolved_immediate_action, open_dialogue_obligation."
+    "After the prose, output the continuity metadata:\n"
+    "1. <chapter_summary> block containing a comprehensive summary of core events, climax, and status changes.\n"
+    "2. <scene_handoff> block with: ending_location, current_time, present_characters, unresolved_action, open_dialogue.\n"
+    "3. Optional <claims>{json}</claims> block with: claims (list of {kind, subject, value, evidence})."
 )
 REPAIR_SYSTEM_PROMPT = (
     "You repair specific failed spans of a chapter draft. Rewrite ONLY the listed spans so that every listed issue is resolved. Do not add any new fact, entity, "
@@ -64,7 +66,7 @@ class Drafter(Protocol):
 @dataclass
 class PipelineOptions:
     max_repairs: int = 2
-    budget_chars: int = 16000
+    budget_chars: int = 32000
     example_budget_chars: int = 2400
     word_target: Optional[int] = None
     regenerate: bool = False
@@ -174,7 +176,26 @@ def validate_draft(session: Session, ctx: CompiledChapterContext, prose: str, *,
 
 
 def build_draft_prompt(ctx: CompiledChapterContext) -> str:
-    return ctx.prompt_text() + "\n\n[OUTPUT REQUIREMENTS]\nWrite the complete chapter now. Original prose only; then the <claims>{json}</claims> block."
+    return (
+        ctx.prompt_text()
+        + "\n\n[OUTPUT REQUIREMENTS]\n"
+        "Write the complete chapter now in original, immersive webnovel prose.\n\n"
+        "Immediately after the prose, provide the chapter summary and scene handoff blocks:\n"
+        "<chapter_summary>\n"
+        f"# Chapter {ctx.chapter_number} Summary\n"
+        "- Core Events & Climax: (Recap of key narrative beats and choices)\n"
+        "- Character Dynamics: (Shifts in relationships, discoveries, or secrets)\n"
+        "- Ending State: (Current cliffhanger and where the protagonist is left)\n"
+        "</chapter_summary>\n\n"
+        "<scene_handoff>\n"
+        "ending_location: (Specific room/place where this chapter ends)\n"
+        "current_time: (Time of day / story day)\n"
+        "present_characters: (Characters present at chapter end)\n"
+        "unresolved_action: (Immediate cliffhanger or action in progress)\n"
+        "open_dialogue: (Last spoken line or pending reply, if any)\n"
+        "</scene_handoff>\n\n"
+        "You may also optionally include the <claims>{\"claims\": [...]}</claims> block for any explicit canon updates."
+    )
 
 
 def build_repair_prompt(ctx: CompiledChapterContext, prose: str, issues: List[v.Issue]) -> str:

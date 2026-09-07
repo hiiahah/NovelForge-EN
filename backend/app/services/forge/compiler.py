@@ -207,7 +207,7 @@ class ChapterContextCompiler:
         pov: Optional[str] = None,
         participants: Optional[Sequence[str]] = None,
         expected_canon_revision: Optional[int] = None,
-        budget_chars: int = 16000,
+        budget_chars: int = 32000,
         example_budget_chars: int = 2400,
         recently_used_examples: Iterable[str] = (),
         word_target: Optional[int] = None,
@@ -540,15 +540,40 @@ class ChapterContextCompiler:
         if events:
             sections.append(Section("timeline", "RECENT CANONICAL TIMELINE", "\n".join(e[1] for e in events[-6:]), priority=28))
 
-        # 20-22. Previous chapter summary, bounded tail, scene state (from the state packet)
+        # 20-22. Previous chapter summary, rolling 10-chapter window, bounded tail, scene state (from the state packet)
         packet = self._state_packet(project_id, prev_chapter)
         if chapter_number > 1:
             if packet is None:
                 raise ContextCompileError("state_packet_missing", f"Next Chapter State Packet for chapter {prev_chapter} is missing; synchronize chapter {prev_chapter} first")
-            sections.append(Section("previous_summary", f"PREVIOUS CHAPTER {prev_chapter} SUMMARY", _trim(packet.get("summary"), 900), mandatory=True, priority=9))
+
+            # Rolling 10-chapter sliding window: max(1, chapter_number - 10) to prev_chapter
+            start_ch = max(1, chapter_number - 10)
+            summary_sections: List[str] = []
+            summary_card_ids: List[int] = []
+            summary_revisions: List[str] = []
+
+            for ch in range(start_ch, chapter_number):
+                p_card = self._state_packet_card(project_id, ch)
+                p = _c(p_card) if p_card else (packet if ch == prev_chapter else None)
+                if p_card is not None:
+                    summary_card_ids.append(p_card.id)
+                    summary_revisions.append(_rev(p_card))
+                    include(p_card, f"chapter {ch} state packet")
+
+                ch_summary = (p.get("summary") if p else "") or ""
+                if ch_summary:
+                    summary_sections.append(f"### Chapter {ch} Summary:\n{ch_summary.strip()}")
+
+            if not summary_sections and packet.get("summary"):
+                summary_sections.append(f"### Chapter {prev_chapter} Summary:\n{str(packet.get('summary')).strip()}")
+
+            recap_text = "\n\n".join(summary_sections)
+            title = f"CHRONOLOGICAL NOVEL RECAP (CHAPTERS {start_ch}–{prev_chapter})" if start_ch < prev_chapter else f"PREVIOUS CHAPTER {prev_chapter} SUMMARY"
+            sections.append(Section("previous_summary", title, recap_text, mandatory=True, card_ids=summary_card_ids, revisions=summary_revisions, priority=9))
+
             prev_text_card = self._chapter_text_card(project_id, prev_chapter)
             if prev_text_card is not None:
-                tail = _tail(str(_c(prev_text_card).get("content") or ""), 1200)
+                tail = _tail(str(_c(prev_text_card).get("content") or ""), 2500)
                 sections.append(Section("previous_tail", f"PREVIOUS CHAPTER {prev_chapter} — FINAL LINES (continue after these; do not repeat)", tail, priority=10, card_ids=[prev_text_card.id], revisions=[_rev(prev_text_card)]))
             scene = packet.get("scene_state") or {}
             sections.append(Section("scene_state", "CURRENT SCENE STATE AT CHAPTER START", f"location: {scene.get('ending_location')}; time: {scene.get('current_time')}; present: {', '.join(scene.get('participants') or [])}; unresolved action: {_trim(scene.get('unresolved_immediate_action'), 160)}; open dialogue obligation: {_trim(scene.get('open_dialogue_obligation'), 160)}; physical: {_trim(json.dumps(scene.get('physical_states') or {}, ensure_ascii=False), 240)}; emotional: {_trim(json.dumps(scene.get('emotional_states') or {}, ensure_ascii=False), 240)}", mandatory=True, priority=11))
@@ -663,6 +688,15 @@ class ChapterContextCompiler:
             if int(_c(card).get("chapter_number") or 0) == int(chapter_number):
                 return _c(card)
         return None
+
+    def _state_packet_card(self, project_id: int, chapter_number: int) -> Optional[Card]:
+        if chapter_number < 1:
+            return None
+        for card in self.bible.cards_of_type(project_id, "Chapter State Packet"):
+            if int(_c(card).get("chapter_number") or 0) == int(chapter_number):
+                return card
+        return None
+
 
 
 def _tail(text: str, chars: int) -> str:
