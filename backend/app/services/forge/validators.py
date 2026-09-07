@@ -201,6 +201,15 @@ def locate_beats(prose: str, beats: Sequence[Dict[str, Any]]) -> List[Optional[i
     return positions
 
 
+def _term_pattern(t: str) -> str:
+    # Stem English inflectional suffixes (e.g. reveals -> reveal, poisoning -> poison, forges -> forg)
+    # to catch morphological variations and paraphrasing in prose.
+    stem = re.sub(r"(ing|ed|es|s|ers|er)$", "", t)
+    if len(stem) >= 4:
+        return rf"(?<![\w]){re.escape(stem)}\w*"
+    return rf"(?<![\w]){re.escape(t)}(?![\w])"
+
+
 def validate_outline(prose: str, *, beats: Sequence[Dict[str, Any]], forbidden: Iterable[str], language: Optional[str] = None, participants: Optional[Iterable[str]] = None) -> List[Issue]:
     issues: List[Issue] = []
     positions = locate_beats(prose, beats)
@@ -227,7 +236,7 @@ def validate_outline(prose: str, *, beats: Sequence[Dict[str, Any]], forbidden: 
         hit_span = None
         for i in range(len(sents)):
             window = " ".join(sents[i:i + 2]).lower()
-            matched_terms = [t for t in terms if re.search(rf"(?<![\w]){re.escape(t)}(?![\w])", window)]
+            matched_terms = [t for t in terms if re.search(_term_pattern(t), window, re.I)]
             matched_content = [t for t in matched_terms if t not in name_tokens]
             if len(matched_terms) >= threshold and len(matched_content) >= min_content:
                 idx = prose.find(sents[i])
@@ -285,7 +294,7 @@ def validate_pov(prose: str, *, pov: str, others: Iterable[str], pov_type: str =
         hit_span = None
         for i in range(len(sents)):
             window = " ".join(sents[i:i + 2]).lower()
-            matched_terms = [t for t in terms if re.search(rf"(?<![\w]){re.escape(t)}(?![\w])", window)]
+            matched_terms = [t for t in terms if re.search(_term_pattern(t), window, re.I)]
             matched_content = [t for t in matched_terms if t not in name_tokens]
             if len(matched_terms) >= threshold and len(matched_content) >= min_content:
                 idx = prose.find(sents[i])

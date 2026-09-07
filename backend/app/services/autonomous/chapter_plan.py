@@ -104,13 +104,19 @@ def validate_blueprints(chapters: Sequence[Dict[str, Any]], arch: Dict[str, Any]
     # Knowledge boundaries: facts must not be revealed before their reveal chapter.
     for k in arch.get("knowledge_facts") or []:
         rc = int(k.get("reader_reveal_chapter") or 0)
+        cc = int(k.get("clue_chapter") or 0)
         if not rc:
             continue
         fact = str(k.get("fact") or "").strip().lower()
         for n in expected:
             ch = by_num.get(n)
-            if ch and n < rc and any(fact and fact[:40] in str(r).lower() for r in ch.get("reveals") or []):
+            if not ch:
+                continue
+            reveals = ch.get("reveals") or []
+            if n < rc and any(fact and fact[:40] in str(r).lower() for r in reveals):
                 problems.append({"code": "early_reveal", "chapter": n, "message": f"Chapter {n} reveals '{fact[:60]}' planned for chapter {rc}"})
+            if cc and n < cc and any(fact and fact[:40] in str(s).lower() for s in (ch.get("setups") or [])):
+                problems.append({"code": "early_clue", "chapter": n, "message": f"Chapter {n} introduces clue for '{fact[:60]}' before clue chapter {cc}"})
     return problems
 
 
@@ -123,9 +129,15 @@ def _arch_digest(arch: Dict[str, Any]) -> str:
         arc = "; ".join(f"{p.get('phase')}@{p.get('chapter_hint')}: {p.get('state')}" for p in c.get("arc") or [])
         lines.append(f"- {c.get('name')} ({c.get('role')}): goal={c.get('goal')}; flaw={c.get('flaw')}; secret={c.get('secret')}; must not know at start={c.get('knowledge_boundaries')}; arc={arc}; intro ch {c.get('introduction_chapter')}")
     lines.append("\n[LOCATIONS] " + ", ".join(str(l.get("name")) for l in arch.get("locations") or []))
-    lines.append("\n[KNOWLEDGE FACTS] (reader_reveal_chapter is the earliest chapter the reader may learn it)")
+    lines.append("\n[KNOWLEDGE FACTS & REVEAL SCHEDULE]")
     for k in arch.get("knowledge_facts") or []:
-        lines.append(f"- {k.get('fact')} | knowers at start: {k.get('knowers_at_start')} | reader reveal ch {k.get('reader_reveal_chapter')}")
+        prog = []
+        if k.get("clue_chapter"):
+            prog.append(f"clue ch {k.get('clue_chapter')}")
+        if k.get("suspicion_chapter"):
+            prog.append(f"suspicion ch {k.get('suspicion_chapter')}")
+        prog.append(f"reader reveal ch {k.get('reader_reveal_chapter')}")
+        lines.append(f"- {k.get('fact')} | knowers at start: {k.get('knowers_at_start')} | progression: {' -> '.join(prog)}")
     lines.append("\n[PLOT THREADS]")
     for t in arch.get("plot_threads") or []:
         lines.append(f"- {t.get('name')} ({t.get('thread_type')}): {t.get('central_question')}; ch {t.get('opening_chapter')} -> {t.get('resolution_chapter')}")
@@ -152,6 +164,28 @@ def build_prompt(arch: Dict[str, Any], *, chapters: Sequence[int], total: int, w
         parts.append("\n[PREVIOUS BLUEPRINTS — continue from these]")
         for p in previous[-3:]:
             parts.append(f"- ch {p.get('chapter_number')} '{p.get('title')}': {str(p.get('overview') or '')[:400]} | hook: {p.get('closing_hook')}")
+
+    # Active Plot Threads & Subplot Continuity Ledger for this planning window
+    threads = arch.get("plot_threads") or []
+    if threads:
+        w_start, w_end = chapters[0], chapters[-1]
+        thread_lines = []
+        for t in threads:
+            t_name = t.get("name", "Unnamed thread")
+            t_type = t.get("thread_type", "subplot")
+            t_open = int(t.get("opening_chapter") or 1)
+            t_res = int(t.get("resolution_chapter") or total)
+            if t_open <= w_end and (t_res == 0 or t_res >= w_start):
+                if w_start <= t_open <= w_end:
+                    status = f"OPENS in this window (ch {t_open})"
+                elif w_start <= t_res <= w_end:
+                    status = f"RESOLVES in this window (ch {t_res}) — must deliver payoff"
+                else:
+                    status = f"ACTIVE CONTINUITY (opened ch {t_open}, resolves ch {t_res}) — maintain ambient presence, character voice, or minor tension"
+                thread_lines.append(f"- [{t_type.upper()}] '{t_name}': {t.get('central_question', '')} ({status})")
+        if thread_lines:
+            parts.append("\n[PLOT THREAD CONTINUITY IN THIS WINDOW]\n" + "\n".join(thread_lines))
+
     parts.append(f"\n[TASK]\nPlan chapters {chapters[0]}-{chapters[-1]} of {total}. Target length per chapter: about {word_target} words. Produce one blueprint per chapter, in order, each with 4-8 beats.")
     if problems and drafts is not None:
         parts += ["\n[PREVIOUS BLUEPRINTS FAILED VALIDATION — fix ONLY these problems, keep everything else]"] + [f"- ch {p.get('chapter')}: {p['message']}" for p in problems[:30]]
@@ -170,8 +204,16 @@ def blueprint_to_outline(bp: Dict[str, Any], *, arch: Dict[str, Any], word_targe
     forbidden = list(bp.get("forbidden_outcomes") or [])
     for k in arch.get("knowledge_facts") or []:
         rc = int(k.get("reader_reveal_chapter") or 0)
-        if rc and n < rc and k.get("fact") and str(k["fact"]) not in forbidden:
-            forbidden.append(str(k["fact"]))
+        cc = int(k.get("clue_chapter") or 0)
+        fact_str = str(k.get("fact") or "").strip()
+        if not fact_str or not rc:
+            continue
+        if n < rc and fact_str not in forbidden:
+            forbidden.append(fact_str)
+        if cc and n < cc:
+            clue_rule = f"hint or clue regarding {fact_str}"
+            if clue_rule not in forbidden:
+                forbidden.append(clue_rule)
     allowed = list(bp.get("allowed_outcomes") or []) + [str(x) for x in (bp.get("reveals") or []) + (bp.get("payoffs") or [])]
     overview = str(bp.get("overview") or "")
     if len(overview) < 100:

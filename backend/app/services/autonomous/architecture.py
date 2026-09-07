@@ -191,6 +191,14 @@ def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[D
         rc = int(k.get("reader_reveal_chapter") or 0)
         if rc > chapter_count:
             problems.append({"code": "chapter_out_of_range", "message": f"Fact '{str(k.get('fact'))[:60]}' reveal chapter {rc} exceeds {chapter_count}", "subject": str(k.get("fact"))[:60]})
+        cc = int(k.get("clue_chapter") or 0)
+        sc = int(k.get("suspicion_chapter") or 0)
+        if cc and rc and cc >= rc:
+            problems.append({"code": "clue_after_reveal", "message": f"Fact '{str(k.get('fact'))[:60]}' clue chapter {cc} must be before reveal chapter {rc}", "subject": str(k.get("fact"))[:60]})
+        if sc and rc and sc >= rc:
+            problems.append({"code": "suspicion_after_reveal", "message": f"Fact '{str(k.get('fact'))[:60]}' suspicion chapter {sc} must be before reveal chapter {rc}", "subject": str(k.get("fact"))[:60]})
+        if cc and sc and cc > sc:
+            problems.append({"code": "suspicion_before_clue", "message": f"Fact '{str(k.get('fact'))[:60]}' clue chapter {cc} must be at or before suspicion chapter {sc}", "subject": str(k.get("fact"))[:60]})
     setups = arch.get("setups_payoffs") or []
     if not setups:
         problems.append({"code": "no_setups", "message": "No setup/payoff pairs planned"})
@@ -247,7 +255,7 @@ def build_prompt(storyline: Dict[str, Any], *, chapter_count: int, allocation: L
     if prefs:
         parts += ["\n[USER PREFERENCES]"] + [f"- {k}: {v}" for k, v in prefs.items()]
     parts += ["\n[REFERENCE STRUCTURE — abstract, entity-free]", brief]
-    parts += ["\n[REQUIREMENTS]", "characters: 5-10 with full fields; the protagonist arc must have start/mid/end with chapter hints. locations: 4-8. knowledge_facts: 4-10 including every secret the plot depends on. relationships: every pair that matters. plot_threads: one main_plot plus 2-5 subplots with opening and resolution chapters. setups_payoffs: 6-15 with setup_chapter < payoff_chapter <= chapter count. timeline: 8-20 events. act_plan: one line per allocated function."]
+    parts += ["\n[REQUIREMENTS]", "characters: 5-10 with full fields; the protagonist arc must have start/mid/end with chapter hints. locations: 4-8. knowledge_facts: 4-10 including every secret the plot depends on (use optional clue_chapter and suspicion_chapter before reader_reveal_chapter for progressive mystery foreshadowing). relationships: every pair that matters. plot_threads: one main_plot plus 2-5 subplots with opening and resolution chapters. setups_payoffs: 6-15 with setup_chapter < payoff_chapter <= chapter count. timeline: 8-20 events. act_plan: one line per allocated function."]
     if problems and previous is not None:
         parts += ["\n[PREVIOUS ARCHITECTURE FAILED VALIDATION — fix ONLY these problems, keep everything else]"] + [f"- {p['code']}: {p['message']}" for p in problems[:30]]
         parts += ["\n[PREVIOUS ARCHITECTURE]", json.dumps(previous, ensure_ascii=False)[:60000]]

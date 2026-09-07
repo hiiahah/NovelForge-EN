@@ -406,5 +406,67 @@ def test_compiler_rolling_10_chapter_summary_window():
     assert not any("Chapter 4 Summary" in s for s in summary_sections)
 
 
+def test_outline_validation_detects_morphological_variants():
+    beats = [{"description": "Investigating the ledger", "keywords": ["ledger"]}]
+    # Forbidden outcome has "forges" and "reveals", prose uses "forging" and "revealed"
+    prose = "He looked through the ledger.\n\nThen the clerk revealed that Corvin was forging the manifests."
+    forbidden = ["(ch.5) clerk reveals that Corvin forges the manifests"]
+    issues = v.validate_outline(prose, beats=beats, forbidden=forbidden)
+    assert any(i.code == "future_beat_advanced" for i in issues)
+
+
+def test_architecture_3tier_clue_progression_validation():
+    from app.services.autonomous.architecture import validate_architecture
+    arch = {
+        "contract": {"pov": "first person", "ending_contract": "solved"},
+        "characters": [
+            {"name": "Nadia", "role": "Protagonist", "home_location": "Docks", "arc": [{"phase": "start", "state": "s"}, {"phase": "mid", "state": "m"}, {"phase": "end", "state": "e"}]},
+            {"name": "Vane", "role": "Antagonist", "home_location": "Docks", "arc": []}
+        ],
+        "locations": [{"name": "Docks"}],
+        "setups_payoffs": [{"setup": "gun", "setup_chapter": 1, "payoff": "shot", "payoff_chapter": 10}],
+        "plot_threads": [{"name": "Main", "thread_type": "main_plot", "opening_chapter": 1, "resolution_chapter": 10}],
+        "knowledge_facts": [
+            {"fact": "Vane poisoned the well", "knowers_at_start": ["Vane"], "clue_chapter": 3, "suspicion_chapter": 6, "reader_reveal_chapter": 9}
+        ]
+    }
+    # Valid progression passes
+    problems = validate_architecture(arch, chapter_count=10)
+    assert not any(p["code"] in ("clue_after_reveal", "suspicion_after_reveal", "suspicion_before_clue") for p in problems)
+
+    # Clue after reveal fails
+    arch["knowledge_facts"][0]["clue_chapter"] = 10
+    problems = validate_architecture(arch, chapter_count=10)
+    assert any(p["code"] == "clue_after_reveal" for p in problems)
+
+
+def test_chapter_plan_active_thread_continuity_and_forbidden_clues():
+    from app.services.autonomous.chapter_plan import build_prompt, blueprint_to_outline
+    arch = {
+        "contract": {"ending_contract": "solved"},
+        "plot_threads": [
+            {"name": "Lost Sister", "thread_type": "subplot", "central_question": "Where is she?", "opening_chapter": 2, "resolution_chapter": 20},
+            {"name": "Dock Strike", "thread_type": "subplot", "central_question": "Will they strike?", "opening_chapter": 9, "resolution_chapter": 12}
+        ],
+        "knowledge_facts": [
+            {"fact": "The mayor is an impostor", "clue_chapter": 5, "reader_reveal_chapter": 15}
+        ],
+        "allocation": [{"function": "setup", "chapter_start": 1, "chapter_end": 8}],
+        "act_plan": ["act 1"]
+    }
+    # Window 9-16: Lost Sister is active continuity, Dock Strike opens in window
+    prompt = build_prompt(arch, chapters=[9, 10, 11, 12, 13, 14, 15, 16], total=20, word_target=2500, previous=[])
+    assert "[PLOT THREAD CONTINUITY IN THIS WINDOW]" in prompt
+    assert "Lost Sister" in prompt
+    assert "ACTIVE CONTINUITY" in prompt
+    assert "Dock Strike" in prompt
+
+    # Blueprint at chapter 3: before clue_chapter (5) and reveal_chapter (15)
+    bp = {"chapter_number": 3, "title": "Dawn", "beats": [{"function": "scene_opening", "description": "walking", "keywords": []}]}
+    outline = blueprint_to_outline(bp, arch=arch, word_target=2500, total=20)
+    assert "The mayor is an impostor" in outline["forbidden_outcomes"]
+    assert any("hint or clue" in f for f in outline["forbidden_outcomes"])
+
+
 
 

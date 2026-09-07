@@ -140,6 +140,8 @@ class KnowledgeFactSpec(BaseModel):
     fact: str
     is_true: bool = Field(default=True)
     knowers_at_start: List[str] = Field(default_factory=list, description="Characters who know it at chapter 1")
+    clue_chapter: int = Field(default=0, description="Chapter where subtle clue/anomaly first appears (0 = no clue before reveal)")
+    suspicion_chapter: int = Field(default=0, description="Chapter where suspicion/inquiry begins (0 = no explicit investigation)")
     reader_reveal_chapter: int = Field(default=0, description="Chapter where the reader learns it (0 = never / already known)")
     sensitivity: str = Field(default="medium", description="low | medium | high")
 
