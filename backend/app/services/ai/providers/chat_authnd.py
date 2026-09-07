@@ -140,7 +140,7 @@ class ChatAuthND(BaseChatModel):
 
     model_name: str = Field(default=authnd_auth.DEFAULT_MODEL, alias="model")
     temperature: Optional[float] = 0.3
-    max_tokens: Optional[int] = 32768
+    max_tokens: Optional[int] = 65536
     top_p: Optional[float] = None
     frequency_penalty: Optional[float] = None
     presence_penalty: Optional[float] = None
@@ -178,7 +178,7 @@ class ChatAuthND(BaseChatModel):
         return dict(
             model=self.model_name,
             temperature=self.temperature if self.temperature is not None else kwargs.get("temperature", 0.3),
-            max_tokens=self.max_tokens if self.max_tokens is not None else kwargs.get("max_tokens", 32768),
+            max_tokens=self.max_tokens if self.max_tokens is not None else kwargs.get("max_tokens", 65536),
             top_p=self.top_p if self.top_p is not None else kwargs.get("top_p"),
             frequency_penalty=self.frequency_penalty if self.frequency_penalty is not None else kwargs.get("frequency_penalty"),
             presence_penalty=self.presence_penalty if self.presence_penalty is not None else kwargs.get("presence_penalty"),

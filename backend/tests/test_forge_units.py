@@ -310,3 +310,27 @@ def test_lab_model_validation_api_key_providers(provider, model):
     assert reason == f"{provider}/{model}"
     ok, reason = validate_lab_llm_config(_Cfg(provider, model, api_key="   "))
     assert ok is False and "API key" in reason
+
+
+def test_named_entities_ignores_contractions_and_common_sentence_starters():
+    prose = "Don't do that. Don't look at me. Like a moth to flame, he walked. Students gathered outside. Students murmured. Trying was useless. Trying again would fail."
+    entities = claims_mod.named_entities(prose, "en")
+    assert "Don" not in entities
+    assert "Like" not in entities
+    assert "Students" not in entities
+    assert "Trying" not in entities
+
+
+def test_outline_validation_window_prevents_scattered_false_positives():
+    beats = [{"description": "Ren enters room", "keywords": ["enters"]}]
+    prose = "Ren opened his eyes in the morning. Sister Mary arrived hours later to clean. At dusk he felt threatened by the exam schedule."
+    issues = v.validate_outline(prose, beats=beats, forbidden=["(ch.4) Sister Mary has openly threatened Ren"], language="en", participants=["Ren", "Sister Mary"])
+    assert not any(i.code == "future_beat_advanced" for i in issues)
+
+
+def test_pov_validation_ignores_character_mentions_for_prohibited_reveal():
+    prose = "Ren Barlow drank the bitter tea. Sister Mary watched with a faint smile."
+    issues = v.validate_pov(prose, pov="Ren Barlow", others=["Sister Mary"], prohibited=["(ch.6) Sister Mary is defeated"], language="en")
+    assert not any(i.code == "forbidden_reveal" for i in issues)
+
+

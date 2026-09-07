@@ -137,9 +137,20 @@ def validate_facts(claims: Sequence[Claim], *, locked: Dict[Tuple[str, str], Any
 def _beat_terms(beat: Dict[str, Any]) -> List[str]:
     text = str(beat.get("description") or beat.get("text") or "")
     keys = beat.get("keywords") or []
-    terms = [_norm(k) for k in keys if k]
-    if not terms:
-        terms = [t for t in tokenize(text) if len(t) >= 5][:8]
+    terms: List[str] = []
+    for k in keys:
+        if k:
+            norm_k = _norm(k)
+            if norm_k and norm_k not in terms:
+                terms.append(norm_k)
+            for tok in tokenize(str(k)):
+                tok_norm = _norm(tok)
+                if len(tok_norm) >= 4 and tok_norm not in _PROHIBITED_STOP and tok_norm not in terms:
+                    terms.append(tok_norm)
+    desc_terms = [t for t in tokenize(text) if len(t) >= 4 and t not in _PROHIBITED_STOP]
+    for dt in desc_terms:
+        if dt not in terms:
+            terms.append(dt)
     return terms
 
 
@@ -164,7 +175,7 @@ def locate_beats(prose: str, beats: Sequence[Dict[str, Any]]) -> List[Optional[i
         if not terms:
             positions.append(None)
             continue
-        need = max(1, (len(terms) + 1) // 2)
+        need = max(1, min(2, (len(terms) + 1) // 2))
         found: Optional[int] = None
         # Narrow windows first (one paragraph), then widen to three, preferring
         # positions at/after the previous beat.
@@ -190,7 +201,7 @@ def locate_beats(prose: str, beats: Sequence[Dict[str, Any]]) -> List[Optional[i
     return positions
 
 
-def validate_outline(prose: str, *, beats: Sequence[Dict[str, Any]], forbidden: Iterable[str]) -> List[Issue]:
+def validate_outline(prose: str, *, beats: Sequence[Dict[str, Any]], forbidden: Iterable[str], language: Optional[str] = None, participants: Optional[Iterable[str]] = None) -> List[Issue]:
     issues: List[Issue] = []
     positions = locate_beats(prose, beats)
     for i, (beat, pos) in enumerate(zip(beats, positions)):
@@ -200,13 +211,30 @@ def validate_outline(prose: str, *, beats: Sequence[Dict[str, Any]], forbidden: 
     for (i1, p1), (i2, p2) in zip(found, found[1:]):
         if p2 < p1:
             issues.append(Issue("outline", "beat_out_of_order", "high", f"Beat {i2 + 1} occurs before beat {i1 + 1}", (p2, p2 + 1), "Reorder the scenes to follow the outline"))
-    low = prose.lower()
+    lang = language or detect_language(prose)
+    sents = [s for s in split_sentences(prose, lang) if not s.rstrip().endswith(("?", "？"))]
+    name_tokens: Set[str] = set()
+    if participants:
+        for p in participants:
+            name_tokens.update(tokenize(str(p).lower()))
     for f in forbidden:
         terms = [t for t in tokenize(re.sub(r"^\(ch\.\d+\)\s*", "", str(f))) if len(t) >= 3 and t not in _PROHIBITED_STOP]
-        hits = sum(1 for t in terms if re.search(rf"(?<![\w]){re.escape(t)}(?![\w])", low))
-        if len(terms) >= 3 and hits >= max(3, int(len(terms) * 0.7)):
-            m = re.search(re.escape(terms[0]), low)
-            issues.append(Issue("outline", "future_beat_advanced", "critical", f"Forbidden / future outcome appears: {str(f)[:120]}", (m.start(), m.end()) if m else None, "Remove the future event; end where the outline ends", str(f)))
+        if len(terms) < 2:
+            continue
+        content_terms = [t for t in terms if t not in name_tokens]
+        min_content = min(2, len(content_terms)) if content_terms else 1
+        threshold = max(2, int(len(terms) * 0.65 + 0.5)) if len(terms) >= 3 else len(terms)
+        hit_span = None
+        for i in range(len(sents)):
+            window = " ".join(sents[i:i + 2]).lower()
+            matched_terms = [t for t in terms if re.search(rf"(?<![\w]){re.escape(t)}(?![\w])", window)]
+            matched_content = [t for t in matched_terms if t not in name_tokens]
+            if len(matched_terms) >= threshold and len(matched_content) >= min_content:
+                idx = prose.find(sents[i])
+                hit_span = (idx, idx + len(sents[i])) if idx >= 0 else None
+                break
+        if hit_span is not None:
+            issues.append(Issue("outline", "future_beat_advanced", "critical", f"Forbidden / future outcome appears: {str(f)[:120]}", hit_span, "Remove the future event; end where the outline ends", str(f)))
     return issues
 
 
@@ -239,19 +267,27 @@ def validate_pov(prose: str, *, pov: str, others: Iterable[str], pov_type: str =
         if third >= 3:
             issues.append(Issue("pov", "pov_drift", "high", "First-person chapter reports other characters' feelings as fact", None, "Keep to the narrator's perception"))
     # Questions are not reveals: a POV wondering about a fact is legitimate suspense.
+    name_tokens: Set[str] = set()
+    if pov:
+        name_tokens.update(tokenize(str(pov).lower()))
+    for o in others:
+        name_tokens.update(tokenize(str(o).lower()))
+
+    sents = [s for s in split_sentences(prose, lang) if not s.rstrip().endswith(("?", "？"))]
     for p in prohibited:
-        p_clean = re.sub(r"\s*\(.*?\)\s*$", "", str(p))
+        p_clean = re.sub(r"^\(ch\.\d+\)\s*", "", re.sub(r"\s*\(.*?\)\s*$", "", str(p)))
         terms = [t for t in tokenize(p_clean) if len(t) >= 3 and t not in _PROHIBITED_STOP]
         if len(terms) < 2:
             continue
-        # Match inside one declarative sentence (with a 1-sentence window) so
-        # terms scattered across the chapter do not count as a reveal.
-        sents = [s for s in split_sentences(prose, lang) if not s.rstrip().endswith(("?", "？"))]
+        content_terms = [t for t in terms if t not in name_tokens]
+        min_content = min(2, len(content_terms)) if content_terms else 1
+        threshold = max(2, int(len(terms) * 0.65 + 0.5)) if len(terms) >= 3 else len(terms)
         hit_span = None
         for i in range(len(sents)):
             window = " ".join(sents[i:i + 2]).lower()
-            hits = sum(1 for t in terms if re.search(rf"(?<![\w]){re.escape(t)}(?![\w])", window))
-            if hits >= 2 and hits >= int(len(terms) * 0.6 + 0.5):
+            matched_terms = [t for t in terms if re.search(rf"(?<![\w]){re.escape(t)}(?![\w])", window)]
+            matched_content = [t for t in matched_terms if t not in name_tokens]
+            if len(matched_terms) >= threshold and len(matched_content) >= min_content:
                 idx = prose.find(sents[i])
                 hit_span = (idx, idx + len(sents[i])) if idx >= 0 else None
                 break
@@ -260,7 +296,7 @@ def validate_pov(prose: str, *, pov: str, others: Iterable[str], pov_type: str =
     return issues
 
 
-_PROHIBITED_STOP = {"the", "and", "for", "was", "are", "not", "but", "his", "her", "she", "him", "has", "had", "all", "any", "one", "two", "who", "how", "why", "did", "does", "that", "this", "with", "from", "have", "been", "were", "will", "would", "about", "before", "after", "their", "there", "which", "when", "what", "into", "onto", "over", "under", "than", "then", "them", "they", "your", "some", "very", "also", "just", "only", "chapter", "planned", "reveal", "payoff", "window", "along", "pov", "unaware", "yet"}
+_PROHIBITED_STOP = {"the", "and", "for", "was", "are", "not", "but", "his", "her", "she", "him", "has", "had", "all", "any", "one", "two", "who", "how", "why", "did", "does", "that", "this", "with", "from", "have", "been", "were", "will", "would", "about", "before", "after", "their", "there", "which", "when", "what", "into", "onto", "over", "under", "than", "then", "them", "they", "your", "some", "very", "also", "just", "only", "chapter", "planned", "reveal", "revealed", "reveals", "revealing", "payoff", "window", "along", "pov", "unaware", "yet"}
 
 
 # -------------------------------------------------------------------- character

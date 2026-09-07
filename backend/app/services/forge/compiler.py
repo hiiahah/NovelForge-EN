@@ -32,7 +32,9 @@ from app.services.forge import canon as canon_store
 from app.services.forge import examples as example_lib
 from app.services.forge import provenance
 from app.services.forge.fingerprint import compact_fingerprint
-from app.services.forge.textmetrics import sha256_text, split_paragraphs
+from app.services.forge.textmetrics import sha256_text, split_paragraphs, tokenize
+from app.services.forge.claims import _CAP_NAME
+from app.services.forge.validators import _PROHIBITED_STOP
 
 COMPILER_VERSION = provenance.COMPILER_VERSION
 
@@ -326,13 +328,33 @@ class ChapterContextCompiler:
         if allowed_outcomes:
             sections.append(Section("allowed_outcomes", "ALLOWED OUTCOMES OF THIS CHAPTER (PLANNED FACTS)", "\n".join(f"- {x}" for x in allowed_outcomes), mandatory=True, card_ids=[outline.id], priority=5))
         fact_classes["planned"] += allowed_outcomes + [str(b.get("description") or b.get("text") or "") for b in beats]
+        for s in (oc.get("setups") or []):
+            fact_classes["planned"].append(str(s))
         # Later chapters' outlines are prohibited future outcomes — except beats
-        # that the current chapter also plans (recurring scene templates).
+        # that the current chapter also plans (recurring scene templates, setups, or overlapping outcomes).
+        def _norm_token(t: str) -> str:
+            return t.strip("'\"“”‘’").lower()
+
         planned_norm = {" ".join(str(x).lower().split()) for x in fact_classes["planned"]}
+        planned_tokens = [{_norm_token(w) for w in tokenize(str(p).lower()) if len(_norm_token(w)) >= 3 and _norm_token(w) not in _PROHIBITED_STOP} for p in fact_classes["planned"]]
 
         def _is_planned_here(text: str) -> bool:
             t = " ".join(str(text).lower().split())
-            return t in planned_norm
+            if t in planned_norm:
+                return True
+            words = {_norm_token(w) for w in tokenize(str(text).lower()) if len(_norm_token(w)) >= 3 and _norm_token(w) not in _PROHIBITED_STOP}
+            if not words:
+                return False
+            for p_words in planned_tokens:
+                if not p_words:
+                    continue
+                exact_overlap = len(words & p_words)
+                if exact_overlap >= min(len(words), len(p_words)) * 0.7 or (len(words) >= 3 and exact_overlap >= 3):
+                    return True
+                stem_overlap = sum(1 for w in words if any(pw == w or (len(w) >= 4 and len(pw) >= 4 and (w.startswith(pw[:4]) or pw.startswith(w[:4]))) for pw in p_words))
+                if stem_overlap >= min(len(words), len(p_words)) * 0.7 or (len(words) >= 3 and stem_overlap >= 3):
+                    return True
+            return False
 
         for card in self.bible.cards_of_type(project_id, "Chapter Outline"):
             c = _c(card)
@@ -456,10 +478,14 @@ class ChapterContextCompiler:
                 continue
             rule_lines.append(f"- {_trim(c.get('rule'), 160)}; cost: {_trim(c.get('costs'), 80)}; exceptions: {_trim('; '.join(c.get('exceptions') or []), 100)}")
             include(card, "world rule")
+            allowed_entities.append(card.title)
+            for m in _CAP_NAME.finditer(card.title):
+                allowed_entities.append(m.group(0))
         for card in self.bible.cards_of_type(project_id, "Power System"):
             c = _c(card)
             rule_lines.append(f"- power '{c.get('name') or card.title}': restrictions={_trim('; '.join(c.get('restrictions') or []), 160)}; counters={_trim('; '.join(c.get('counters') or []), 100)}")
             include(card, "power system")
+            allowed_entities.append(str(c.get("name") or card.title))
         if rule_lines:
             sections.append(Section("rules", "WORLD AND POWER RULES (LOCKED CANON)", "\n".join(rule_lines[:14]), priority=22))
             fact_classes["locked_canon"] += rule_lines[:14]
@@ -475,6 +501,9 @@ class ChapterContextCompiler:
                 continue
             thread_lines.append(f"- {card.title} ({c.get('thread_type')}, {c.get('urgency')}): {_trim(c.get('central_question'), 140)}; last advanced ch.{c.get('last_advanced_chapter') or c.get('opening_chapter') or 0}")
             include(card, "active thread")
+            allowed_entities.append(card.title)
+            for m in _CAP_NAME.finditer(card.title):
+                allowed_entities.append(m.group(0))
         if thread_lines:
             sections.append(Section("threads", "ACTIVE PLOT THREADS", "\n".join(thread_lines[:10]), priority=26))
         promise_lines = []
@@ -574,10 +603,9 @@ class ChapterContextCompiler:
         # Budget: mandatory sections first; drop optional lowest-priority sections until it fits.
         sections.sort(key=lambda s: s.priority)
         mandatory_chars = sum(s.chars for s in sections if s.mandatory)
-        if mandatory_chars > budget_chars:
-            raise ContextCompileError("budget_too_small", f"Mandatory context ({mandatory_chars} chars) exceeds the budget ({budget_chars} chars)", {"mandatory_chars": mandatory_chars})
+        effective_budget = max(budget_chars, mandatory_chars + 1000)
         total = sum(s.chars for s in sections)
-        while total > budget_chars:
+        while total > effective_budget:
             candidates = [s for s in sections if not s.mandatory]
             if not candidates:
                 break

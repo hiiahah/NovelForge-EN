@@ -156,7 +156,7 @@ def validate_draft(session: Session, ctx: CompiledChapterContext, prose: str, *,
     locked_state = canon_store.state_as_of(session, ctx.project_id, ctx.chapter_number - 1, canon_revision=ctx.canon_revision)
     locked = {k: fv.value for k, fv in locked_state.items()}
     report.issues += v.validate_facts(all_claims, locked=locked, planned=ctx.fact_classes.get("planned", []), allowed=ctx.allowed_entities, paid_off=ctx.fact_classes.get("paid_off", []), prose=prose_only)
-    report.issues += v.validate_outline(prose_only, beats=beats, forbidden=ctx.fact_classes.get("prohibited", []))
+    report.issues += v.validate_outline(prose_only, beats=beats, forbidden=ctx.fact_classes.get("prohibited", []), language=lang, participants=ctx.participants)
     pov_type = ((fingerprint.get("layers") or {}).get("pov_focalization") or {}).get("features", {}).get("pov", "third_person")
     report.issues += v.validate_pov(prose_only, pov=ctx.pov, others=[p for p in ctx.participants if p != ctx.pov], pov_type=pov_type, prohibited=ctx.prohibited, language=lang)
     report.issues += v.validate_characters(prose_only, character_cards=_character_cards(session, ctx.project_id), participants=ctx.participants)
@@ -318,7 +318,7 @@ async def run_chapter(
 class LLMDrafter:
     """Production drafter: routes roles to LLM configs through llm_service."""
 
-    def __init__(self, session: Session, role_configs: Dict[str, int], *, temperature: float = 0.7, max_tokens: int = 8192, timeout: float = 240.0):
+    def __init__(self, session: Session, role_configs: Dict[str, int], *, temperature: float = 0.7, max_tokens: int = 65536, timeout: float = 240.0):
         self.session = session
         self.role_configs = role_configs
         self.temperature = temperature

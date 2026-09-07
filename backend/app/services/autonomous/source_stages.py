@@ -200,6 +200,7 @@ async def stage_source_analysis(session: Session, ctx: SourceContext) -> Dict[st
     template = get_prompt_by_name(session, "Lab - Chapter Analysis")
     if template is None:
         raise fail.StageFailure(fail.INTERNAL_ERROR, "Prompt 'Lab - Chapter Analysis' is missing")
+    template_text = template.template
     total = len(items)
     done = 0
     results: List[Dict[str, Any]] = []
@@ -207,7 +208,7 @@ async def stage_source_analysis(session: Session, ctx: SourceContext) -> Dict[st
 
     async def one(item: Dict[str, Any]) -> Dict[str, Any]:
         nonlocal done
-        prompt = template.template.replace("{{content}}", item["content"])
+        prompt = template_text.replace("{{content}}", item["content"])
         for k, v in item.items():
             prompt = prompt.replace(f"{{{{item.{k}}}}}", str(v))
         async with sem:
@@ -320,24 +321,30 @@ async def stage_book_structure(session: Session, ctx: SourceContext) -> Dict[str
         stages = _c(structure_card).get("stages") or []
     else:
         ctx.progress("Detecting act structure", 0.1)
-        windows = fn_lab_windows(records, size=ctx.window_size)
-        arc_prompt = get_prompt_by_name(session, "Lab - Local Arc Detection")
-        if arc_prompt is None:
-            raise fail.StageFailure(fail.INTERNAL_ERROR, "Prompt 'Lab - Local Arc Detection' is missing")
-        carry = {"open_arc": "none"}
-        arc_results = []
-        for w in windows:
-            prompt = arc_prompt.template.replace("{{content}}", w["content"])
-            for k, v in {**w, **carry}.items():
-                prompt = prompt.replace(f"{{{{item.{k}}}}}", str(v)).replace(f"{{{{carry.{k}}}}}", str(v))
-            try:
-                plan = await ctx.client.structured(role="source_analyst", schema=LocalArcPlan, system_prompt="Detect local narrative arcs in this window of chapter analyses.", user_prompt=prompt, prompt_version="Lab - Local Arc Detection@1", stage="STRUCTURE:arcs")
-                arc_results.append({"ai_result": plan.model_dump(mode="json"), "meta": w})
-                arcs = plan.arcs
-                carry = {"open_arc": json.dumps({"name": arcs[-1].name, "chapter_start": arcs[-1].chapter_start, "summary": arcs[-1].summary[:400]}) if arcs and arcs[-1].open_at_end else "none"}
-            except fail.StageFailure as exc:
-                logger.warning(f"[Autonomous] arc window {w['chunk_index']} failed: {exc}")
-        candidates = fn_lab_arc_candidates(arc_results)
+        arc_card = bible.find_card(pid, "Source Analysis Record", "Arc Candidates")
+        if fresh(arc_card) and _c(arc_card).get("candidates"):
+            candidates = _c(arc_card).get("candidates") or []
+        else:
+            windows = fn_lab_windows(records, size=ctx.window_size)
+            arc_prompt = get_prompt_by_name(session, "Lab - Local Arc Detection")
+            if arc_prompt is None:
+                raise fail.StageFailure(fail.INTERNAL_ERROR, "Prompt 'Lab - Local Arc Detection' is missing")
+            carry = {"open_arc": "none"}
+            arc_results = []
+            for w in windows:
+                prompt = arc_prompt.template.replace("{{content}}", w["content"])
+                for k, v in {**w, **carry}.items():
+                    prompt = prompt.replace(f"{{{{item.{k}}}}}", str(v)).replace(f"{{{{carry.{k}}}}}", str(v))
+                try:
+                    plan = await ctx.client.structured(role="source_analyst", schema=LocalArcPlan, system_prompt="Detect local narrative arcs in this window of chapter analyses.", user_prompt=prompt, prompt_version="Lab - Local Arc Detection@1", stage="STRUCTURE:arcs")
+                    arc_results.append({"ai_result": plan.model_dump(mode="json"), "meta": w})
+                    arcs = plan.arcs
+                    carry = {"open_arc": json.dumps({"name": arcs[-1].name, "chapter_start": arcs[-1].chapter_start, "summary": arcs[-1].summary[:400]}) if arcs and arcs[-1].open_at_end else "none"}
+                except fail.StageFailure as exc:
+                    logger.warning(f"[Autonomous] arc window {w['chunk_index']} failed: {exc}")
+            candidates = fn_lab_arc_candidates(arc_results)
+            _create_or_replace_singleton_like(session, pid, "Source Analysis Record", "Arc Candidates", {"candidates": candidates, "manuscript_id": manuscript_id})
+            session.commit()
         structure = await ctx.client.structured(role="source_analyst", schema=StoryStructureMap, system_prompt="Reconcile local arc candidates into the book's global stage structure.", user_prompt=_prompt(session, "Lab - Global Stage Reconciliation", {"total_chapters": total, "max_stage_count": ctx.max_stage_count, "arc_candidates": json.dumps(candidates, ensure_ascii=False)}), prompt_version="Lab - Global Stage Reconciliation@1", stage="STRUCTURE:stages")
         stages = fn_normalize_ranges([s.model_dump(mode="json") for s in structure.stages], start=1, end=total)
         if not stages:

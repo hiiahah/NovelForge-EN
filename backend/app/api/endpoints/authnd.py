@@ -36,7 +36,7 @@ class ChatCompletionRequest(BaseModel):
     model: str = Field(default=authnd_auth.DEFAULT_MODEL, description="Model path, e.g. moonshotai/kimi-k3")
     messages: List[ChatMessagePayload]
     temperature: Optional[float] = Field(default=0.3, ge=0.0, le=2.0)
-    max_tokens: Optional[int] = Field(default=32768, ge=1)
+    max_tokens: Optional[int] = Field(default=65536, ge=1)
     top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     frequency_penalty: Optional[float] = None
     presence_penalty: Optional[float] = None
@@ -53,7 +53,7 @@ class DirectPredictRequest(BaseModel):
     prompt: str
     system: Optional[str] = None
     temperature: Optional[float] = 0.3
-    max_tokens: Optional[int] = 32768
+    max_tokens: Optional[int] = 65536
     top_p: Optional[float] = None
     stream: bool = False
     timeout: Optional[int] = None
@@ -149,7 +149,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request):
                 messages=dict_messages,
                 model=payload.model,
                 temperature=payload.temperature if payload.temperature is not None else 0.3,
-                max_tokens=payload.max_tokens if payload.max_tokens is not None else 32768,
+                max_tokens=payload.max_tokens if payload.max_tokens is not None else 65536,
                 top_p=payload.top_p,
                 frequency_penalty=payload.frequency_penalty,
                 presence_penalty=payload.presence_penalty,
@@ -218,7 +218,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request):
                     messages=dict_messages,
                     model=payload.model,
                     temperature=payload.temperature if payload.temperature is not None else 0.3,
-                    max_tokens=payload.max_tokens if payload.max_tokens is not None else 32768,
+                    max_tokens=payload.max_tokens if payload.max_tokens is not None else 65536,
                     top_p=payload.top_p,
                     frequency_penalty=payload.frequency_penalty,
                     presence_penalty=payload.presence_penalty,

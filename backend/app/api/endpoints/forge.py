@@ -166,7 +166,7 @@ class RunChapterRequest(BaseModel):
     word_target: Optional[int] = None
     regenerate: bool = False
     temperature: float = 0.7
-    max_tokens: int = 8192
+    max_tokens: int = 65536
     timeout: float = 240.0
 
 

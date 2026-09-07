@@ -82,7 +82,7 @@ def default_client_factory(session: Session, job: AutonomousNovelJob, recorder: 
         # Recovery rung: every role goes to the fallback until the job leaves this stage.
         default_cid = int(fallback)
         roles = {}
-    client = LLMModelClient(session, default_llm_config_id=default_cid, role_llm_config_ids=roles, fallback_llm_config_id=fallback, recorder=recorder, job_id=job.id)
+    client = LLMModelClient(session, default_llm_config_id=default_cid, role_llm_config_ids=roles, fallback_llm_config_id=fallback, recorder=recorder, job_id=job.id, budget_session_factory=recorder._factory)
     scale = float(opts.get("max_tokens_scale") or 1.0)
     if scale < 1.0:
         from app.services.autonomous.model_client import ROLE_POLICIES

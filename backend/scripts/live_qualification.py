@@ -40,6 +40,7 @@ BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, BACKEND)
 os.environ.setdefault("AUTHND_TOKEN_MODE", "pool")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("AUTHND_TIMEOUT", "1800")
 
 from sqlmodel import Session, select  # noqa: E402
 
@@ -49,6 +50,8 @@ from app.services.autonomous import budget as budget_mod  # noqa: E402
 from app.services.autonomous import lease as lease_mod  # noqa: E402
 from app.services.autonomous import preflight as preflight_mod  # noqa: E402
 from app.services.autonomous import runner as runner_mod  # noqa: E402
+from app.services.autonomous import storylines as story_mod  # noqa: E402
+from app.services.autonomous.model_client import InvocationRecorder  # noqa: E402
 from app.services.autonomous.audit import chapter_texts  # noqa: E402
 
 EVIDENCE = os.environ.get("NF_EVIDENCE", os.path.join(BACKEND, "..", "docs", "evidence", "live-qualification.json"))
@@ -196,15 +199,50 @@ def cmd_analyze(_: argparse.Namespace) -> int:
     return 0 if job.stage == "STORYLINE_SELECTION" else 1
 
 
+def cmd_ideate(args: argparse.Namespace) -> int:
+    with Session(engine) as s:
+        job = _job(s)
+        client = runner_mod.default_client_factory(s, job, InvocationRecorder(job_id=job.id, project_id=job.source_project_id, session_factory=lambda: Session(engine)))
+        prefs: Dict[str, Any] = {}
+        if args.genre:
+            prefs["genre"] = args.genre
+        if args.theme:
+            prefs["theme"] = args.theme
+        if args.tags:
+            prefs["tags"] = [t.strip() for t in args.tags.split(",") if t.strip()]
+        if args.notes:
+            prefs["notes"] = args.notes
+        job.options = {**(job.options or {}), **prefs}
+        s.add(job)
+        s.commit()
+        res = asyncio.run(story_mod.stage_storyline_generation(s, job_id=job.id, source_project_id=int(job.source_project_id), client=client, preferences=prefs, count=int(args.count or 7)))
+        s.refresh(job)
+        cands = s.exec(select(StorylineCandidate).where(StorylineCandidate.job_id == job.id).order_by(StorylineCandidate.option_index)).all()
+        sims = [max([v for k, v in (c.similarity_to_others or {}).items()] or [0.0]) for c in cands]
+        _record("ideate", {**_job_facts(s, job), "storylines": [{"id": c.id, "option_index": c.option_index, "title": c.title, "originality_score": c.originality_score, "rejected": c.rejected, "rejection_reason": c.rejection_reason, "max_similarity_to_others": max([v for v in (c.similarity_to_others or {}).values()] or [0.0])} for c in cands], "max_pairwise_similarity": max(sims) if sims else None})
+        print(f"Generated {len(cands)} storyline options ({len([c for c in cands if not c.rejected])} accepted, {len([c for c in cands if c.rejected])} rejected):")
+        for c in cands:
+            print(f"  [{c.id}] {c.title} (orig={c.originality_score}, rejected={c.rejected})")
+    return 0
+
+
 def cmd_select(args: argparse.Namespace) -> int:
     with Session(engine) as s:
         job = _job(s)
         cands = [c for c in s.exec(select(StorylineCandidate).where(StorylineCandidate.job_id == job.id)).all() if not c.rejected]
         if not cands:
             sys.exit("no eligible storyline candidates")
-        best = sorted(cands, key=lambda c: (-float(c.originality_score or 0.0), max([v for v in (c.similarity_to_others or {}).values()] or [0.0]), c.id))[0]
+        if getattr(args, "storyline_id", None):
+            chosen = s.get(StorylineCandidate, int(args.storyline_id))
+            if not chosen or chosen.job_id != job.id:
+                sys.exit(f"invalid storyline-id {args.storyline_id}")
+            best = chosen
+            basis = f"explicit operator selection: id={best.id}"
+        else:
+            best = sorted(cands, key=lambda c: (-float(c.originality_score or 0.0), max([v for v in (c.similarity_to_others or {}).values()] or [0.0]), c.id))[0]
+            basis = "highest originality score among non-rejected candidates; tie-break lowest max similarity"
         job = runner_mod.select_storyline(s, job, storyline_id=int(best.id), chapter_count=int(args.chapters), options={"words_per_chapter": int(args.words)})
-        _record("selection", {"job_id": job.id, "storyline_id": best.id, "title": best.title, "originality_score": best.originality_score, "basis": "highest originality score among non-rejected candidates; tie-break lowest max similarity", "chapter_count": args.chapters, "words_per_chapter": args.words})
+        _record("selection", {"job_id": job.id, "storyline_id": best.id, "title": best.title, "originality_score": best.originality_score, "basis": basis, "chapter_count": args.chapters, "words_per_chapter": args.words})
     return 0
 
 
@@ -424,9 +462,17 @@ def main() -> int:
     sub.add_parser("preflight").set_defaults(fn=cmd_preflight)
     sub.add_parser("analyze").set_defaults(fn=cmd_analyze)
     p = sub.add_parser("select")
+    p.add_argument("--storyline-id", type=int, default=None, help="Explicit storyline ID to select (defaults to highest-originality, lowest-similarity candidate)")
     p.add_argument("--chapters", type=int, default=6)
     p.add_argument("--words", type=int, default=1500)
     p.set_defaults(fn=cmd_select)
+    p = sub.add_parser("ideate")
+    p.add_argument("--genre", type=str, default="")
+    p.add_argument("--theme", type=str, default="")
+    p.add_argument("--tags", type=str, default="")
+    p.add_argument("--notes", type=str, default="")
+    p.add_argument("--count", type=int, default=7)
+    p.set_defaults(fn=cmd_ideate)
     p = sub.add_parser("run")
     p.add_argument("--until-chapters", type=int, default=None)
     p.set_defaults(fn=cmd_run)

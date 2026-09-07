@@ -144,7 +144,7 @@ def _reduce(ctx: RecoveryContext) -> RecoveryOutcome:
     elif ctx.stage == "CHAPTER_PLAN_BUILD":
         after["plan_window"] = max(2, int(before.get("plan_window") or 8) // 2)
     elif ctx.stage == "CHAPTER_GENERATION_LOOP":
-        after["budget_chars"] = max(6000, int(before.get("budget_chars") or 16000) * 3 // 4)
+        after["budget_chars"] = max(16000, int(before.get("budget_chars") or 16000))
         after["max_repairs"] = int(before.get("max_repairs") or 2) + 1
     elif ctx.stage in ("STORYLINE_GENERATION",):
         after["storyline_count"] = max(5, int(before.get("storyline_count") or 7) - 1)

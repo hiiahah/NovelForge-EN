@@ -29,7 +29,13 @@ CLAIMS_VERSION = "claims-1"
 CLAIMS_BLOCK_RX = re.compile(r"<claims>\s*(\{.*?\})\s*</claims>", re.S)
 _CAP_NAME = re.compile(r"\b[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\b")
 _HANGUL_NAME = re.compile(r"[\uac00-\ud7a3]{2,4}(?=(?:은|는|이|가|을|를|의|에게|과|와|도|만|께서|이가)?\s)")
-_COMMON_CAP = {"The", "And", "But", "She", "He", "They", "It", "That", "This", "There", "Then", "When", "What", "Why", "How", "Who", "Where", "You", "His", "Her", "Their", "For", "With", "From", "Not", "Yes", "No", "If", "In", "On", "At", "As", "Of", "To", "So", "Now", "Here", "Once", "Maybe", "Nothing", "Something", "Someone", "Everyone", "Nobody", "All", "One", "Only", "Again", "Another", "Every", "Some", "Any", "Well", "Right", "Left", "Good", "Fine", "Okay", "Please", "Thank", "Sorry", "Wait", "Stop", "Look", "Listen", "Come", "Let", "Go", "Do", "Did", "Was", "Were", "Had", "Have", "Has", "Would", "Could", "Should", "Will", "Can", "May", "Might", "Must", "Am", "Are", "Is", "Be", "Been", "Its", "My", "Me", "We", "Us", "Morning", "Night", "Day", "Evening", "Today", "Tomorrow", "Yesterday", "Sir", "Madam", "Miss", "Lord", "Lady", "Before", "After", "Because", "While", "Still", "Even", "Just", "Perhaps", "Chapter", "Inside", "Outside", "Behind", "Above", "Below", "Later", "Meanwhile", "Somewhere", "Nowhere", "Anyone", "Whatever", "Whoever", "Instead", "Except", "Until", "Unless", "Though", "Although", "Yet", "Also", "Almost", "Already", "Always", "Never", "Often", "Sometimes", "Soon", "Suddenly", "Finally", "Actually", "Really", "Very", "Too", "Quite", "Rather", "Enough", "Both", "Either", "Neither", "Each", "Few", "Many", "Most", "Much", "Several", "Such", "Whole", "Half", "Two", "Three", "Four", "Five", "Ten", "Hundred", "Thousand", "First", "Second", "Third", "Last", "Next", "Other", "Same", "Own", "Old", "New", "Long", "Short", "High", "Low", "Big", "Small", "Little", "Great", "Cold", "Hot", "Dark", "Light", "Silence", "Somehow", "Nothing", "Everything", "Anything"}
+_COMMON_CAP = {
+    "The", "And", "But", "She", "He", "They", "It", "That", "This", "There", "Then", "When", "What", "Why", "How", "Who", "Where", "You", "His", "Her", "Their", "For", "With", "From", "Not", "Yes", "No", "If", "In", "On", "At", "As", "Of", "To", "So", "Now", "Here", "Once", "Maybe", "Nothing", "Something", "Someone", "Everyone", "Nobody", "All", "One", "Only", "Again", "Another", "Every", "Some", "Any", "Well", "Right", "Left", "Good", "Fine", "Okay", "Please", "Thank", "Sorry", "Wait", "Stop", "Look", "Listen", "Come", "Let", "Go", "Do", "Did", "Was", "Were", "Had", "Have", "Has", "Would", "Could", "Should", "Will", "Can", "May", "Might", "Must", "Am", "Are", "Is", "Be", "Been", "Its", "My", "Me", "We", "Us", "Morning", "Night", "Day", "Evening", "Today", "Tomorrow", "Yesterday", "Sir", "Madam", "Miss", "Lord", "Lady", "Before", "After", "Because", "While", "Still", "Even", "Just", "Perhaps", "Chapter", "Inside", "Outside", "Behind", "Above", "Below", "Later", "Meanwhile", "Somewhere", "Nowhere", "Anyone", "Whatever", "Whoever", "Instead", "Except", "Until", "Unless", "Though", "Although", "Yet", "Also", "Almost", "Already", "Always", "Never", "Often", "Sometimes", "Soon", "Suddenly", "Finally", "Actually", "Really", "Very", "Too", "Quite", "Rather", "Enough", "Both", "Either", "Neither", "Each", "Few", "Many", "Most", "Much", "Several", "Such", "Whole", "Half", "Two", "Three", "Four", "Five", "Ten", "Hundred", "Thousand", "First", "Second", "Third", "Last", "Next", "Other", "Same", "Own", "Old", "New", "Long", "Short", "High", "Low", "Big", "Small", "Little", "Great", "Cold", "Hot", "Dark", "Light", "Silence", "Somehow", "Everything", "Anything",
+    "Like", "Or", "Nor", "Try", "Trying", "Tried", "Tries", "Student", "Students", "Teacher", "Teachers", "Class", "Classes", "Black", "White", "Red", "Blue", "Green", "Yellow", "Gold", "Silver", "Death", "Flag", "Flags", "Game", "Master", "Admin", "System", "Status", "Window", "Interface", "Scene", "Room", "Dorm", "Dormitory", "Academy", "Office", "Infirmary", "Library", "Don", "Won", "Cannot", "Couldn", "Wouldn", "Shouldn", "Didn", "Isn", "Aren", "Wasn", "Weren", "Haven", "Hasn", "Hadn", "Looked", "Looking", "Looks", "Seemed", "Seeming", "Seems", "Think", "Thinks", "Thought", "Thinking", "Ask", "Asks", "Asked", "Asking", "Say", "Says", "Said", "Saying", "Tell", "Tells", "Told", "Telling", "Feel", "Feels", "Felt", "Feeling", "Turn", "Turns", "Turned", "Turning", "Walk", "Walks", "Walked", "Walking", "Step", "Steps", "Stepped", "Stepping", "Stand", "Stands", "Stood", "Standing", "Sit", "Sits", "Sat", "Sitting", "Take", "Takes", "Took", "Taking", "Give", "Gives", "Gave", "Giving", "Make", "Makes", "Made", "Making", "Came", "Coming", "Went", "Going", "Know", "Knows", "Knew", "Knowing", "See", "Sees", "Saw", "Seeing", "Hear", "Hears", "Heard", "Hearing", "Find", "Finds", "Found", "Finding", "Leave", "Leaves", "Leaving",
+    "Eyes", "Eye", "Oh", "Ah", "Ha", "Hmm", "Demon", "Demon Lord", "Hero", "Heroine", "King", "Queen", "Prince", "Princess", "Duke", "Duchess", "Count", "Countess", "Baron", "Baroness", "God", "Goddess", "Lord", "Lady",
+    "Your", "Yours", "Mine", "Ours", "Theirs",
+    "Poisoned", "Injured", "Wounded", "Bleeding", "Dying", "Dead", "Corrupted", "Broken", "Shocked", "Terrified", "Trapped", "Forced", "Surrounded", "Determined", "Unable", "Aware", "Unaware", "Afraid", "Lost", "Hidden", "Suddenly", "Immediately", "Naturally", "Unfortunately", "Fortunately", "Clearly", "Obviously", "Slowly", "Quickly", "Carefully", "Silently", "Softly", "Loudly", "Gently", "Calmly"
+}
 
 _POSSESS_EN = re.compile(r"\b([A-Z][a-z]+)\s+(?:took|picked up|pocketed|received|was handed|accepted|stole|grabbed|kept|now held|carried)\s+(?:the|a|an|his|her)?\s*([a-z][a-z\- ]{2,40}?)(?:[.,;]| and | from | that | which )")
 _LOSE_EN = re.compile(r"\b([A-Z][a-z]+)\s+(?:dropped|lost|gave away|handed over|surrendered|threw away|left behind)\s+(?:the|a|an|his|her)?\s*([a-z][a-z\- ]{2,40}?)(?:[.,;]| to | and )")
@@ -113,11 +119,20 @@ def named_entities(prose: str, language: Optional[str] = None) -> Dict[str, List
         idx = prose.find(s, pos)
         if idx >= 0:
             starts.add(idx)
+            m_lead = re.match(r'^[\s"“\'‘(\[]+', s)
+            if m_lead:
+                starts.add(idx + m_lead.end())
             pos = idx + len(s)
+    for m in re.finditer(r'(?:^|\n)[\s"“\'‘(\[]*', prose):
+        starts.add(m.end())
+    raw_matches: Dict[str, List[Tuple[int, int]]] = {}
     for m in _CAP_NAME.finditer(prose):
         token = m.group(0)
         first = token.split()[0]
         if first in _COMMON_CAP:
+            continue
+        # Skip tokens that are part of a contraction (e.g. Don't, Won't, It's)
+        if m.end() < len(prose) and prose[m.end()] in ("'", "’"):
             continue
         # A sentence-initial single capitalized word needs a second occurrence
         # (anywhere) to count as a name; a one-off could be an ordinary word.
