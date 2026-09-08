@@ -1,6 +1,7 @@
 import request from './request'
 import { API_BASE_URL } from './request'
 import { artifactDownloadPath } from '@renderer/composables/useAutonomousNovel'
+import type { components } from '@renderer/types/generated'
 
 export type AutonomousMode = 'fully_automatic' | 'approval_gates' | 'manual'
 
@@ -15,35 +16,7 @@ export interface BudgetSpec {
   prices?: Record<string, { input?: number; output?: number }>
 }
 
-export interface CreateJobRequest {
-  filename: string
-  content_base64: string
-  llm_config_id: number
-  mode?: AutonomousMode
-  role_llm_config_ids?: Record<string, number>
-  title?: string
-  author?: string
-  genre?: string
-  genre_intensity?: string
-  content_rating?: string
-  ending_preference?: string
-  romance_level?: string
-  words_per_chapter?: number
-  total_words?: number
-  target_chapters?: number
-  target_arcs?: number
-  quality_preset?: 'economy' | 'balanced' | 'quality'
-  storyline_count?: number
-  fallback_llm_config_id?: number
-  notes?: string
-  protagonist_name?: string
-  summary?: string
-  tags?: string
-  similarity_to_original?: string
-  budget?: BudgetSpec
-  idempotency_key?: string
-  preflight_acknowledged?: boolean
-}
+export type CreateJobRequest = components['schemas']['CreateJobRequest']
 
 export interface PreflightRequest {
   llm_config_id: number

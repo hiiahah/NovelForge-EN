@@ -12,7 +12,11 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-AUTONOMOUS_SCHEMA_VERSION = "autonomous-schemas-1"
+from app.schemas.bible import CharacterDramaticDesign, CharacterVoice, ReaderContract, StoryFoundation, StyleProfile, ThemeMap
+from app.schemas.craft import ProtagonistVoice
+from app.schemas.serial import SerialDesign
+
+AUTONOMOUS_SCHEMA_VERSION = "autonomous-schemas-2"
 
 
 # --------------------------------------------------------------- storylines
@@ -98,6 +102,9 @@ class CharacterSpec(BaseModel):
     knowledge_boundaries: List[str] = Field(default_factory=list, description="Facts this character must NOT know at the start")
     voice_sentence_tendency: str = Field(default="")
     voice_tells: List[str] = Field(default_factory=list)
+    voice: Optional[CharacterVoice] = Field(default=None, description="Full original English spoken voice; include contrasting original example lines")
+    protagonist_voice: Optional[ProtagonistVoice] = Field(default=None, description="Private focalization, noticing habits, humor, calculation, and self-deception for POV characters")
+    dramatic_design: Optional[CharacterDramaticDesign] = Field(default=None, description="Human contradictions, moral boundaries, agency, and false belief, not just a role in the plot")
     forbidden_speech: List[str] = Field(default_factory=list)
     capabilities: List[str] = Field(default_factory=list)
     limitations: List[str] = Field(default_factory=list)
@@ -189,6 +196,11 @@ class NovelArchitecture(BaseModel):
 
     architecture_thinking: str = Field(default="", description="How the storyline was expanded and how the chapter count shaped it")
     contract: StoryContract = Field(default_factory=StoryContract)
+    serial_design: Optional[SerialDesign] = Field(default=None, description="Required for creative-intent commissions; legacy finite architectures may omit it")
+    story_foundation: Optional[StoryFoundation] = Field(default=None, description="Rich foundation of the new original work, never reconstructed source canon")
+    reader_contract: Optional[ReaderContract] = Field(default=None, description="Specific serialized reader rewards, cadence, protagonist behavior, and boundaries")
+    theme_map: Optional[ThemeMap] = Field(default=None, description="Competing beliefs tested by costly choices; a continuing series need not settle its final answer")
+    style_profile: Optional[StyleProfile] = Field(default=None, description="The new work's deliberate native-English narrative voice; abstract techniques, never translation imitation")
     characters: List[CharacterSpec] = Field(default_factory=list)
     locations: List[LocationSpec] = Field(default_factory=list)
     factions: List[FactionSpec] = Field(default_factory=list)

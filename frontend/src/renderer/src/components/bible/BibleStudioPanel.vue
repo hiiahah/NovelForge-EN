@@ -31,6 +31,7 @@
 
         <el-scrollbar class="studio-content">
           <div class="content-inner" v-loading="loading">
+            <CreativeCompassPanel v-show="section === 'foundation'" :project-id="projectId" :refresh-seq="refreshSeq" @saved="handleCompassSaved" />
             <!-- Ledger-like sections -->
             <template v-if="isCardSection(section)">
               <div v-if="entriesFor(section).length === 0" class="empty-hint">
@@ -72,7 +73,7 @@
 
             <BibleUpdateReview v-else-if="section === 'updates'" ref="updateReviewRef" :project-id="projectId" :open-review-id="openReviewId" @applied="refresh" />
             <LabImportWizard v-else-if="section === 'lab'" :project-id="projectId" @open-card="(id) => emit('open-card', id)" @imported="refresh" />
-            <ForgePipelinePanel v-else-if="section === 'forge'" :project-id="projectId" @open-card="(id) => emit('open-card', id)" />
+            <ForgePipelinePanel v-else-if="section === 'forge'" :project-id="projectId" @open-card="(id) => emit('open-card', id)" @edit-compass="openFoundation" />
             <StoryMemoryPanel v-else-if="section === 'memory'" :project-id="projectId" :refresh-seq="refreshSeq" @open-card="(id) => emit('open-card', id)" />
           </div>
         </el-scrollbar>
@@ -111,6 +112,7 @@ import ForgePipelinePanel from './ForgePipelinePanel.vue'
 import StoryMemoryPanel from './StoryMemoryPanel.vue'
 import LabImportWizard from './LabImportWizard.vue'
 import RelationshipMatrix from './RelationshipMatrix.vue'
+import CreativeCompassPanel from '../creative/CreativeCompassPanel.vue'
 
 const props = defineProps<{ projectId?: number; refreshSeq?: number; openReviewId?: number | null; initialSection?: string }>()
 const emit = defineEmits<{ (e: 'open-card', id: number): void }>()
@@ -152,6 +154,16 @@ function emptyHint(s: string) {
 }
 function truthType(s: string) { return s === 'canon' ? 'success' : s === 'disputed' ? 'danger' : s === 'inferred' ? 'warning' : s === 'obsolete' ? 'info' : 'primary' }
 function urgencyType(u: string) { return u === 'critical' ? 'danger' : u === 'high' ? 'warning' : 'info' }
+
+function openFoundation() {
+  mode.value = 'create'
+  section.value = 'foundation'
+}
+
+async function handleCompassSaved() {
+  if (props.projectId) await cardStore.fetchCards(props.projectId)
+  await refresh()
+}
 
 async function refresh() {
   if (!props.projectId) return

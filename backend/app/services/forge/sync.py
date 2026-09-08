@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -36,6 +37,8 @@ from app.services.forge import canon as canon_store
 from app.services.forge import provenance
 from app.services.forge.claims import ChapterClaims, Claim
 from app.services.forge.textmetrics import split_paragraphs, split_sentences
+from app.services.story_memory.accepted import RECEIPT_VERSION, assertion_evidence, build_receipt, exact_ending, extractive_summary, grounded_claims
+from app.services.story_memory.digest_service import DigestService, text_hash
 
 SYNC_VERSION = "sync-1"
 STATE_PACKET_TYPE = "Chapter State Packet"
@@ -185,7 +188,7 @@ def build_state_packet(
     state_after: Dict[Tuple[str, str], canon_store.FactView],
     next_outline: Optional[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    ending_location = (model_claims.ending_location if model_claims else "").strip() or next((str(p.value).strip() for p in committed if p.attribute == "location"), "") or next((str(fv.value).strip() for (s, a), fv in state_after.items() if a == "location" and s == pov.lower()), "")
+    ending_location = next((str(fv.value).strip() for (s, a), fv in state_after.items() if a == "location" and s == pov.lower()), "")
     physical = {n: {a: fv.value for (s, a), fv in state_after.items() if s == n.lower() and a in ("injuries", "conditions", "status")} for n in participants}
     emotional = {}
     for p in observations:
@@ -195,25 +198,65 @@ def build_state_packet(
     return {
         "chapter_number": chapter_number,
         "canon_revision": canon_revision,
-        "summary": (model_claims.summary if model_claims and model_claims.summary else "").strip() or _summary(prose),
+        "summary": extractive_summary(prose),
+        "source_hash": text_hash(prose),
+        "ending_excerpt": exact_ending(prose),
+        "extraction_method": RECEIPT_VERSION,
         "scene_state": {
             "ending_location": ending_location,
-            "current_time": model_claims.current_time if model_claims else "",
+            "current_time": "",
             "active_pov": pov,
-            "participants": participants,
+            "participants": [],
+            "chapter_participants": participants,
+            "ending_excerpt": exact_ending(prose),
             "physical_states": physical,
             "emotional_states": emotional,
             "possessions": {n: fv.value for (s, a), fv in state_after.items() for n in participants if s == n.lower() and a == "possesses"},
             "knowledge_changes": [p.as_dict() for p in committed if p.attribute == "knows"],
             "relationship_changes": [p.as_dict() for p in committed if p.subject_kind == "relationship"],
-            "unresolved_immediate_action": model_claims.unresolved_immediate_action if model_claims else "",
-            "open_dialogue_obligation": model_claims.open_dialogue_obligation if model_claims else "",
+            "unresolved_immediate_action": "",
+            "open_dialogue_obligation": "",
         },
         "setup_payoff_state": [p.as_dict() for p in committed if p.attribute == "open_questions"],
-        "next_chapter_constraints": [f"Chapter {chapter_number + 1} starts from: {loc_target}"] + ([f"Next outline title: {next_outline.get('title')}"] if next_outline else []),
+        "next_chapter_constraints": [f"Continue from the exact ending of chapter {chapter_number}. Last recorded POV location: {loc_target}; do not guess unrecorded positions."] + ([f"Next outline title: {next_outline.get('title')}"] if next_outline else []),
         "noncanonical_observations": [p.as_dict() for p in observations],
         "sync_version": SYNC_VERSION,
     }
+
+
+def _rewind_receipts(session: Session, bible: BibleService, project_id: int, chapter: int) -> None:
+    receipts = sorted(DigestService(session).digest_cards(project_id), key=lambda c: int((c.content or {}).get("chapter_number") or 0), reverse=True)
+    for receipt in receipts:
+        c = receipt.content or {}
+        if int(c.get("chapter_number") or 0) < chapter:
+            continue
+        if c.get("receipt_version"):
+            for entry in c.get("ledger_snapshots") or []:
+                card = session.get(Card, entry["card_id"])
+                if card is None:
+                    raise SyncError("A receipt's ledger card was removed; reconcile the author edit before regeneration")
+                if provenance.content_hash(card.content) != entry["after_hash"]:
+                    raise SyncError(f"Ledger '{card.title}' changed outside accepted synchronization; reconcile it before regeneration")
+                card.content = deepcopy(entry["before"])
+                flag_modified(card, "content")
+                session.add(card)
+            session.delete(receipt)
+        else:
+            receipt.content = {**c, "stale": True}
+            flag_modified(receipt, "content")
+            session.add(receipt)
+    for card in bible.cards_of_type(project_id, "Timeline Event"):
+        c = card.content or {}
+        n = c.get("chapter_number")
+        if isinstance(n, int) and n >= chapter and card.title == f"Chapter {n} events" and c.get("truth_status") == "canon":
+            session.delete(card)
+    for card in bible.cards_of_type(project_id, "Chapter Text"):
+        c = card.content or {}
+        if int(c.get("chapter_number") or 0) > chapter:
+            card.content = {**c, "sync_status": "stale"}
+            flag_modified(card, "content")
+            session.add(card)
+    session.flush()
 
 
 def synchronize_chapter(
@@ -242,8 +285,9 @@ def synchronize_chapter(
     new_rev = before_rev + 1
     fail_set = set(fail_on or ())
     try:
+        _rewind_receipts(session, bible, project_id, chapter_number)
         locked = canon_store.state_as_of(session, project_id, chapter_number - 1, canon_revision=before_rev)
-        proposals = decide(proposals_from_claims(claims, participants=participants, allowed_outcomes=allowed_outcomes), locked)
+        proposals = decide(proposals_from_claims(grounded_claims(prose, claims), participants=participants, allowed_outcomes=allowed_outcomes), locked)
         committed = [p for p in proposals if p.decision == "committed"]
         observations = [p for p in proposals if p.decision == "observation"]
         rejected = [p for p in proposals if p.decision == "rejected"]
@@ -258,24 +302,38 @@ def synchronize_chapter(
         # Ledger cards: deterministic, idempotent field updates with history entries.
         now = datetime.now().isoformat(timespec="seconds")
         touched: List[int] = []
+        snapshots: Dict[int, Dict[str, Any]] = {}
+        ledger_events: List[Dict[str, Any]] = []
+
+        def remember(card: Card) -> None:
+            snapshots.setdefault(card.id, {"card_id": card.id, "before": deepcopy(card.content)})
+
         for card in bible.cards_of_type(project_id, "Plot Thread"):
             c = card.content if isinstance(card.content, dict) else {}
-            parts = {_norm(x) for x in (c.get("participants") or [])}
-            if c.get("status") in ("active", "planned") and parts & {_norm(p) for p in participants}:
+            milestones = [m for m in c.get("milestones") or [] if isinstance(m, dict)]
+            evidence = next((ev for m in milestones if (ev := assertion_evidence(prose, m.get("description")))), None)
+            if c.get("status") in ("active", "planned") and evidence:
                 if int(c.get("last_advanced_chapter") or 0) < chapter_number:
+                    remember(card)
+                    previous = c.get("last_advanced_chapter")
                     c["last_advanced_chapter"] = chapter_number
-                    c.setdefault("history", []).append({"field": "last_advanced_chapter", "new": chapter_number, "chapter_number": chapter_number, "changed_at": now, "accepted_by": "ai", "reason": "participants appeared in the chapter"})
+                    c.setdefault("history", []).append({"field": "last_advanced_chapter", "previous": previous, "new": chapter_number, "chapter_number": chapter_number, "changed_at": now, "accepted_by": "ai", "reason": "Literal milestone assertion in final prose", "evidence": evidence})
+                    ledger_events.append({"kind": "thread_advanced", "card_id": card.id, "evidence": evidence})
                     card.content = c
                     flag_modified(card, "content")
                     session.add(card)
                     touched.append(card.id)
         for card in bible.cards_of_type(project_id, "Promise Payoff"):
             c = card.content if isinstance(card.content, dict) else {}
-            payoff = _norm(c.get("planned_payoff"))
-            if c.get("status") in ("planted", "active", "open", "planned") and payoff and payoff in " ".join(_norm(o) for o in allowed_outcomes):
+            evidence = assertion_evidence(prose, c.get("planned_payoff"))
+            if c.get("status") in ("planted", "active", "open", "planned", "reinforced", "partially_answered", "misdirected") and evidence:
+                remember(card)
+                previous = c.get("status")
                 c["status"] = "paid_off"
                 c["payoff_chapter"] = chapter_number
-                c.setdefault("history", []).append({"field": "status", "previous": "planted", "new": "paid_off", "chapter_number": chapter_number, "changed_at": now, "accepted_by": "ai", "reason": "planned payoff listed among this chapter's allowed outcomes"})
+                c["actual_payoff"] = evidence["text"]
+                c.setdefault("history", []).append({"field": "status", "previous": previous, "new": "paid_off", "chapter_number": chapter_number, "changed_at": now, "accepted_by": "ai", "reason": "Literal payoff assertion in final prose; no paraphrase inference", "evidence": evidence})
+                ledger_events.append({"kind": "payoff_delivered", "card_id": card.id, "setup": c.get("setup") or card.title, "evidence": evidence})
                 card.content = c
                 flag_modified(card, "content")
                 session.add(card)
@@ -286,6 +344,7 @@ def synchronize_chapter(
             for card in bible.cards_of_type(project_id, "Relationship Arc"):
                 c = card.content if isinstance(card.content, dict) else {}
                 if _norm(f"{c.get('character_a')} ↔ {c.get('character_b')}") == _norm(p.subject) or _norm(card.title) == _norm(p.subject):
+                    remember(card)
                     prev = c.get(p.attribute)
                     c[p.attribute] = p.value
                     c.setdefault("history", []).append({"field": p.attribute, "previous": prev, "new": p.value, "chapter_number": chapter_number, "changed_at": now, "accepted_by": "ai", "reason": p.reason})
@@ -301,6 +360,7 @@ def synchronize_chapter(
                 fact = _norm(c.get("fact"))
                 for learned in (p.value.get("add") if isinstance(p.value, dict) else [p.value]):
                     if fact and (fact in _norm(learned) or _norm(learned) in fact):
+                        remember(card)
                         knowers = c.setdefault("knowers", [])
                         entry = next((k for k in knowers if isinstance(k, dict) and _norm(k.get("entity")) == _norm(p.subject)), None)
                         if entry is None:
@@ -354,6 +414,14 @@ def synchronize_chapter(
         flag_modified(text_card, "content")
         session.add(text_card)
 
+        digest = build_receipt(chapter_number=chapter_number, chapter_card_id=chapter_card_id, volume_number=tc.get("volume_number"), title=str(tc.get("title") or text_card.title), pov=pov, participants=participants, prose=prose, updates=[p.as_dict() for p in committed], state_after=state_after, ledger_events=ledger_events)
+        digest_card = DigestService(session).save_digest(project_id, digest, commit=False)
+        for entry in snapshots.values():
+            entry["after_hash"] = provenance.content_hash(session.get(Card, entry["card_id"]).content)
+        digest_card.content = {**digest_card.content, "receipt_version": RECEIPT_VERSION, "canon_revision": new_rev, "ledger_snapshots": list(snapshots.values()), "ledger_events": ledger_events}
+        flag_modified(digest_card, "content")
+        session.add(digest_card)
+
         provenance.record(session, project_id=project_id, artifact_kind="chapter_state_packet", artifact_key=str(chapter_number), content=packet, upstream=[provenance.Upstream("Chapter Text", str(chapter_card_id), provenance.card_hash(text_card))], producer=SYNC_VERSION, schema_version=SYNC_VERSION, card_id=packet_card.id)
 
         manifest.canon_revision = new_rev
@@ -382,6 +450,9 @@ def synchronize_chapter(
         "touched_card_ids": sorted(set(touched)),
         "state_packet_card_id": packet_card.id,
         "state_packet": packet,
+        "digest_card_id": digest_card.id,
+        "receipt_version": RECEIPT_VERSION,
+        "ledger_events": ledger_events,
     }
 
 

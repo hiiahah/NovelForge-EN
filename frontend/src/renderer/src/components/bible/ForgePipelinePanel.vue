@@ -76,7 +76,13 @@
 
     <!-- Chapter generation (original projects only) -->
     <el-card v-if="forge.isOriginal.value" shadow="never" class="cell" data-testid="forge-chapters">
-      <template #header><b>{{ t('bible.forge.chapterRun') }}</b></template>
+      <template #header>
+        <div class="chapter-heading">
+          <b>{{ t('bible.forge.chapterRun') }}</b>
+          <el-button size="small" text type="primary" data-testid="forge-edit-compass" @click="emit('edit-compass')">{{ t('creativeCompass.editInBible') }}</el-button>
+        </div>
+      </template>
+      <p class="muted compile-hint">{{ t('creativeCompass.compilePrompt') }}</p>
       <el-alert v-if="forge.chapterBlocker.value" type="warning" :closable="false" show-icon :title="t('bible.forge.blockers.' + forge.chapterBlocker.value)" data-testid="forge-blocker" />
       <el-form label-position="top" size="small">
         <div class="form-grid">
@@ -95,11 +101,12 @@
         <p class="muted craft-hint" data-testid="forge-craft-hint">{{ t('craft.presetHint.' + craftPreset) }}</p>
       </el-form>
       <div class="actions">
-        <el-button size="small" :disabled="!!forge.busy.value" @click="forge.compile(chapter, chapter < forge.nextChapter.value)">{{ t('bible.forge.compileOnly') }}</el-button>
+        <el-button size="small" :disabled="!!forge.busy.value" :loading="forge.busy.value === 'compile'" data-testid="forge-compile-btn" @click="forge.compile(chapter, chapter < forge.nextChapter.value)">{{ t('bible.forge.compileOnly') }}</el-button>
         <el-button size="small" type="primary" :loading="forge.activeRun.value" :disabled="!llmConfigId || !forge.canRunChapter(chapter, chapter < forge.nextChapter.value)" data-testid="forge-run-btn" @click="runChapter">
           {{ chapter < forge.nextChapter.value ? t('bible.forge.regenerate', { n: chapter }) : t('bible.forge.generate', { n: chapter }) }}
         </el-button>
       </div>
+      <CompiledContextPreview v-if="forge.compiledContext.value" :context="forge.compiledContext.value" @edit-compass="emit('edit-compass')" />
       <el-table :data="forge.runs.value" size="small" border max-height="260" style="width: 100%">
         <el-table-column label="#" width="56" prop="chapter_number" />
         <el-table-column :label="t('bible.forge.status')" width="130">
@@ -143,9 +150,10 @@ import { useLLMConfigStore } from '@renderer/stores/useLLMConfigStore'
 import * as forgeApi from '@renderer/api/forge'
 import { CRAFT_PRESETS, type CraftPreset } from '@renderer/api/craft'
 import { FORGE_STEPS, useForgePipeline } from '@renderer/composables/useForgePipeline'
+import CompiledContextPreview from '../creative/CompiledContextPreview.vue'
 
 const props = defineProps<{ projectId?: number }>()
-const emit = defineEmits<{ (e: 'open-card', id: number): void; (e: 'original-created', projectId: number): void }>()
+const emit = defineEmits<{ (e: 'open-card', id: number): void; (e: 'original-created', projectId: number): void; (e: 'edit-compass'): void }>()
 const { t } = useI18n()
 const llmStore = useLLMConfigStore()
 const forge = useForgePipeline(forgeApi, toRef(props, 'projectId'))
@@ -180,6 +188,7 @@ async function runChapter() {
 }
 
 watch(() => forge.nextChapter.value, (n) => { chapter.value = n })
+watch(chapter, () => forge.clearCompiledContext(), { flush: 'sync' })
 watch(() => forge.error.value, (msg) => { if (msg) ElMessage.error(msg) })
 watch(() => props.projectId, () => forge.refresh())
 watch(() => llmStore.llmConfigs, (list) => { if (!llmConfigId.value) llmConfigId.value = list[0]?.id }, { immediate: true })
@@ -205,4 +214,6 @@ onMounted(async () => {
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; }
 .craft-hint { margin-top: -4px; }
 .stale { margin-top: 6px; }
+.chapter-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.compile-hint { margin-bottom: 12px; line-height: 1.6; }
 </style>

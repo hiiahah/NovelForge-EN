@@ -14,6 +14,7 @@ text hashes it was built from, so a manuscript change makes it stale.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
@@ -21,6 +22,7 @@ from app.services.forge.evidence import verified_observations
 from app.services.forge.textmetrics import aggregate, infer_pov, measure, stable_id
 
 FINGERPRINT_VERSION = "fingerprint-1"
+ENGLISH_TARGET_VERSION = "english-target-1"
 
 LAYERS: Sequence[str] = (
     "global_voice", "pov_focalization", "rhythm", "dialogue", "internal_monologue", "exposition", "humor",
@@ -328,6 +330,55 @@ def build_fingerprint(
     }
 
 
+def english_target_fingerprint(fp: Dict[str, Any]) -> Dict[str, Any]:
+    """Project source observations into author-owned English direction, never metric gates."""
+    source_layers = fp.get("layers") if isinstance(fp.get("layers"), dict) else {}
+    pacing = source_layers.get("pacing_reward") or {}
+    features = pacing.get("features") if isinstance(pacing, dict) else {}
+    features = features if isinstance(features, dict) else {}
+    gap = features.get("advisory_reward_interval")
+    if gap is None:
+        distribution = features.get("reward_gap_chapters") or {}
+        gap = distribution.get("median") if isinstance(distribution, dict) else None
+    cadence = None
+    if type(gap) in (int, float) and math.isfinite(gap) and 0 < gap <= 200:
+        cadence = round(float(gap), 1)
+
+    directions = {
+        "global_voice": "Write original, idiomatic English. Follow the author's chosen voice and cultural grounding, not the source's diction or translated syntax.",
+        "pov_focalization": "Use the original story's chosen viewpoint and knowledge boundaries; do not inherit the source narrator.",
+        "rhythm": "Let sentence and paragraph rhythm respond to this scene's pressure, attention and emotional movement; there is no source-length quota.",
+        "dialogue": "Make speakers distinct through motive, register and what they withhold. Render social distinctions intelligibly in natural English.",
+        "emotional_expression": "Earn the intended reader experience through specific choices and consequences. Neither restraint nor intensity is mandatory in every scene.",
+        "chapter_opening": "Begin with the current story's live situation rather than reproducing a reference opening.",
+        "chapter_ending": "End on a meaningful local change, anticipation or earned rest. Vary the device instead of repeating a source hook formula.",
+        "negative_constraints": "Do not reuse source names, quotations, distinctive imagery, lore, scene sequences or plot causality. A technique is not a license to reskin a story.",
+        "pacing_reward": "Treat source cadence as a question to explore, not a template. Let the original reader contract determine when effort, cost and reward pay off.",
+    }
+    if cadence is not None:
+        directions["pacing_reward"] += f" The study observed rewards about every {cadence:g} chapters; this is advisory, never a quota or validation threshold."
+    layers = {
+        name: FingerprintLayer(
+            layer=name,
+            features={"language": "en"} if name == "global_voice" else ({"advisory_reward_interval": cadence} if name == "pacing_reward" and cadence is not None else {}),
+            rules=[direction],
+            confidence=1.0 if name != "pacing_reward" else 0.0,
+            applicability=["all"],
+            compact=direction,
+        ).as_dict()
+        for name, direction in directions.items()
+    }
+    return {
+        "version": ENGLISH_TARGET_VERSION,
+        "language": "en",
+        "layers": layers,
+        "targets": {},
+        "validation_policy": "author_owned_english_not_source_metric_matching",
+        "dependency_hash": stable_id(ENGLISH_TARGET_VERSION, cadence, length=32),
+        "stale": bool(fp.get("stale")),
+    }
+
+
 def compact_fingerprint(fp: Dict[str, Any], *, functions: Iterable[str] = (), max_chars: int = 2200) -> str:
     """Prompt-ready compact representation: always-on layers + layers applicable to the requested functions."""
     fns = set(functions)
@@ -378,4 +429,4 @@ def validate_fingerprint(fp: Dict[str, Any]) -> List[str]:
     return errors
 
 
-__all__ = ["FINGERPRINT_VERSION", "LAYERS", "FingerprintLayer", "build_fingerprint", "compact_fingerprint", "validate_fingerprint"]
+__all__ = ["ENGLISH_TARGET_VERSION", "FINGERPRINT_VERSION", "LAYERS", "FingerprintLayer", "build_fingerprint", "compact_fingerprint", "english_target_fingerprint", "validate_fingerprint"]

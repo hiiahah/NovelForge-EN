@@ -28,6 +28,7 @@ COMPILER_VERSION = "chapter-compiler-1"
 # The canonical dependency chain of an original project. Editing a card of
 # kind K marks every kind downstream of K stale for the affected chapters.
 DOWNSTREAM: Dict[str, Tuple[str, ...]] = {
+    "Creative Compass": ("chapter_context",),
     "Story Foundation": ("Reader Contract", "Theme Map", "Narrative Architecture", "Core Blueprint", "Volume Outline", "Stage Outline", "Chapter Outline", "chapter_context"),
     "Reader Contract": ("Narrative Architecture", "Core Blueprint", "Volume Outline", "Stage Outline", "Chapter Outline", "chapter_context"),
     "Theme Map": ("Narrative Architecture", "Volume Outline", "Stage Outline", "Chapter Outline", "chapter_context"),

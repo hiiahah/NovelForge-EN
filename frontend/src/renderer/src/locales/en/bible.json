@@ -2,15 +2,15 @@
   "bible": {
     "tab": "Novel Bible",
     "studioTitle": "Novel Intelligence Studio",
-    "studioSubtitle": "Build a deep, evidence-backed Novel Bible before writing, keep it alive as chapters are written, or extract one from an existing novel.",
-    "createBible": "Create Bible",
-    "extractBible": "Extract Bible",
+    "studioSubtitle": "Set the creative direction, develop your original Bible, and keep intentions distinct from the canon earned by accepted chapters.",
+    "createBible": "Original story",
+    "extractBible": "Source study",
     "refresh": "Refresh",
     "currentChapter": "Current chapter: {n}",
     "noProject": "Open a project to see its Novel Bible.",
     "sections": {
       "lab": "Import Manuscript",
-      "foundation": "Foundation",
+      "foundation": "Compass & Foundation",
       "characters": "Characters",
       "relationships": "Relationships",
       "world": "World",
@@ -21,7 +21,7 @@
       "analysis": "Analysis",
       "updates": "Update Review",
       "audits": "Audits",
-      "forge": "Forge Pipeline",
+      "forge": "Continue in Forge",
       "memory": "Story Memory"
     },
     "empty": {
@@ -166,7 +166,7 @@
       "bookTitle": "Book title",
       "author": "Author",
       "genre": "Genre",
-      "language": "Language",
+      "language": "Uploaded text language",
       "encoding": "Encoding",
       "autoDetect": "Auto-detect",
       "chapterPattern": "Chapter pattern (regex)",
@@ -252,8 +252,8 @@
       }
     },
     "forge": {
-      "title": "Automated Forge Pipeline",
-      "subtitle": "Import → Analyse → Fingerprint → Foundation → Bible → Outlines → Chapters. Every stage is gated by evidence, isolation and synchronization state; nothing is generated from an incomplete or stale context.",
+      "title": "Continue the original story",
+      "subtitle": "Carry the creative compass into each chapter. Review the compiled direction and current plan, then draft against synchronized canon—not the source's scenes or a frozen outline of the entire series.",
       "steps": {
         "import": "Import",
         "analyze": "Analyse",
@@ -301,7 +301,7 @@
       "seedCanon": "Seed canon from Bible",
       "chapterRun": "Chapter generation",
       "chapterNumber": "Chapter",
-      "compileOnly": "Compile context only",
+      "compileOnly": "Preview chapter directives",
       "generate": "Generate chapter {n}",
       "regenerate": "Regenerate chapter {n}",
       "runCommitted": "Chapter {n} committed and synchronized.",

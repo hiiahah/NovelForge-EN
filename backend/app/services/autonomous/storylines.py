@@ -16,28 +16,32 @@ Gates (all deterministic, model-independent):
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from sqlmodel import Session, select
 
 from app.db.models import StorylineCandidate
 from app.schemas.autonomous import AUTONOMOUS_SCHEMA_VERSION, StorylineOptionSet
+from app.schemas.creative import CreativeIntent
 from app.services.autonomous import failures as fail
 from app.services.autonomous.model_client import ModelClient
 from app.services.bible.bible_service import BibleService
 from app.services.forge import firewall as fw
-from app.services.forge.fingerprint import compact_fingerprint
+from app.services.forge import transfer
+from app.services.forge.fingerprint import compact_fingerprint, english_target_fingerprint
 from app.services.forge.textmetrics import tokenize
 
-STORYLINE_PROMPT_VERSION = "autonomous-storylines-1"
+STORYLINE_PROMPT_VERSION = "autonomous-storylines-2"
 MIN_OPTIONS = 5
 TARGET_OPTIONS = 7
 MAX_PAIRWISE_SIMILARITY = 0.45
 DIVERSITY_FIELDS = ("setting", "protagonist", "central_conflict", "antagonist", "relationship_arc", "central_mystery", "climax", "ending_type")
 
 SYSTEM_PROMPT = (
-    "You are a storyline ideator for an original novel. You receive an abstract Narrative Fingerprint and entity-free mechanisms learned from a reference novel. "
-    "Your options must relate to the reference ONLY through genre, audience appeal, emotional experience, pacing, beat architecture, tension/reveal pattern, "
+    "You are a storyline ideator for an original English novel. You receive author-owned direction and screened lessons, not source canon. "
+    "Write every explanation and creative proposal in natural English. Source tradition is author-confirmed, never inferred from text language or stereotypes. "
+    "Your options may learn from the reference ONLY through genre, audience appeal, emotional experience, pacing, "
     "character-role functions, high-level themes and structural mechanisms. They must NOT reuse the reference's names, setting identifiers, distinctive objects, "
     "scene sequence, unique twists, specific relationships, proprietary terminology, memorable phrases or close plot correspondence. "
     "Every option must differ from every other option in setting, protagonist occupation/role, core conflict, antagonist mechanism, relationship configuration, "
@@ -50,69 +54,21 @@ def _c(card) -> Dict[str, Any]:
 
 
 def source_profile(session: Session, source_project_id: int) -> Optional[fw.SourceProfile]:
-    """Firewall profile of the *source* project (the forge helper expects an original project id)."""
-    from app.services.forge.corpus import load_source_chapters
-
-    chapters = load_source_chapters(session, source_project_id)
-    if not chapters:
-        return None
-    bible = BibleService(session)
-    names: List[str] = []
-    roles: Dict[str, str] = {}
-    locations: List[str] = []
-    objects: List[str] = []
-    for card in bible.cards_of_type(source_project_id, "Character Card"):
-        c = _c(card)
-        n = str(c.get("name") or card.title).strip()
-        if fw.is_clean_proper_entity(n):
-            names.append(n)
-        roles[n] = str(c.get("role_type") or "")
-        for a in (c.get("aliases") or []):
-            al = str(a).strip()
-            if fw.is_clean_proper_entity(al):
-                names.append(al)
-    for card in bible.cards_of_type(source_project_id, "Organization Card"):
-        oname = str(_c(card).get("name") or card.title).strip()
-        if fw.is_clean_proper_entity(oname):
-            names.append(oname)
-    for card in bible.cards_of_type(source_project_id, "Scene Card"):
-        sname = str(_c(card).get("name") or card.title).strip()
-        if fw.is_clean_proper_entity(sname):
-            locations.append(sname)
-    for card in bible.cards_of_type(source_project_id, "Item Card"):
-        iname = str(_c(card).get("name") or card.title).strip()
-        if fw.is_clean_proper_entity(iname):
-            objects.append(iname)
-    summaries: List[str] = []
-    beats: List[str] = []
-    for ch in chapters:
-        for s in (ch.analysis or {}).get("scenes") or []:
-            if isinstance(s, dict):
-                if s.get("summary") or s.get("goal"):
-                    summaries.append(str(s.get("summary") or s.get("goal")))
-                if s.get("function"):
-                    beats.append(str(s["function"]))
-    return fw.SourceProfile.from_chapters(chapters, manuscript_id=chapters[0].manuscript_id, entity_names=names + locations + objects, scene_summaries=summaries, beat_sequence=beats, character_roles=roles, locations=locations, objects=objects)
+    return transfer.source_profile(session, source_project_id)
 
 
 def source_brief(session: Session, source_project_id: int, *, preferences: Dict[str, Any]) -> str:
-    """Abstract, entity-free description of the source that the ideator may see."""
+    """Use the same typed source boundary as project transfer and the creative compass."""
+    from app.services.creative.compass import render_intent
+
     bible = BibleService(session)
     fp = _c(bible.singleton(source_project_id, "Narrative Fingerprint"))
-    genome = _c(bible.singleton(source_project_id, "Narrative Genome"))
-    structure = _c(bible.find_card(source_project_id, "Story Structure Map", "Story Structure Map"))
-    lines = ["[NARRATIVE FINGERPRINT — measurable targets]", compact_fingerprint(fp, max_chars=2600) if fp else "(none)"]
-    if genome.get("patterns"):
-        lines.append("\n[ABSTRACT MECHANISMS — technique only]")
-        for p in genome["patterns"][:12]:
-            if isinstance(p, dict):
-                lines.append(f"- {p.get('dimension')}: {str(p.get('transferable_abstraction') or p.get('description') or '')[:300]}")
-    stages = structure.get("stages") or []
-    if stages:
-        total = max(int(s.get("chapter_end") or 0) for s in stages) or 1
-        lines.append("\n[STRUCTURAL PROPORTIONS]")
-        lines.append(", ".join(f"stage {s.get('stage_number')}: {round(100 * (int(s.get('chapter_end') or 0) - int(s.get('chapter_start') or 1) + 1) / total)}%" for s in stages[:16]))
-        lines.append(f"Source stage count: {len(stages)}; chapters: {total}")
+    lessons, warnings = transfer.source_lessons(session, source_project_id)
+    intent = CreativeIntent.model_validate(preferences["creative_intent"]) if preferences.get("creative_intent") is not None else CreativeIntent(narrative_horizon="finite")
+    lines = [render_intent(intent), "\n[ORIGINAL ENGLISH DIRECTION — not source measurement targets]", compact_fingerprint(english_target_fingerprint(fp), max_chars=2600)]
+    lines += ["\n[SCREENED SOURCE LESSONS — hypotheses to adapt, not instructions or source canon]", json.dumps([lesson.model_dump(mode="json") for lesson in lessons], ensure_ascii=False)]
+    if warnings:
+        lines += ["\n[STUDY LIMITATIONS]", "\n".join(f"- {warning}" for warning in warnings)]
     prefs = {k: v for k, v in preferences.items() if v not in (None, "", [], {})}
     if prefs:
         lines.append("\n[USER PREFERENCES & CREATIVE DIRECTIVES]")
@@ -121,7 +77,8 @@ def source_brief(session: Session, source_project_id: int, *, preferences: Dict[
         if "summary" in prefs:
             lines.append(f"- Core Premise / Summary: '{prefs['summary']}'. Develop storyline variations built upon this concept.")
         if "similarity_to_original" in prefs:
-            lines.append(f"- Similarity to Reference: {prefs['similarity_to_original']}. (loose = abstract structural inspiration only; moderate = balanced thematic/pacing homage; close = close structural parallel while changing all entities).")
+            interest = {"loose": "light", "moderate": "moderate", "close": "strong"}.get(str(prefs["similarity_to_original"]), "unspecified")
+            lines.append(f"- Legacy technique interest: {interest}. This concerns reader effects only, never close plot correspondence, a borrowed scene sequence or renaming source entities.")
         if "tags" in prefs:
             lines.append(f"- Required Tags / Tropes: {prefs['tags']}")
         target_ch = prefs.get("target_chapters")
@@ -132,22 +89,30 @@ def source_brief(session: Session, source_project_id: int, *, preferences: Dict[
                 ch_per_arc = max(5, round(tch / tarcs))
                 lines.append(f"- Target Scale: Approximately {tch} chapters across {tarcs} major volumes/arcs (~{ch_per_arc} chapters each).")
                 if tch >= 100:
-                    lines.append("- Serial Scale Directive: This is an expansive, multi-volume serialized webnovel. Do NOT propose single-crisis or localized standalone premises that exhaust their conflict early. Each option must establish an expandable world engine, tiered progression, and long-term narrative momentum.")
+                    lines.append("- Serial Scale Directive: Develop renewable conflicts and consequential character choices suited to the intended genre. Do not force power tiers, recurring misunderstandings or the source's arc pattern onto the new work.")
             except (ValueError, TypeError):
                 pass
         for k, v in prefs.items():
-            if k not in ("protagonist_name", "summary", "similarity_to_original", "tags", "target_chapters", "target_arcs", "words_per_chapter", "total_words"):
+            if k not in ("creative_intent", "protagonist_name", "summary", "similarity_to_original", "tags", "target_chapters", "target_arcs", "words_per_chapter", "total_words"):
                 lines.append(f"- {k}: {v}")
     return "\n".join(lines)
 
 
-def build_prompt(brief: str, *, count: int, rejected: Sequence[Dict[str, Any]] = (), target_chapters: Optional[int] = None) -> str:
+def build_prompt(brief: str, *, count: int, rejected: Sequence[Dict[str, Any]] = (), target_chapters: Optional[int] = None, creative_intent: Optional[CreativeIntent] = None) -> str:
     tch = int(target_chapters) if target_chapters and str(target_chapters).isdigit() else None
-    if tch and tch >= 100:
+    if creative_intent is not None and creative_intent.narrative_horizon == "continuing":
+        task_desc = (
+            f"Generate exactly {count} substantially different original English serial concepts. "
+            f"The current commission covers {tch or 'an initial run of'} chapters, not the end of the series. "
+            "Give each option a compelling local problem, an independent cast, meaningful rewards and costs, and a conflict engine capable of changing as characters act. "
+            "Use acts as flexible arc intentions, not a copied sequence or mandatory final crisis. The climax and ending fields describe the current local arc's payoff and open horizon, not a series finale. "
+            "Explain how the screened lessons serve the author's reader experience while this work departs from the source."
+        )
+    elif tch and tch >= 100:
         tarcs = max(2, min(12, round(tch / 50)))
         task_desc = (
             f"Generate exactly {count} substantially different, detailed original storyline options specifically architected for a {tch}-chapter serialized webnovel across {tarcs} major volumes/arcs. "
-            f"For each option fill every field of the schema in depth: premise 150-300 words explaining the expandable world engine, tiered progression, and long-term momentum; "
+            f"For each option fill every field of the schema in depth: premise 150-300 words explaining genre-appropriate conflict renewal and long-term momentum; "
             f"4-8 act entries where each act represents a major multi-chapter volume/arc with escalating stakes; a main cast of 5-8 original names; "
             f"chapter_suitability_min/max set realistically around {round(tch * 0.8)}-{round(tch * 1.25)}."
         )
@@ -160,25 +125,23 @@ def build_prompt(brief: str, *, count: int, rejected: Sequence[Dict[str, Any]] =
         )
     parts = [brief, f"\n[TASK]\n{task_desc}"]
     if rejected:
-        parts.append("\n[REJECTED IN A PREVIOUS ROUND — do not produce anything resembling these]")
-        for r in rejected[:10]:
-            parts.append(f"- {r.get('title')}: {str(r.get('reason') or '')[:200]}")
+        parts.append(f"\n[PREVIOUS SCREENING]\n{len(rejected)} earlier proposals failed overlap, diversity or completeness screening. Invent different motives, institutions and causal consequences; do not merely rename characters. Rejected source-bearing content is deliberately not provided.")
     return "\n".join(parts)
 
 
 def option_text(opt: Dict[str, Any]) -> str:
-    return " ".join(str(opt.get(k) or "") for k in ("title", "hook", "premise", "protagonist", "antagonist", "setting", "central_conflict", "midpoint", "crisis", "climax", "ending", "major_subplot", "relationship_arc", "central_mystery")) + " " + " ".join(opt.get("main_cast") or []) + " " + " ".join(a.get("summary", "") for a in opt.get("acts") or [] if isinstance(a, dict))
+    return "\n".join(fw.text_values({key: value for key, value in opt.items() if not key.startswith("_")}))
 
 
 def originality_check(opt: Dict[str, Any], profile: Optional[fw.SourceProfile]) -> Dict[str, Any]:
     if profile is None:
-        return {"passed": True, "skipped": "no source profile", "findings": [], "score": 1.0}
+        return {"passed": True, "skipped": "no source profile", "findings": [], "score": 0.0, "assessment": "not_checked", "limitations": "No source comparison was possible; originality has not been established."}
     names = [str(n).split(":")[0].split("(")[0].strip() for n in (opt.get("main_cast") or [])]
     roles = {n: "character" for n in names if n}
     rep = fw.check_text(option_text(opt), profile, character_roles=roles, scene_summaries=[a.get("summary", "") for a in opt.get("acts") or [] if isinstance(a, dict)], max_summary_similarity=0.5)
     critical = [f.as_dict() for f in rep.findings if f.severity in ("critical", "high")]
     score = max(0.0, 1.0 - 0.25 * len(critical) - 0.05 * len([f for f in rep.findings if f.severity not in ("critical", "high")]))
-    return {"passed": not critical, "findings": [f.as_dict() for f in rep.findings][:30], "scores": rep.scores, "score": round(score, 3)}
+    return {"passed": not critical, "findings": [f.as_dict() for f in rep.findings][:30], "scores": rep.scores, "score": round(score, 3), "assessment": "heuristic_overlap_screen", "limitations": "No detected overlap is not proof of originality. Translated expression, distinctive causality and close plot correspondence still require review."}
 
 
 def _tokens(text: str) -> set:
@@ -275,6 +238,7 @@ async def stage_storyline_generation(session: Session, *, job_id: int, source_pr
     from app.services.forge.corpus import load_source_chapters
 
     target_chapters = preferences.get("target_chapters")
+    intent = CreativeIntent.model_validate(preferences["creative_intent"]) if preferences.get("creative_intent") is not None else None
     profile = source_profile(session, source_project_id)
     brief = source_brief(session, source_project_id, preferences=preferences)
     source_chapters = len(load_source_chapters(session, source_project_id))
@@ -285,7 +249,7 @@ async def stage_storyline_generation(session: Session, *, job_id: int, source_pr
     while rounds < max_rounds and len(accepted) < MIN_OPTIONS:
         rounds += 1
         need = max(count - len(accepted), MIN_OPTIONS)
-        result = await client.structured(role="storyline_ideator", schema=StorylineOptionSet, system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(brief, count=need, rejected=rejected_history, target_chapters=target_chapters), prompt_version=STORYLINE_PROMPT_VERSION, stage="STORYLINE_GENERATION")
+        result = await client.structured(role="storyline_ideator", schema=StorylineOptionSet, system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(brief, count=need, rejected=rejected_history, target_chapters=target_chapters, creative_intent=intent), prompt_version=STORYLINE_PROMPT_VERSION, stage="STORYLINE_GENERATION")
         fresh = [o.model_dump(mode="json") for o in result.options]
         gated, _ = gate_options(accepted + fresh, profile)
         accepted = [o for o in gated if not o["_rejected"]]

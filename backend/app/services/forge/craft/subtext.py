@@ -41,7 +41,7 @@ def _tactic_for(dd: Dict[str, Any], voice: Dict[str, Any], role: str) -> str:
         return coping
     if anger:
         return f"pressure; when crossed: {anger}"
-    return "keeps the real request under a smaller one"
+    return ""
 
 
 def _relationship_line(rel: Dict[str, Any]) -> str:
@@ -73,12 +73,12 @@ def build_agenda(card: Dict[str, Any], *, pov_name: str, relationship: Optional[
         wants = f"{want} — specifically, in this scene: whatever moves '{_s(scene.dramatic_question, 90)}' their way"
     else:
         wants = want
-    secrets = dd.get("secrets") or []
-    suppressing = _first(secrets[0] if secrets else "", dd.get("secret_desire"), dd.get("greatest_fear"))
+    secrets = dd.get("secrets") or ([dd["secret"]] if dd.get("secret") else [])
+    suppressing = _first(secrets[0] if secrets else "", dd.get("secret_desire"))
     if knowledge_gap:
         suppressing = (suppressing + "; " if suppressing else "") + f"knows and is not saying: {_s(list(knowledge_gap)[:2], 160)}"
     leverage = _first(dd.get("agency_source"), (card.get("competence") or {}).get("social_power"), dd.get("public_image"))
-    fear = _first(dd.get("greatest_fear"), dd.get("breaking_point"))
+    fear = _first(dd.get("greatest_fear"), dd.get("fear"), dd.get("breaking_point"))
     address = ""
     for form in voice.get("forms_of_address") or []:
         f = str(form)
@@ -113,7 +113,7 @@ def pov_private_agenda(pov_card: Dict[str, Any], scene: Optional[ScenePlan]) -> 
     if want:
         parts.append(f"wants: {want}")
     if need:
-        parts.append(f"actually needs (won't admit): {need}")
+        parts.append(f"underlying need: {need}")
     if dd.get("false_belief"):
         parts.append(f"operating belief: {_s(dd['false_belief'], 120)}")
     return "; ".join(parts)[:420]
@@ -169,17 +169,17 @@ def voice_from_card(card: Dict[str, Any]) -> ProtagonistVoice:
     voice = card.get("voice") or {}
     comp = card.get("competence") or {}
     personality = _s(card.get("personality"), 80)
-    archetype = personality or "observant pragmatist"
+    archetype = personality
     return ProtagonistVoice(
         archetype=archetype,
-        inner_register=_first(voice.get("sentence_tendency"), "dry, clipped, notices the practical detail before the emotional one"),
-        notices_first=[str(x) for x in (comp.get("knowledge") or [])][:3] or ["exits", "who is lying", "what things cost"],
-        private_humor=_first(voice.get("humor_style"), "deadpan; finds other people's certainty funny"),
+        inner_register=_first(voice.get("sentence_tendency"), voice.get("formality")),
+        notices_first=[str(x) for x in (comp.get("knowledge") or [])][:3],
+        private_humor=_s(voice.get("humor_style")),
         self_deception=_first(dd.get("false_belief"), dd.get("self_image")),
-        calculation_style="weighs odds and costs; lists options; assumes the worst case first",
-        composure_mask=_first(dd.get("public_image"), "outwardly composed"),
+        calculation_style=_s(dd.get("coping_mechanism")),
+        composure_mask=_s(dd.get("public_image")),
         signature_moves=[str(x) for x in (voice.get("rhetorical_habits") or [])][:3],
-        forbidden_interior=[str(x) for x in (voice.get("forbidden_speech") or [])][:4] + ["earnest self-pity", "therapy vocabulary", "explaining the theme"],
+        forbidden_interior=[str(x) for x in (voice.get("forbidden_speech") or [])][:4] + [str(x) for x in ((card.get("consistency_rules") or {}).get("voice_restrictions") or [])],
     )
 
 
@@ -188,7 +188,7 @@ def render_voice(voice: ProtagonistVoice, pov_name: str) -> str:
     if voice.inner_register:
         lines.append(f"- inner register (private narration): {voice.inner_register}")
     if voice.composure_mask:
-        lines.append(f"- outer manner (what others see): {voice.composure_mask} — keep the gap between the two visible on every page")
+        lines.append(f"- outer manner (what others see): {voice.composure_mask}")
     if voice.notices_first:
         lines.append(f"- notices first: {', '.join(voice.notices_first)}")
     if voice.calculation_style:
@@ -233,7 +233,7 @@ def render_packet(packet: SubtextPacket, pov_name: str) -> str:
         if a.never_says:
             bits.append(f"never says: {'; '.join(a.never_says)}")
         lines.append("\n  ".join(bits))
-    lines.append("Rule: nobody states their want directly in the first exchange. Every line is a move toward the want or a defence of the secret. Let the POV read (and sometimes misread) the moves.")
+    lines.append("Let the actual character design govern the exchange. Directness, sincerity and shared feeling are as valid as concealment; do not invent a secret or misreading.")
     return "\n".join(lines)
 
 

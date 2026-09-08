@@ -80,7 +80,7 @@ class ContinuityGuard:
                 for n in [c.get("name"), card.title, *(c.get("aliases") or [])]:
                     if n and str(n).strip():
                         names.add(_norm(n))
-        for d in self.digests.digests(project_id):
+        for d in self.digests.fresh_digests(project_id):
             for n in [*d.participants, *d.named_extras, *d.objects_introduced, *d.locations]:
                 if n:
                     names.add(_norm(n))
@@ -98,7 +98,7 @@ class ContinuityGuard:
         outline: Optional[Dict[str, Any]] = None,
     ) -> ContinuityReport:
         draft = draft or ""
-        digests = [d for d in self.digests.digests(project_id) if chapter_number is None or d.chapter_number < chapter_number]
+        digests = [d for d in self.digests.fresh_digests(project_id) if chapter_number is None or d.chapter_number < chapter_number]
         chapter = chapter_number or (self.bible.current_chapter_number(project_id) + 1)
         participants = [p for p in (participants or []) if p and str(p).strip()]
         lang = detect_language(draft)
@@ -150,8 +150,6 @@ class ContinuityGuard:
             for sc in last.state_changes:
                 if sc.kind == "location" and _norm(sc.entity) == _norm(pov_name):
                     last_loc = sc.after
-            if not last_loc and last.locations and _norm(pov_name) in {_norm(p) for p in last.participants}:
-                last_loc = last.locations[-1]
             if last_loc:
                 opening = draft[:1500]
                 loc_terms = [t for t in tokenize(last_loc) if len(t) >= 4 and t not in _PROHIBITED_STOP]

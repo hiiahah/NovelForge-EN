@@ -27,6 +27,7 @@ from app.db.models import Card, CardType, ChapterPipelineRun
 from app.schemas.card import CardCreate
 from app.services.bible.bible_service import BibleService
 from app.services.card_service import CardService
+from app.services.creative.compass import COMPASS_TYPE
 from app.services.forge import canon as canon_store
 from app.services.forge import claims as claims_mod
 from app.services.forge import firewall as fw
@@ -217,7 +218,7 @@ def build_draft_prompt(ctx: CompiledChapterContext) -> str:
 
 
 def build_repair_prompt(ctx: CompiledChapterContext, prose: str, issues: List[v.Issue]) -> str:
-    lines = ["[CONSTRAINTS — unchanged]", ctx.sections_text_for(("pov", "pov_knowledge_boundary", "anti_hallucination", "originality", "prohibited", "beats")), "", "[FAILED SPANS AND REQUIRED FIXES]"]
+    lines = ["[CONSTRAINTS — unchanged]", ctx.sections_text_for(("creative_compass", "pov", "pov_knowledge_boundary", "anti_hallucination", "originality", "prohibited", "beats")), "", "[FAILED SPANS AND REQUIRED FIXES]"]
     for i, issue in enumerate(issues, start=1):
         span = f"chars {issue.span[0]}-{issue.span[1]}: «{prose[issue.span[0]:issue.span[1]][:160]}»" if issue.span and issue.span[0] >= 0 else "(whole chapter)"
         lines.append(f"{i}. [{issue.layer}/{issue.code}] {issue.message} — {span}\n   fix: {issue.hint}")
@@ -309,12 +310,50 @@ def _run_row(session: Session, project_id: int, chapter_number: int, ctx: Option
     return row
 
 
-def _finish(session: Session, row: ChapterPipelineRun, **fields: Any) -> None:
+def _finish(session: Session, row: ChapterPipelineRun, *, commit: bool = True, **fields: Any) -> None:
     for k, val in fields.items():
         setattr(row, k, val)
     row.updated_at = datetime.now()
     session.add(row)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
+
+
+def _check_context_current(session: Session, ctx: CompiledChapterContext) -> None:
+    """Re-read authoring inputs inside the chapter publication transaction."""
+    included = ctx.manifest.get("included_cards") or []
+    ids = {item["card_id"] for item in included}
+    rows = session.exec(
+        select(Card.id, Card.title, Card.content, CardType.name)
+        .join(CardType)
+        .where(Card.project_id == ctx.project_id, (Card.id.in_(ids)) | (CardType.name == COMPASS_TYPE))
+        .with_for_update()
+    ).all()
+    # Selecting columns bypasses the identity map retained across model calls.
+    current = {
+        card_id: (kind, provenance.content_hash({"title": title, "content": content if isinstance(content, dict) else {}}))
+        for card_id, title, content, kind in rows
+    }
+    stale = []
+    for item in included:
+        card_id = item["card_id"]
+        kind, digest = current.get(card_id, (None, None))
+        expected = item.get("content_hash")
+        matches = digest == expected if expected else f"card:{card_id}@{digest[:12]}" == item.get("revision") if digest else False
+        if kind != item.get("card_type") or not matches:
+            stale.append({"card_id": card_id, "card_type": item.get("card_type"), "reason": "changed or removed during generation"})
+
+    if "creative_compass_revision" in ctx.manifest:
+        compasses = [(card_id, digest) for card_id, (kind, digest) in current.items() if kind == COMPASS_TYPE]
+        expected_id = ctx.manifest.get("creative_compass_card_id")
+        expected_revision = ctx.manifest["creative_compass_revision"]
+        expected_compasses = [(expected_id, expected_revision)] if expected_id is not None else []
+        if compasses != expected_compasses:
+            stale.append({"card_type": COMPASS_TYPE, "reason": "creative direction changed during generation"})
+    if stale:
+        raise ContextCompileError("stale_dependencies", "Chapter context changed during generation. Recompile before publishing this draft.", {"stale": stale})
 
 
 async def run_chapter(
@@ -393,7 +432,9 @@ async def run_chapter(
             _finish(session, row, status="rejected", stage="validate", validation_report=final_report, style_report=report.style, model_calls=model_calls, repair_attempts=attempts, error=f"{len(report.blocking)} blocking issue(s) remain after {attempts} repair attempt(s)")
             return PipelineResult(status="rejected", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, error={"code": "validation_failed", "blocking": [i.as_dict() for i in report.blocking]}, craft=craft_report)
         prose_only, model_claims = claims_mod.split_prose_and_claims(prose)
-        _finish(session, row, stage="commit", validation_report=final_report, style_report=report.style, model_calls=model_calls, repair_attempts=attempts)
+        # Acquire SQLite's write transaction before checking revisions; keep it through publication.
+        _finish(session, row, commit=False, stage="commit", validation_report=final_report, style_report=report.style, model_calls=model_calls, repair_attempts=attempts)
+        _check_context_current(session, ctx)
         card = _upsert_chapter_text(session, project_id, ctx, prose_only, validation=final_report)
         session.commit()
         _finish(session, row, stage="sync", chapter_card_id=card.id)
@@ -414,6 +455,10 @@ async def run_chapter(
             return PipelineResult(status="sync_failed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose_only, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, chapter_card_id=card.id if card else None, error={"code": "sync_failed", "message": str(exc)}, craft=craft_report)
         _finish(session, row, status="committed", stage="done", sync_report=sync_report, canon_revision_after=sync_report["canon_revision_after"], model_calls=model_calls, repair_attempts=attempts, validation_report=final_report, style_report=report.style)
         return PipelineResult(status="committed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose_only, validation=final_report, style=report.style, sync=sync_report, model_calls=model_calls, repair_attempts=attempts, chapter_card_id=card.id, craft=craft_report)
+    except ContextCompileError as exc:
+        session.rollback()
+        _finish(session, row, status="compile_failed", stage="commit", error=json.dumps(exc.as_dict(), ensure_ascii=False), validation_report=final_report, style_report=report.style, model_calls=model_calls, repair_attempts=attempts)
+        return PipelineResult(status="compile_failed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, error=exc.as_dict(), craft=craft_report)
     except Exception as exc:  # unexpected failure: never report success
         session.rollback()
         _finish(session, row, status="error", error=f"{type(exc).__name__}: {exc}", model_calls=model_calls)

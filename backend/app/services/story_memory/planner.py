@@ -62,7 +62,7 @@ class NextChapterPlanner:
         avoid: List[BriefItem] = []
         rhythm: List[str] = []
 
-        digests = [d for d in self.digests.digests(project_id) if d.chapter_number < chapter]
+        digests = [d for d in self.digests.fresh_digests(project_id) if d.chapter_number < chapter]
         hooks = StorySoFarCompiler.dangling_hooks(digests, next_chapter=chapter, overdue_after=cfg.hook_overdue_chapters)
         for h in hooks[:12]:
             item = BriefItem(kind="dangling_hook", priority=5 if h.overdue else (12 if h.strength == "strong" else 30), text=f"{h.hook} (opened ch.{h.opened_chapter}, {h.hook_type})", reason="Overdue for the reader" if h.overdue else f"Open {h.chapters_open} chapter(s)")

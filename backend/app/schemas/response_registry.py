@@ -25,8 +25,10 @@ from app.schemas.bible import (
 )
 from app.schemas.bible_update import BibleUpdateProposal
 from app.schemas.story_memory import ChapterDigest, LlmContinuityFindings, StoryMemorySettings
+from app.schemas.creative import CreativeCompass
 
 RESPONSE_MODEL_MAP: Dict[str, Any] = {
+    "CreativeCompass": CreativeCompass,
     "Text": Text,
 	'Tags': Tags,
 	'SpecialAbilityResponse': SpecialAbilityResponse,

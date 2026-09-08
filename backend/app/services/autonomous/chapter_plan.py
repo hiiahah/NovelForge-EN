@@ -15,15 +15,16 @@ ending contract.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import Session, select
 
-from app.db.models import Card, CardType
+from app.db.models import ArtifactProvenance, Card, CardType, ChapterPipelineRun
 from app.schemas.autonomous import AUTONOMOUS_SCHEMA_VERSION, ChapterBlueprintBatch
 from app.schemas.card import CardCreate
 from app.services.autonomous import failures as fail
+from app.services.autonomous import serial
 from app.services.autonomous.architecture import stored_architecture
 from app.services.autonomous.model_client import ModelClient
 from app.services.bible.bible_service import BibleService
@@ -32,7 +33,7 @@ from app.services.forge import provenance
 from app.services.forge.compiler import ChapterContextCompiler, ContextCompileError
 from app.services.forge.textmetrics import BEAT_FUNCTIONS
 
-PLAN_PROMPT_VERSION = "autonomous-chapter-plan-1"
+PLAN_PROMPT_VERSION = "autonomous-chapter-plan-2"
 WINDOW = 8
 DEFAULT_WORDS_PER_CHAPTER = 2500
 
@@ -42,6 +43,15 @@ SYSTEM_PROMPT = (
     "state/relationship/knowledge transitions, target tension, a closing hook, allowed_outcomes (persistent facts this chapter establishes) and forbidden_outcomes "
     "(facts reserved for later chapters, especially every knowledge fact whose reveal chapter is later). Use only listed character and location names. "
     "Never reuse anything from the reference novel. Output must validate against the schema."
+)
+
+SERIAL_SYSTEM_PROMPT = SYSTEM_PROMPT + (
+    " This is a renewable English-language serial. Accepted state outranks yesterday's blueprint. Future arc contracts, character milestones, "
+    "and the endgame beacon are intentions, not things that already happened. Vary chapter function, emotional temperature, hook, and reward; "
+    "include aftermath, small pleasures, intimacy, and changing relationships rather than escalating danger mechanically. "
+    "Deliver the current arc's local answer and let its irreversible cost create new pressure. Do not close series-wide questions at a "
+    "continuing commission's boundary. A finite commission must earn its final resolution. Use natural authored English, not translation tics "
+    "or stereotyped national conventions. New cast or worlds are not automatically admitted: use only declared entities."
 )
 
 
@@ -74,6 +84,8 @@ def validate_blueprints(chapters: Sequence[Dict[str, Any]], arch: Dict[str, Any]
             names.add(str(a).strip().lower())
     locs = {str(l.get("name") or "").strip().lower() for l in arch.get("locations") or []}
     by_num = {int(ch.get("chapter_number") or 0): ch for ch in chapters}
+    if len(by_num) != len(chapters):
+        problems.append({"code": "duplicate_blueprint", "message": "A chapter must have exactly one blueprint"})
     for n in expected:
         ch = by_num.get(n)
         if ch is None:
@@ -84,6 +96,12 @@ def validate_blueprints(chapters: Sequence[Dict[str, Any]], arch: Dict[str, Any]
         for p in ch.get("participants") or []:
             if str(p).strip().lower() not in names:
                 problems.append({"code": "participant_invalid", "chapter": n, "message": f"Participant '{p}' is not a listed character"})
+        if arch.get("serial_design"):
+            for person in arch.get("characters") or []:
+                identifiers = {str(person.get("name") or "").casefold(), *(str(a).casefold() for a in person.get("aliases") or [])}
+                present = {str(p).casefold() for p in [ch.get("pov"), *(ch.get("participants") or [])]}
+                if identifiers & present and (int(person.get("introduction_chapter") or 1) > n or (person.get("exit_chapter") and int(person["exit_chapter"]) < n)):
+                    problems.append({"code": "participant_outside_lifespan", "chapter": n, "message": f"{person.get('name')} is not available in chapter {n}"})
         if ch.get("location") and str(ch["location"]).strip().lower() not in locs:
             problems.append({"code": "location_invalid", "chapter": n, "message": f"Location '{ch.get('location')}' is not a listed location"})
         beats = ch.get("beats") or []
@@ -96,6 +114,9 @@ def validate_blueprints(chapters: Sequence[Dict[str, Any]], arch: Dict[str, Any]
                 problems.append({"code": "beat_empty", "chapter": n, "message": "Empty beat description"})
         if len(str(ch.get("overview") or "")) < 100:
             problems.append({"code": "overview_short", "chapter": n, "message": f"Chapter {n} overview is shorter than 100 characters"})
+        arc = serial.arc_for_chapter(arch, n)
+        if arc and n == arc["chapter_end"] and not ch.get("payoffs"):
+            problems.append({"code": "arc_payoff_unplanned", "chapter": n, "message": f"The end of arc {arc['arc_number']} must deliver its local payoff: {arc['local_payoff']}"})
     # Setup/payoff schedule adherence.
     sched = {(int(s.get("payoff_chapter") or 0)): s for s in arch.get("setups_payoffs") or []}
     for pc, sp in sched.items():
@@ -154,19 +175,31 @@ def _arch_digest(arch: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_prompt(arch: Dict[str, Any], *, chapters: Sequence[int], total: int, word_target: int, previous: Sequence[Dict[str, Any]], committed_summaries: Sequence[Dict[str, Any]] = (), problems: Sequence[Dict[str, Any]] = (), drafts: Optional[Sequence[Dict[str, Any]]] = None) -> str:
-    parts = [_arch_digest(arch), f"\n[ALLOWED BEAT FUNCTIONS]\n{', '.join(BEAT_FUNCTIONS)}"]
+def build_prompt(arch: Dict[str, Any], *, chapters: Sequence[int], total: int, word_target: int, previous: Sequence[Dict[str, Any]], committed_summaries: Sequence[Dict[str, Any]] = (), problems: Sequence[Dict[str, Any]] = (), drafts: Optional[Sequence[Dict[str, Any]]] = None, accepted_state: Optional[Dict[str, Any]] = None, obligations: Sequence[Dict[str, Any]] = ()) -> str:
+    design = arch.get("serial_design")
+    window_arch = arch
+    if design:
+        window_arch = {**arch, "allocation": [a for a in arch.get("allocation") or [] if int(a.get("chapter_end") or 0) >= chapters[0] and int(a.get("chapter_start") or 0) <= chapters[-1]], "act_plan": [], "plot_threads": [t for t in arch.get("plot_threads") or [] if int(t.get("opening_chapter") or 1) <= chapters[-1]], "setups_payoffs": [s for s in arch.get("setups_payoffs") or [] if int(s.get("setup_chapter") or 0) <= chapters[-1] and (not s.get("payoff_chapter") or int(s["payoff_chapter"]) >= chapters[0])]}
+    parts = [_arch_digest(window_arch), f"\n[ALLOWED BEAT FUNCTIONS]\n{', '.join(BEAT_FUNCTIONS)}"]
+    if design:
+        local_arcs = [a for a in design["arc_contracts"] if a["chapter_end"] >= chapters[0] and a["chapter_start"] <= chapters[-1]]
+        engine = {k: v for k, v in design.items() if k != "arc_contracts"}
+        parts += ["\n[SERIAL ENGINE — author intentions, never accepted history]", json.dumps(engine, ensure_ascii=False), "\n[LOCAL ARC CONTRACTS — plans; earn these outcomes on the page]", json.dumps(local_arcs, ensure_ascii=False), "\n[LIVE AUTHOR INTENT]", json.dumps(arch.get("creative_intent") or {}, ensure_ascii=False)]
+        if accepted_state is not None:
+            parts += ["\n[ACCEPTED WORLD STATE — authoritative only through the stated chapter]", json.dumps(accepted_state, ensure_ascii=False)]
+        if obligations:
+            parts += ["\n[DUE / OVERDUE OBLIGATIONS — planned payoffs are NOT completed events]", json.dumps(list(obligations), ensure_ascii=False)]
     if committed_summaries:
         parts.append("\n[ALREADY WRITTEN CHAPTERS — immutable; plan continuity from their actual state]")
-        for s in committed_summaries:
+        for s in committed_summaries[-serial.RECENT_CHAPTERS:]:
             parts.append(f"- ch {s.get('chapter_number')}: {str(s.get('summary') or '')[:500]} | ends at {s.get('ending_location')} | open: {s.get('unresolved_immediate_action')}")
     if previous:
-        parts.append("\n[PREVIOUS BLUEPRINTS — continue from these]")
+        parts.append("\n[PREVIOUS BLUEPRINTS — intentions only; actual accepted state takes precedence]")
         for p in previous[-3:]:
             parts.append(f"- ch {p.get('chapter_number')} '{p.get('title')}': {str(p.get('overview') or '')[:400]} | hook: {p.get('closing_hook')}")
 
     # Active Plot Threads & Subplot Continuity Ledger for this planning window
-    threads = arch.get("plot_threads") or []
+    threads = window_arch.get("plot_threads") or []
     if threads:
         w_start, w_end = chapters[0], chapters[-1]
         thread_lines = []
@@ -174,7 +207,7 @@ def build_prompt(arch: Dict[str, Any], *, chapters: Sequence[int], total: int, w
             t_name = t.get("name", "Unnamed thread")
             t_type = t.get("thread_type", "subplot")
             t_open = int(t.get("opening_chapter") or 1)
-            t_res = int(t.get("resolution_chapter") or total)
+            t_res = int(t.get("resolution_chapter") or (0 if design else total))
             if t_open <= w_end and (t_res == 0 or t_res >= w_start):
                 if w_start <= t_open <= w_end:
                     status = f"OPENS in this window (ch {t_open})"
@@ -187,6 +220,8 @@ def build_prompt(arch: Dict[str, Any], *, chapters: Sequence[int], total: int, w
             parts.append("\n[PLOT THREAD CONTINUITY IN THIS WINDOW]\n" + "\n".join(thread_lines))
 
     parts.append(f"\n[TASK]\nPlan chapters {chapters[0]}-{chapters[-1]} of {total}. Target length per chapter: about {word_target} words. Produce one blueprint per chapter, in order, each with 4-8 beats.")
+    if design:
+        parts.append(f"This is a bounded production window, not a miniature whole novel. Horizon: {design['narrative_horizon']}. Leave distant chapter events undecided; do not force the endgame at chapter {total} unless the horizon is finite.")
     if problems and drafts is not None:
         parts += ["\n[PREVIOUS BLUEPRINTS FAILED VALIDATION — fix ONLY these problems, keep everything else]"] + [f"- ch {p.get('chapter')}: {p['message']}" for p in problems[:30]]
         parts += ["\n[PREVIOUS BLUEPRINTS]", json.dumps(list(drafts), ensure_ascii=False)[:50000]]
@@ -199,6 +234,7 @@ def blueprint_to_outline(bp: Dict[str, Any], *, arch: Dict[str, Any], word_targe
     n = int(bp["chapter_number"])
     alloc = next((a for a in arch.get("allocation") or [] if int(a.get("chapter_start") or 0) <= n <= int(a.get("chapter_end") or 0)), None)
     stage_no = (arch.get("allocation") or []).index(alloc) + 1 if alloc else 1
+    arc = serial.arc_for_chapter(arch, n)
     participants = list(dict.fromkeys([bp.get("pov")] + list(bp.get("participants") or [])))
     entity_list = participants + ([bp["location"]] if bp.get("location") else [])
     forbidden = list(bp.get("forbidden_outcomes") or [])
@@ -219,7 +255,8 @@ def blueprint_to_outline(bp: Dict[str, Any], *, arch: Dict[str, Any], word_targe
     if len(overview) < 100:
         overview = (overview + " " + " ".join(str(b.get("description") or "") for b in bp.get("beats") or [])).strip()
     return {
-        "volume_number": 1, "stage_number": stage_no, "title": bp.get("title") or f"Chapter {n}", "chapter_number": n, "overview": overview, "entity_list": entity_list,
+        "volume_number": int(arc["arc_number"]) if arc else 1, "stage_number": 1 if arc else stage_no, "title": bp.get("title") or f"Chapter {n}", "chapter_number": n, "overview": overview, "entity_list": entity_list,
+        "truth_status": "planned", "arc_contract": arc,
         "pov": bp.get("pov"), "participants": participants, "beats": [{"function": b.get("function"), "description": b.get("description"), "keywords": b.get("keywords") or []} for b in bp.get("beats") or []],
         "allowed_outcomes": allowed, "forbidden_outcomes": forbidden, "word_target": word_target,
         "purpose": bp.get("purpose"), "location": bp.get("location"), "story_time": bp.get("story_time"), "opening_state": bp.get("opening_state"), "goal": bp.get("goal"), "conflict": bp.get("conflict"),

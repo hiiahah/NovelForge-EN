@@ -28,8 +28,8 @@ class ScenePlan(BaseModel):
     entry_state: str = Field(default="", description="Emotional and physical state the POV enters with")
     exit_state: str = Field(default="", description="Emotional and physical state the POV leaves with; must set up the next scene")
     turn: str = Field(default="", description="What changes: a decision, revelation, reversal or escalation. Every scene must turn.")
-    interiority_focus: str = Field(default="", description="What the protagonist is privately calculating, resenting, noticing or misreading during this scene")
-    micro_payoff: str = Field(default="", description="The small win, deduction, verbal victory or comic beat the scene delivers (empty if none planned)")
+    interiority_focus: str = Field(default="", description="The POV's particular attention, feeling, reflection or reasoning, consistent with their voice")
+    micro_payoff: str = Field(default="", description="The earned reader reward: understanding, intimacy, wonder, grief, humor, progress or victory (empty if none planned)")
     word_share: float = Field(default=0.0, ge=0.0, le=1.0, description="Fraction of the chapter word target this scene should take")
 
 
@@ -78,13 +78,13 @@ class SubtextPacket(BaseModel):
 class ProtagonistVoice(BaseModel):
     """Inner-monologue register for a POV character; stored on the Character Card and injected into every scene."""
 
-    archetype: str = Field(default="", description="e.g. cynical pragmatist, deadpan observer, reluctant genius, survivalist, scheming optimist")
-    inner_register: str = Field(default="", description="How the private narration sounds vs. the spoken voice: dry, clipped, associative, mock-formal…")
-    notices_first: List[str] = Field(default_factory=list, description="What this character clocks first in any room: exits, hierarchy, prices, lies, hands")
-    private_humor: str = Field(default="", description="What amuses them privately that they would never say aloud")
+    archetype: str = Field(default="", description="The character's distinctive stance: earnest, impulsive, warm, contemplative, skeptical, mournful, playful…")
+    inner_register: str = Field(default="", description="The character's own English interior voice; it may align with or differ from their speech")
+    notices_first: List[str] = Field(default_factory=list, description="What this particular character notices, based on their concerns and experience")
+    private_humor: str = Field(default="", description="Their particular sense of humor, if any; humor is not required")
     self_deception: str = Field(default="", description="The thing they tell themselves that the reader can see through")
     calculation_style: str = Field(default="", description="How they think through problems on the page: odds, lists, worst-case, precedent, people")
-    composure_mask: str = Field(default="", description="What their outer manner shows while the inside is doing something else")
+    composure_mask: str = Field(default="", description="Their public manner, if established; sincerity and emotional openness are equally valid")
     signature_moves: List[str] = Field(default_factory=list, description="2-4 recurring interior gestures: a running tally, naming things wrong on purpose, grading people…")
     forbidden_interior: List[str] = Field(default_factory=list, description="Interior tics that would break the voice (e.g. earnest self-pity, therapy vocabulary)")
 
@@ -115,7 +115,7 @@ class CriticReport(BaseModel):
 
 
 # ---------------------------------------------------------------------- hooks
-HookType = Literal["crisis", "revelation", "decision", "threat_arrival", "reversal", "question", "none"]
+HookType = Literal["crisis", "revelation", "decision", "threat_arrival", "reversal", "question", "relationship", "wonder", "emotional", "quiet", "none"]
 
 
 class HookAnalysis(BaseModel):
@@ -127,6 +127,7 @@ class HookAnalysis(BaseModel):
     suggested_hook: str = Field(default="", description="Which hook type the outline's closing_hook / next chapter implies")
     micro_payoffs: List[str] = Field(default_factory=list, description="Detected wins in the chapter: deduction, tactical, verbal, comedic, status")
     payoff_missing: bool = Field(default=False)
+    intentional_close: bool = Field(default=False, description="The plan calls for a quiet, relational, emotional or wonder ending; lack of threat is not failure")
 
 
 # --------------------------------------------------------------------- report

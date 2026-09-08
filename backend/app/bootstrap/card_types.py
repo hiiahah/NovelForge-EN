@@ -257,6 +257,7 @@ def create_default_card_types(session: Session) -> None:
         # Story Memory (per-chapter digests + settings).
         "Chapter Digest": {"is_singleton": False, "is_ai_enabled": False, "description": "Compact structured memory of one written chapter: events, state changes, hooks, knowledge deltas and ending state; compiled into the Story So Far block for generation", "default_ai_context_template": None},
         "Story Memory Settings": {"is_singleton": True, "is_ai_enabled": False, "description": "Per-project Story Memory settings: auto-digest, recap windows and budgets, continuation injection", "default_ai_context_template": None},
+        "Creative Compass": {"is_singleton": True, "is_ai_enabled": False, "description": "Author-owned original English voice, source-adaptation intent and serial direction; not story canon", "default_ai_context_template": None},
     }
 
     # Default AI parameter presets per type (does not include llm_config_id)
@@ -302,6 +303,7 @@ def create_default_card_types(session: Session) -> None:
         "Source Analysis Record": None,
         "Chapter Digest": None,
         "Story Memory Settings": None,
+        "Creative Compass": None,
     }
 
     # Mapping from type name to built-in response model (used directly to generate json_schema)
@@ -346,6 +348,7 @@ def create_default_card_types(session: Session) -> None:
         # Story Memory
         "Chapter Digest": "ChapterDigest",
         "Story Memory Settings": "StoryMemorySettings",
+        "Creative Compass": "CreativeCompass",
     }
 
     overwrite_card_schemas = settings.bootstrap.should_overwrite_card_schemas

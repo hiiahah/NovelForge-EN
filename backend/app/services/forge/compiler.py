@@ -28,6 +28,7 @@ from sqlmodel import Session, select
 
 from app.db.models import Card, CardType, ChapterPipelineRun
 from app.services.bible.bible_service import BibleService
+from app.services.creative.compass import compass_revision, get_compass, render_compass
 from app.services.forge import canon as canon_store
 from app.services.forge import examples as example_lib
 from app.services.forge import provenance
@@ -45,7 +46,7 @@ FLEXIBLE_DETAIL_POLICY = {
     "requires_canon_or_outline": ["names", "locations", "relationships", "history and backstory", "powers and abilities", "injuries", "possessions", "organization membership", "secrets", "dates and durations", "travel time", "permanent physical traits", "major decisions", "new recurring characters", "new plot causes"],
 }
 
-MANDATORY_SECTIONS = ("reader_contract", "story_foundation", "chapter_outline", "beats", "pov", "pov_knowledge_boundary", "prohibited", "anti_hallucination", "originality", "fingerprint", "word_target")
+MANDATORY_SECTIONS = ("creative_compass", "reader_contract", "story_foundation", "chapter_outline", "beats", "pov", "pov_knowledge_boundary", "prohibited", "anti_hallucination", "originality", "fingerprint", "word_target")
 
 
 class ContextCompileError(RuntimeError):
@@ -272,7 +273,12 @@ class ChapterContextCompiler:
         fact_classes: Dict[str, List[str]] = {k: [] for k in FACT_CLASSES}
 
         def include(card: Card, why: str) -> None:
-            included.append({"card_id": card.id, "card_type": getattr(card.card_type, "name", ""), "title": card.title, "revision": _rev(card), "reason": why})
+            included.append({"card_id": card.id, "card_type": getattr(card.card_type, "name", ""), "title": card.title, "revision": _rev(card), "content_hash": provenance.card_hash(card), "reason": why})
+
+        compass, compass_card = get_compass(self.session, project_id)
+        sections.append(Section("creative_compass", "CREATIVE COMPASS — AUTHOR DIRECTION (not story canon)", render_compass(compass), mandatory=True, card_ids=[compass_card.id] if compass_card else [], revisions=[_rev(compass_card)] if compass_card else [], priority=0))
+        if compass_card is not None:
+            include(compass_card, "author-owned creative direction")
 
         # 1-2. Reader Contract, Story Foundation (mandatory)
         contract = self.bible.singleton(project_id, "Reader Contract")
@@ -669,12 +675,14 @@ class ChapterContextCompiler:
             "fingerprint_revision": manifest.fingerprint_revision,
             "fingerprint_dependency_hash": fp.get("dependency_hash"),
             "context_hash": ctx.context_hash,
+            "creative_compass_card_id": compass_card.id if compass_card else None,
+            "creative_compass_revision": compass_revision(compass_card),
             "beat_functions": beat_functions,
             "pov": pov_name,
             "participants": resolved,
         }
         # Record the context as an artifact whose upstream is every included card.
-        ups = [provenance.Upstream(kind=i["card_type"], key=str(i["card_id"]), hash=i["revision"].split("@")[1]) for i in included]
+        ups = [provenance.Upstream(kind=i["card_type"], key=str(i["card_id"]), hash=i["content_hash"]) for i in included]
         provenance.record(self.session, project_id=project_id, artifact_kind="chapter_context", artifact_key=str(chapter_number), content={"hash": ctx.context_hash}, upstream=ups, producer=COMPILER_VERSION, schema_version=COMPILER_VERSION)
         return ctx
 

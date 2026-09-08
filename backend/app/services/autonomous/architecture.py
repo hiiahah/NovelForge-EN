@@ -21,7 +21,9 @@ from sqlmodel import Session, select
 from app.db.models import CanonFact, Card, CardType
 from app.schemas.autonomous import AUTONOMOUS_SCHEMA_VERSION, NovelArchitecture
 from app.schemas.card import CardCreate
+from app.schemas.creative import CreativeIntent
 from app.services.autonomous import failures as fail
+from app.services.autonomous import serial
 from app.services.autonomous.model_client import ModelClient
 from app.services.bible.bible_service import BibleService
 from app.services.card_service import CardService
@@ -29,7 +31,7 @@ from app.services.forge import canon as canon_store
 from app.services.forge import firewall as fw
 from app.services.forge import provenance, transfer
 
-ARCHITECTURE_PROMPT_VERSION = "autonomous-architecture-1"
+ARCHITECTURE_PROMPT_VERSION = "autonomous-architecture-2"
 ARCHITECTURE_CARD_TYPE = "Novel Architecture"
 ARCHITECTURE_TITLE = "Novel Architecture"
 MAX_ARCHITECT_ROUNDS = 3
@@ -40,6 +42,21 @@ SYSTEM_PROMPT = (
     "Every setup must have a payoff chapter, every payoff an earlier setup chapter; character arcs need start/mid/end states with chapter hints; knowledge "
     "facts list who knows them at the start and when the reader learns them; relationships list both characters by exact name. Use only character names "
     "that appear in `characters`, and only locations that appear in `locations`. Output must validate against the schema."
+)
+
+SERIAL_SYSTEM_PROMPT = (
+    "You are designing a genuinely original English-language webserial, not a conventional novel stretched into episodes. "
+    "Invent an independently causal identity: particular people, institutions, scarcity, choices, and consequences. "
+    "A recurring engine must produce different problems because victories change incentives and opponents learn. "
+    "Growth has several independent axes, costly choices are irreversible, relationships have their own momentum, "
+    "and rest, delight, intimacy, discovery, and earned local answers matter as much as danger. "
+    "Plan high-level arc contracts over the commission, not thousands of detailed scenes. Distant intentions are flexible plans, never facts. "
+    "For a continuing horizon, finish local arcs satisfactorily without forcing the endgame at the last commissioned chapter. "
+    "For a finite horizon, earn and deliver the promised series ending. The author's live creative intent outranks source patterns. "
+    "All prose and dialogue design must be intentionally written in natural English. Preserve useful storytelling strengths without "
+    "copying source expression, imposing cultural stereotypes, mechanically translating idioms, or erasing meaningful social distinctions. "
+    "Use only declared characters and locations in schedules. Populate the rich foundation, reader contract, theme map, style profile, "
+    "and character voice fields with original story-specific substance. Return the requested structured architecture."
 )
 
 
@@ -148,9 +165,10 @@ def fit_report(storyline: Dict[str, Any], chapter_count: int) -> Dict[str, Any]:
 
 # --------------------------------------------------------------- validation
 
-def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[Dict[str, Any]]:
+def validate_architecture(arch: Dict[str, Any], *, chapter_count: int, creative_intent: Optional[CreativeIntent] = None) -> List[Dict[str, Any]]:
     """Deterministic architecture checks. Returns problems (empty = valid)."""
     problems: List[Dict[str, Any]] = []
+    continuing = creative_intent is not None and creative_intent.narrative_horizon == "continuing"
     chars = [c for c in arch.get("characters") or [] if isinstance(c, dict) and c.get("name")]
     names = {c["name"].strip().lower() for c in chars}
     alias_map = dict.fromkeys(names)
@@ -189,7 +207,7 @@ def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[D
             if not known(who):
                 problems.append({"code": "unknown_character", "message": f"Knowledge fact '{str(k.get('fact'))[:60]}' lists unknown knower '{who}'", "subject": str(who)})
         rc = int(k.get("reader_reveal_chapter") or 0)
-        if rc > chapter_count:
+        if rc > chapter_count and not continuing:
             problems.append({"code": "chapter_out_of_range", "message": f"Fact '{str(k.get('fact'))[:60]}' reveal chapter {rc} exceeds {chapter_count}", "subject": str(k.get("fact"))[:60]})
         cc = int(k.get("clue_chapter") or 0)
         sc = int(k.get("suspicion_chapter") or 0)
@@ -204,20 +222,20 @@ def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[D
         problems.append({"code": "no_setups", "message": "No setup/payoff pairs planned"})
     for sp in setups:
         s, p = int(sp.get("setup_chapter") or 0), int(sp.get("payoff_chapter") or 0)
-        if not p:
+        if not p and not continuing:
             problems.append({"code": "payoff_missing", "message": f"Setup '{str(sp.get('setup'))[:60]}' has no payoff chapter", "subject": str(sp.get("setup"))[:60]})
-        elif p <= s:
+        elif p and p <= s and not (creative_intent is not None and chapter_count == 1 and p == s == 1):
             problems.append({"code": "payoff_before_setup", "message": f"Payoff of '{str(sp.get('setup'))[:60]}' (ch {p}) is not after its setup (ch {s})", "subject": str(sp.get("setup"))[:60]})
-        if s < 1 or p > chapter_count:
+        if s < 1 or (not continuing and p > chapter_count):
             problems.append({"code": "chapter_out_of_range", "message": f"Setup/payoff '{str(sp.get('setup'))[:60]}' uses chapters outside 1..{chapter_count}", "subject": str(sp.get("setup"))[:60]})
     threads = arch.get("plot_threads") or []
     if not any(str(t.get("thread_type")) == "main_plot" for t in threads):
         problems.append({"code": "no_main_plot", "message": "No plot thread of type main_plot"})
     for t in threads:
         res = int(t.get("resolution_chapter") or 0)
-        if str(t.get("thread_type")) == "main_plot" and res and res < max(1, chapter_count - max(1, chapter_count // 5)):
+        if not continuing and str(t.get("thread_type")) == "main_plot" and res and res < max(1, chapter_count - max(1, chapter_count // 5)):
             problems.append({"code": "main_plot_resolves_early", "message": f"Main plot resolves at chapter {res} of {chapter_count}", "subject": str(t.get("name"))})
-        if res > chapter_count:
+        if res > chapter_count and not continuing:
             problems.append({"code": "chapter_out_of_range", "message": f"Thread '{t.get('name')}' resolves after chapter {chapter_count}", "subject": str(t.get("name"))})
         for who in t.get("participants") or []:
             if not known(who):
@@ -230,8 +248,28 @@ def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[D
     # Density: enough material for the chapter count.
     material = len(setups) + len(threads) * 3 + len(chars)
     min_material = min(35, max(8, round(chapter_count * 0.4)))
-    if chapter_count >= 12 and material < min_material:
+    if creative_intent is None and chapter_count >= 12 and material < min_material:
         problems.append({"code": "density_low", "message": f"Planned material ({material} units) is thin for {chapter_count} chapters (minimum {min_material})"})
+    if creative_intent is not None:
+        problems.extend(serial.validate_design(arch.get("serial_design"), chapter_count=chapter_count, intent=creative_intent))
+        required = {
+            "story_foundation": ("core_premise", "unique_mechanism", "series_longevity", "emotional_core", "counter_argument"),
+            "reader_contract": ("primary_fantasy", "primary_emotional_reward", "progression_type", "expected_ending"),
+            "theme_map": ("theme_question", "protagonist_initial_belief", "antagonist_belief", "planned_movement"),
+            "style_profile": ("pov_mode", "narrator_personality", "sentence_tendency", "exposition_method", "chapter_ending_style"),
+        }
+        for group, fields in required.items():
+            for field in fields:
+                if not str((arch.get(group) or {}).get(field) or "").strip():
+                    problems.append({"code": "bible_design_thin", "message": f"{group}.{field} needs original story-specific substance"})
+        for c in chars:
+            voice = c.get("voice") or {}
+            if not voice.get("sentence_tendency") or len(voice.get("example_lines") or []) < 2:
+                problems.append({"code": "character_voice_thin", "message": f"{c['name']} needs a distinct English voice and at least two original example lines"})
+            if "protagonist" in str(c.get("role") or "").lower():
+                private = c.get("protagonist_voice") or {}
+                if not private.get("inner_register") or not private.get("notices_first") or not private.get("self_deception"):
+                    problems.append({"code": "protagonist_voice_thin", "message": f"{c['name']} needs private register, noticing habits, and self-deception"})
     return problems
 
 
@@ -294,8 +332,12 @@ def firewall_architecture(arch: Dict[str, Any], profile: Optional[fw.SourceProfi
 # ------------------------------------------------------------------ prompt
 
 def build_prompt(storyline: Dict[str, Any], *, chapter_count: int, allocation: List[Dict[str, Any]], fit: Dict[str, Any], brief: str, preferences: Dict[str, Any], problems: Sequence[Dict[str, Any]] = (), previous: Optional[Dict[str, Any]] = None) -> str:
+    intent = CreativeIntent.model_validate(preferences["creative_intent"]) if "creative_intent" in preferences else None
     parts = ["[SELECTED STORYLINE]", json.dumps({k: v for k, v in storyline.items() if k != "schema_version"}, ensure_ascii=False, indent=1)]
-    parts += ["\n[CHAPTER COUNT — HARD CONSTRAINT]", f"The novel has exactly {chapter_count} chapters. Allocation of dramatic functions to chapter ranges:"]
+    if intent is not None:
+        parts += ["\n[COMMISSION — NOT AN AUTOMATIC SERIES ENDING]", f"Write {chapter_count} chapters in this production run. Horizon: {intent.narrative_horizon}. Suggested local arc boundaries:"]
+    else:
+        parts += ["\n[CHAPTER COUNT — HARD CONSTRAINT]", f"The novel has exactly {chapter_count} chapters. Allocation of dramatic functions to chapter ranges:"]
     parts += [f"- {a['function']}: chapters {a['chapter_start']}-{a['chapter_end']}" for a in allocation]
     if fit["adaptations"]:
         parts.append("Adapt the storyline to this count by: " + "; ".join(fit["adaptations"]) + ".")
@@ -303,7 +345,17 @@ def build_prompt(storyline: Dict[str, Any], *, chapter_count: int, allocation: L
     if prefs:
         parts += ["\n[USER PREFERENCES]"] + [f"- {k}: {v}" for k, v in prefs.items()]
     parts += ["\n[REFERENCE STRUCTURE — abstract, entity-free]", brief]
-    parts += ["\n[REQUIREMENTS]", "characters: 5-10 with full fields; the protagonist arc must have start/mid/end with chapter hints. locations: 4-8. knowledge_facts: 4-10 including every secret the plot depends on (use optional clue_chapter and suspicion_chapter before reader_reveal_chapter for progressive mystery foreshadowing). relationships: every pair that matters. plot_threads: one main_plot plus 2-5 subplots with opening and resolution chapters. setups_payoffs: 6-15 with setup_chapter < payoff_chapter <= chapter count. timeline: 8-20 events. act_plan: one line per allocated function."]
+    if intent is None:
+        parts += ["\n[REQUIREMENTS]", "characters: 5-10 with full fields; the protagonist arc must have start/mid/end with chapter hints. locations: 4-8. knowledge_facts: 4-10 including every secret the plot depends on (use optional clue_chapter and suspicion_chapter before reader_reveal_chapter for progressive mystery foreshadowing). relationships: every pair that matters. plot_threads: one main_plot plus 2-5 subplots with opening and resolution chapters. setups_payoffs: 6-15 with setup_chapter < payoff_chapter <= chapter count. timeline: 8-20 events. act_plan: one line per allocated function."]
+    else:
+        parts += ["\n[SERIAL DESIGN REQUIREMENTS]",
+                  "serial_design: concrete recurring conflict, changing incentives, learning opposition, at least 3 variation axes, at least 2 independent growth axes with irreversible costs, a relationship engine, varied rewards and hooks, recovery rhythm, expansion constraints, anti-reset rules, and independently invented causal departures.",
+                  "arc_contracts: number from 1, contiguous coverage of the full commission with a dramatic question, earned local payoff, irreversible cost, and causally new pressure. All truth_status values remain planned. These are high-level intentions, not predetermined chapter events. Only a finite horizon's last arc has resolution_scope=series.",
+                  "The distant endgame is a beacon with earned conditions. A continuing run must leave its series-level questions alive while fulfilling this run's due local promises. No stretched global nine-act structure; leave act_plan empty.",
+                  "characters: an emotionally investable founding cast with clear initial states and distinct voices, including voice.example_lines (2+ original English lines), dramatic_design, and protagonist_voice for the narrator. Protagonist start/mid/end phases describe this commission's movement, not necessarily their final identity.",
+                  "story_foundation, reader_contract, theme_map, style_profile: populate their real schema fields deeply. Specify particular emotional pleasures, secondary rewards, reward cadence, competing beliefs, costly thematic decisions, original motifs, sensory priorities, exposition through action, and native-English narrator personality. Do not list only tone adjectives.",
+                  "world/locations/factions: a bounded founding world. Expansion rules are author intentions; do not assume new entities can appear in a chapter unless separately declared in the architecture. relationships describe initial states; arcs and future timeline events remain planned.",
+                  "knowledge_facts and setups_payoffs: specific near-term obligations plus a few distant promises, not every event of the entire series. Dates beyond this commission or 0 (deliberately unscheduled) are permitted only for continuing series. Keep clues before reveals and local payoffs after their setup."]
     if problems and previous is not None:
         parts += ["\n[PREVIOUS ARCHITECTURE FAILED VALIDATION — fix ONLY these problems, keep everything else]"] + [f"- {p['code']}: {p['message']}" for p in problems[:30]]
         parts += ["\n[PREVIOUS ARCHITECTURE]", json.dumps(previous, ensure_ascii=False)[:60000]]
@@ -333,7 +385,7 @@ def write_bible_cards(session: Session, project_id: int, arch: Dict[str, Any], *
     def bump(k: str) -> None:
         counts[k] = counts.get(k, 0) + 1
 
-    _upsert(session, project_id, "Story Foundation", "Story Foundation", {
+    _upsert(session, project_id, "Story Foundation", "Story Foundation", arch.get("story_foundation") or {
         "core_premise": contract.get("premise") or storyline.get("premise") or "", "story_promise": contract.get("genre_promise") or "", "reader_fantasy": contract.get("primary_fantasy") or "",
         "central_dramatic_question": storyline.get("central_mystery") or storyline.get("thematic_question") or "", "protagonist": storyline.get("protagonist") or "", "protagonist_goal": storyline.get("central_desire") or "",
         "main_opposition": storyline.get("antagonist") or "", "external_conflict": storyline.get("central_conflict") or "", "internal_conflict": storyline.get("internal_flaw") or "", "stakes": storyline.get("stakes") or "",
@@ -341,15 +393,23 @@ def write_bible_cards(session: Session, project_id: int, arch: Dict[str, Any], *
         "expected_ending_experience": contract.get("ending_contract") or storyline.get("ending") or "", "truth_status": "canon", "confidence": 1.0, "schema_version": AUTONOMOUS_SCHEMA_VERSION,
     })
     bump("Story Foundation")
-    _upsert(session, project_id, "Reader Contract", "Reader Contract", {
+    _upsert(session, project_id, "Reader Contract", "Reader Contract", arch.get("reader_contract") or {
         "primary_fantasy": contract.get("primary_fantasy") or "", "primary_emotional_reward": contract.get("primary_emotional_reward") or "", "expected_tone": contract.get("tone") or storyline.get("tone") or "",
         "expected_protagonist_behavior": contract.get("expected_protagonist_behavior") or [], "violations": (contract.get("violations") or []) + (contract.get("prohibited_deviations") or []),
-        "pov": contract.get("pov") or storyline.get("pov_plan") or "", "tense": contract.get("tense") or "past", "target_audience": contract.get("target_audience") or "", "ending_contract": contract.get("ending_contract") or "",
+        "expected_ending": contract.get("ending_contract") or "",
         "truth_status": "canon", "confidence": 1.0,
     })
     bump("Reader Contract")
-    _upsert(session, project_id, "Theme Map", "Theme Map", {"theme_question": contract.get("thematic_question") or storyline.get("thematic_question") or "", "protagonist_initial_belief": storyline.get("internal_flaw") or "", "planned_movement": storyline.get("ending") or "", "truth_status": "canon", "confidence": 1.0})
+    _upsert(session, project_id, "Theme Map", "Theme Map", arch.get("theme_map") or {"theme_question": contract.get("thematic_question") or storyline.get("thematic_question") or "", "protagonist_initial_belief": storyline.get("internal_flaw") or "", "planned_movement": storyline.get("ending") or "", "truth_status": "planned", "confidence": 1.0})
     bump("Theme Map")
+    if arch.get("style_profile"):
+        _upsert(session, project_id, "Style Profile", "Style Profile", {**arch["style_profile"], "truth_status": "planned"})
+        bump("Style Profile")
+    design = arch.get("serial_design") or {}
+    if design:
+        _upsert(session, project_id, serial.SERIAL_DESIGN_CARD_TYPE, serial.SERIAL_DESIGN_CARD_TYPE, {**design, "truth_status": "planned"})
+        bump(serial.SERIAL_DESIGN_CARD_TYPE)
+    founding_names = {c["name"] for c in arch.get("characters") or [] if int(c.get("introduction_chapter") or 1) <= 1}
 
     role_map = {"protagonist": "Protagonist", "deuteragonist": "Supporting Character", "antagonist": "Antagonist", "supporting character": "Supporting Character", "minor": "NPC"}
     for c in arch.get("characters") or []:
@@ -359,13 +419,14 @@ def write_bible_cards(session: Session, project_id: int, arch: Dict[str, Any], *
         _upsert(session, project_id, "Character Card", c["name"], {
             "name": c["name"], "entity_type": "character", "life_span": "Long Term", "role_type": role, "born_scene": c.get("home_location") or "", "description": c.get("identity") or "",
             "personality": "; ".join(c.get("voice_tells") or []) or c.get("flaw") or "", "core_drive": c.get("goal") or "", "character_arc": arc_text, "aliases": c.get("aliases") or [],
-            "dramatic_design": {"external_goal": c.get("goal") or "", "internal_need": c.get("motivation") or "", "wound": c.get("wound") or "", "fear": c.get("fear") or "", "flaw": c.get("flaw") or "", "secret": c.get("secret") or ""},
-            "voice": {"sentence_tendency": c.get("voice_sentence_tendency") or "", "verbal_tells": c.get("voice_tells") or [], "forbidden_speech": c.get("forbidden_speech") or [], "forms_of_address": []},
+            "dramatic_design": c.get("dramatic_design") or {"external_goal": c.get("goal") or "", "internal_need": c.get("motivation") or "", "core_wound": c.get("wound") or "", "greatest_fear": c.get("fear") or "", "false_belief": c.get("flaw") or "", "secrets": [c["secret"]] if c.get("secret") else []},
+            "voice": c.get("voice") or {"sentence_tendency": c.get("voice_sentence_tendency") or "", "verbal_tells": c.get("voice_tells") or [], "forbidden_speech": c.get("forbidden_speech") or [], "forms_of_address": []},
+            "protagonist_voice": c.get("protagonist_voice") or {},
             "competence": {"strengths": c.get("capabilities") or [], "limits_and_costs": c.get("limitations") or []},
             "consistency_rules": {"knowledge_restrictions": c.get("knowledge_boundaries") or []},
-            "arc_milestones": [{"stage": {"start": "setup", "mid": "midpoint", "end": "resolution"}.get(str(p.get("phase")), "setup"), "description": p.get("state") or "", "chapter_hint": str(p.get("chapter_hint") or ""), "status": "planned"} for p in arc if isinstance(p, dict)],
+            "arc_milestones": [{"stage": {"start": "starting_state", "mid": "midpoint_realization", "end": "ending_state"}.get(str(p.get("phase")), "custom"), "description": p.get("state") or "", "chapter_hint": str(p.get("chapter_hint") or ""), "status": "planned"} for p in arc if isinstance(p, dict)],
             "dynamic_info": {"Possessions": [{"id": i + 1, "info": str(x), "weight": 1.0} for i, x in enumerate(c.get("possessions") or [])]} if c.get("possessions") else {},
-            "appearance": c.get("appearance") or "", "introduction_chapter": c.get("introduction_chapter") or 1, "exit_chapter": c.get("exit_chapter") or 0, "truth_status": "canon", "confidence": 1.0,
+            "appearance": c.get("appearance") or "", "introduction_chapter": c.get("introduction_chapter") or 1, "exit_chapter": c.get("exit_chapter") or 0, "truth_status": "planned" if design and c["name"] not in founding_names else "canon", "confidence": 1.0,
         })
         bump("Character Card")
     for l in arch.get("locations") or []:
@@ -375,7 +436,7 @@ def write_bible_cards(session: Session, project_id: int, arch: Dict[str, Any], *
         _upsert(session, project_id, "Organization Card", f["name"], {"name": f["name"], "entity_type": "organization", "life_span": "Long Term", "description": f.get("description") or "", "influence": f.get("goal") or "", "relationship": [], "dynamic_state": []})
         bump("Organization Card")
     for it in arch.get("items") or []:
-        _upsert(session, project_id, "Item Card", it["name"], {"name": it["name"], "entity_type": "item", "life_span": "Long Term", "category": "other", "description": it.get("description") or "", "owner_hint": it.get("owner") or None, "power_or_effect": it.get("significance") or None})
+        _upsert(session, project_id, "Item Card", it["name"], {"name": it["name"], "entity_type": "item", "life_span": "Long Term", "category": "other", "description": it.get("description") or "", "owner_hint": it.get("owner") or None, "power_or_effect": it.get("significance") or None, "truth_status": "planned" if design and it.get("owner") and it["owner"] not in founding_names else "canon"})
         bump("Item Card")
     for w in arch.get("world_rules") or []:
         _upsert(session, project_id, "World Rule", str(w.get("rule"))[:200], {"rule": w.get("rule"), "domain": w.get("domain") if w.get("domain") in ("geography", "politics", "social_hierarchy", "economy", "technology", "magic_power", "religion", "law", "history", "culture", "other") else "other", "costs": w.get("cost") or "", "explanation": w.get("limits") or "", "known_by": w.get("known_by") or [], "truth_status": "canon", "confidence": 1.0})
@@ -391,12 +452,12 @@ def write_bible_cards(session: Session, project_id: int, arch: Dict[str, Any], *
         a, b = str(r.get("character_a")), str(r.get("character_b"))
         _upsert(session, project_id, "Relationship Arc", f"{a} ↔ {b}", {
             "character_a": a, "character_b": b, "trust": int(r.get("trust") or 50), "affection": int(r.get("affection") or 50), "fear": 0, "dependency": 0, "resentment": int(r.get("hostility") or 0),
-            "power_balance": r.get("power_balance") or "", "private_relationship": r.get("private_relationship") or "", "unresolved_tension": r.get("unresolved_tension") or "", "planned_arc": r.get("arc_summary") or "", "truth_status": "canon", "confidence": 1.0,
+            "power_balance": r.get("power_balance") or "", "private_relationship": r.get("private_relationship") or "", "unresolved_tension": r.get("unresolved_tension") or "", "planned_arc": r.get("arc_summary") or "", "truth_status": "planned" if design and (a not in founding_names or b not in founding_names) else "canon", "confidence": 1.0,
         })
         bump("Relationship Arc")
     for t in arch.get("plot_threads") or []:
         ttype = t.get("thread_type") if t.get("thread_type") in ("main_plot", "character_arc", "relationship_arc", "mystery", "romance", "political_conflict", "faction_conflict", "training_progression", "survival", "comic_subplot", "thematic", "subplot") else "subplot"
-        _upsert(session, project_id, "Plot Thread", str(t.get("name"))[:200], {"name": t.get("name"), "thread_type": ttype, "central_question": t.get("central_question") or "", "participants": t.get("participants") or [], "opening_chapter": int(t.get("opening_chapter") or 1), "last_advanced_chapter": 0, "next_expected_chapter": int(t.get("opening_chapter") or 1), "planned_resolution": f"chapter {t.get('resolution_chapter')}" if t.get("resolution_chapter") else "", "status": "active" if int(t.get("opening_chapter") or 1) <= 1 else "planned", "urgency": "high" if ttype == "main_plot" else "medium", "milestones": [], "truth_status": "canon", "confidence": 1.0})
+        _upsert(session, project_id, "Plot Thread", str(t.get("name"))[:200], {"name": t.get("name"), "thread_type": ttype, "central_question": t.get("central_question") or "", "participants": t.get("participants") or [], "opening_chapter": int(t.get("opening_chapter") or 1), "last_advanced_chapter": 0, "next_expected_chapter": int(t.get("opening_chapter") or 1), "planned_resolution": f"chapter {t.get('resolution_chapter')}" if t.get("resolution_chapter") else "", "status": "planned" if design else ("active" if int(t.get("opening_chapter") or 1) <= 1 else "planned"), "urgency": "high" if ttype == "main_plot" else "medium", "milestones": [], "truth_status": "planned" if design else "canon", "confidence": 1.0})
         bump("Plot Thread")
     for sp in arch.get("setups_payoffs") or []:
         ptype = sp.get("promise_type") if sp.get("promise_type") in ("promise", "foreshadowing", "clue", "chekhovs_gun", "question", "secret", "prophecy", "threat", "deal", "debt", "vow", "unresolved_emotion", "mystery") else "foreshadowing"
@@ -406,6 +467,14 @@ def write_bible_cards(session: Session, project_id: int, arch: Dict[str, Any], *
     for i, ev in enumerate(arch.get("timeline") or []):
         _upsert(session, project_id, "Timeline Event", str(ev.get("title"))[:200], {"title": ev.get("title"), "story_time": ev.get("story_time") or "", "order_index": i, "chapter_number": int(ev.get("chapter") or 0) or None, "location": ev.get("location") or "", "participants": ev.get("participants") or [], "cause": ev.get("summary") or "", "truth_status": "planned", "confidence": 0.9})
         bump("Timeline Event")
+    for arc in design.get("arc_contracts") or []:
+        _upsert(session, project_id, "Promise Payoff", f"Arc {arc['arc_number']} · {arc['title']}"[:200], {
+            "setup": arc["dramatic_question"], "promise_type": "question", "source_chapter": arc["chapter_start"],
+            "target_payoff_range": [arc["chapter_end"], arc["chapter_end"]], "planned_payoff": arc["local_payoff"],
+            "intended_interpretation": f"Local arc contract; cost: {arc['irreversible_cost']}", "strength": "strong",
+            "participants": [], "status": "planned", "truth_status": "planned", "confidence": 1.0,
+        })
+        bump("Promise Payoff")
     _upsert(session, project_id, ARCHITECTURE_CARD_TYPE, ARCHITECTURE_TITLE, {**arch, "chapter_count": chapter_count, "schema_version": AUTONOMOUS_SCHEMA_VERSION})
     session.flush()
     return counts
@@ -420,22 +489,31 @@ def stored_architecture(session: Session, project_id: int) -> Dict[str, Any]:
 async def stage_novel_architecture(session: Session, *, original_project_id: int, source_project_id: int, storyline: Dict[str, Any], chapter_count: int, client: ModelClient, brief: str, preferences: Dict[str, Any], profile: Optional[fw.SourceProfile]) -> Dict[str, Any]:
     """Generate, validate and (if needed) repair the architecture; store it on the original project."""
     existing = stored_architecture(session, original_project_id)
-    if existing and int(existing.get("chapter_count") or 0) == chapter_count and not validate_architecture(existing, chapter_count=chapter_count):
-        return {"reused": True, "problems": [], "rounds": 0, "allocation": allocate_chapters(chapter_count, source_proportions=source_proportions(session, source_project_id))}
-    allocation = allocate_chapters(chapter_count, source_proportions=source_proportions(session, source_project_id))
-    fit = fit_report(storyline, chapter_count)
+    intent = serial.resolve_intent(session, original_project_id, preferences, existing)
+    preferences = dict(preferences)
+    if intent is not None:
+        preferences["creative_intent"] = intent.model_dump(mode="json")
+    same_direction = intent is None or existing.get("creative_intent") == preferences["creative_intent"]
+    if existing and same_direction and int(existing.get("chapter_count") or 0) == chapter_count and not validate_architecture(existing, chapter_count=chapter_count, creative_intent=intent):
+        return {"reused": True, "problems": [], "rounds": 0, "allocation": existing.get("allocation") or allocate_chapters(chapter_count)}
+    allocation = serial.allocate_arcs(chapter_count, intent.arc_length) if intent is not None else allocate_chapters(chapter_count, source_proportions=source_proportions(session, source_project_id))
+    fit = {"severity": "adapted", "adaptations": ["renew the conflict through locally satisfying arcs, changed incentives, and irreversible consequences"]} if intent is not None else fit_report(storyline, chapter_count)
     problems: List[Dict[str, Any]] = []
     previous: Optional[Dict[str, Any]] = None
     arch: Optional[Dict[str, Any]] = None
     for round_no in range(1, MAX_ARCHITECT_ROUNDS + 1):
-        result = await client.structured(role="novel_architect", schema=NovelArchitecture, system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(storyline, chapter_count=chapter_count, allocation=allocation, fit=fit, brief=brief, preferences=preferences, problems=problems, previous=previous), prompt_version=ARCHITECTURE_PROMPT_VERSION, stage="NOVEL_ARCHITECTURE")
+        result = await client.structured(role="novel_architect", schema=NovelArchitecture, system_prompt=SERIAL_SYSTEM_PROMPT if intent is not None else SYSTEM_PROMPT, user_prompt=build_prompt(storyline, chapter_count=chapter_count, allocation=allocation, fit=fit, brief=brief, preferences=preferences, problems=problems, previous=previous), prompt_version=ARCHITECTURE_PROMPT_VERSION, stage="NOVEL_ARCHITECTURE")
         arch = result.model_dump(mode="json")
-        problems = validate_architecture(arch, chapter_count=chapter_count) + firewall_architecture(arch, profile)
+        problems = validate_architecture(arch, chapter_count=chapter_count, creative_intent=intent) + firewall_architecture(arch, profile)
         if not problems:
             break
         previous = arch
     if arch is None or problems:
         raise fail.StageFailure(fail.PLANNING_IMPOSSIBILITY, f"Architecture still invalid after {MAX_ARCHITECT_ROUNDS} rounds: {len(problems)} problem(s)", detail={"problems": problems[:30]})
+    if intent is not None:
+        arch["creative_intent"] = intent.model_dump(mode="json")
+        allocation = [{"arc_number": a["arc_number"], "function": a["title"], "chapter_start": a["chapter_start"], "chapter_end": a["chapter_end"], "chapters": a["chapter_end"] - a["chapter_start"] + 1} for a in arch["serial_design"]["arc_contracts"]]
+        _upsert(session, original_project_id, serial.SERIAL_DESIGN_CARD_TYPE, serial.SERIAL_DESIGN_CARD_TYPE, arch["serial_design"])
     arch["allocation"] = allocation
     arch["fit"] = fit
     _upsert(session, original_project_id, ARCHITECTURE_CARD_TYPE, ARCHITECTURE_TITLE, {**arch, "chapter_count": chapter_count, "schema_version": AUTONOMOUS_SCHEMA_VERSION})
@@ -462,6 +540,8 @@ def stage_bible_build(session: Session, *, original_project_id: int, chapter_cou
     cards = []
     for t in ("Character Card", "Relationship Arc", "Knowledge Fact", "Item Card"):
         cards += bible.cards_of_type(original_project_id, t)
+    if arch.get("serial_design"):
+        cards = [card for card in cards if _c(card).get("truth_status") != "planned"]
     seeded = canon_store.seed_from_bible(session, original_project_id, cards, canon_revision=manifest.canon_revision)
     session.commit()
     return {"cards": counts, "facts_seeded": seeded, "isolation": {"isolated": True}}

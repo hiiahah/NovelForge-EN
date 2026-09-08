@@ -22,6 +22,7 @@
     </el-steps>
 
     <el-alert v-if="auto.error.value" type="error" :closable="true" show-icon :title="auto.error.value" class="top-alert" @close="auto.error.value = null" />
+    <el-alert v-if="auto.job.value" type="info" :closable="false" :title="t(!auto.job.value.options.creative_intent ? 'creativeCompass.legacyFinite' : isContinuing ? 'creativeCompass.runContinuing' : 'creativeCompass.runFinite')" data-testid="autonomous-run-horizon" />
 
     <!-- Screen 1: Upload -->
     <div v-if="auto.screen.value === 'upload'" class="screen" data-testid="screen-upload">
@@ -30,6 +31,8 @@
         <div v-if="!auto.file.value" class="drop-text">{{ t('autonomous.dropFile') }}</div>
         <div v-else class="drop-text"><b>{{ auto.file.value.name }}</b> · {{ (auto.file.value.size / 1024).toFixed(0) }} KB</div>
       </label>
+      <CreativeCompassEditor v-model="creativeIntent" id-prefix="new-serial-compass" :disabled="auto.busy.value === 'start'" />
+      <h2 class="section-title">{{ t('autonomous.productionTitle') }}</h2>
       <el-form label-position="top" size="default" class="form">
         <div class="grid">
           <el-form-item :label="t('autonomous.model')" required>
@@ -62,22 +65,15 @@
         <el-collapse class="prefs">
           <el-collapse-item :title="t('autonomous.preferences')">
             <div class="grid">
-              <el-form-item :label="t('autonomous.pref.similarity_to_original')">
-                <el-select v-model="form.similarity_to_original" clearable>
-                  <el-option value="loose" :label="t('autonomous.pref.similarity.loose')" />
-                  <el-option value="moderate" :label="t('autonomous.pref.similarity.moderate')" />
-                  <el-option value="close" :label="t('autonomous.pref.similarity.close')" />
-                </el-select>
-              </el-form-item>
               <el-form-item :label="t('autonomous.pref.protagonist_name')"><el-input v-model="form.protagonist_name" :placeholder="t('autonomous.pref.protagonist_placeholder')" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.genre')"><el-input v-model="form.genre" :placeholder="t('autonomous.pref.genre_placeholder')" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.tags')"><el-input v-model="form.tags" :placeholder="t('autonomous.pref.tags_placeholder')" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.genre_intensity')"><el-select v-model="form.genre_intensity" clearable><el-option v-for="v in ['subtle', 'moderate', 'intense']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.content_rating')"><el-select v-model="form.content_rating" clearable><el-option v-for="v in ['all ages', 'teen', 'mature']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
-              <el-form-item :label="t('autonomous.pref.ending_preference')"><el-select v-model="form.ending_preference" clearable><el-option v-for="v in ['triumphant', 'bittersweet', 'tragic', 'open', 'no preference']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
+              <el-form-item v-if="!isContinuing" :label="t('autonomous.pref.ending_preference')"><el-select v-model="form.ending_preference" clearable><el-option v-for="v in ['triumphant', 'bittersweet', 'tragic', 'open', 'no preference']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.romance_level')"><el-select v-model="form.romance_level" clearable><el-option v-for="v in ['none', 'subplot', 'central']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.words_per_chapter')"><el-input-number v-model="form.words_per_chapter" :min="300" :max="20000" :step="100" /></el-form-item>
-              <el-form-item :label="t('autonomous.pref.target_chapters')"><el-input-number v-model="form.target_chapters" :min="1" :max="2000" :step="10" placeholder="e.g. 50, 100, 400" /></el-form-item>
+              <el-form-item :label="t('autonomous.pref.target_chapters')"><el-input-number v-model="form.target_chapters" :min="1" :max="1000" :step="10" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.storyline_count')"><el-input-number v-model="form.storyline_count" :min="5" :max="10" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.title')"><el-input v-model="form.title" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.author')"><el-input v-model="form.author" /></el-form-item>
@@ -147,13 +143,14 @@
           <h2>{{ t('autonomous.chooseTitle') }}</h2>
           <el-switch v-model="showRejected" :active-text="t('autonomous.showRejected')" />
         </div>
+        <p class="muted screening-note">{{ t('autonomous.originalityHint') }}</p>
         <div class="cards">
           <el-card v-for="o in visibleOptions" :key="o.id" shadow="hover" class="story-card" :class="{ selected: auto.selectedStorylineId.value === o.id, rejected: o.rejected }" :data-testid="`story-${o.id}`" @click="!o.rejected && (auto.selectedStorylineId.value = o.id)">
             <div class="story-head">
               <h3>{{ o.title }}</h3>
               <div class="badges">
                 <el-tag size="small" effect="plain">{{ o.content.genre || '—' }}</el-tag>
-                <el-tag size="small" :type="o.originality_score >= 0.9 ? 'success' : 'warning'" effect="dark">{{ t('autonomous.originality', { pct: Math.round(o.originality_score * 100) }) }}</el-tag>
+                <el-tag v-if="!o.rejected" size="small" type="info" effect="plain">{{ t('autonomous.screeningPassed') }}</el-tag>
                 <el-tag v-if="o.rejected" size="small" type="danger" effect="dark">{{ t('autonomous.rejected') }}</el-tag>
               </div>
             </div>
@@ -175,6 +172,8 @@
                 <ul><li v-for="(c, i) in o.content.main_cast || []" :key="i">{{ c }}</li></ul>
                 <p><b>{{ t('autonomous.card.mystery') }}:</b> {{ o.content.central_mystery }}</p>
                 <p><b>{{ t('autonomous.card.fingerprint') }}:</b> {{ o.content.fingerprint_usage }}</p>
+                <p v-if="o.content.originality_notes"><b>{{ t('autonomous.card.departures') }}:</b> {{ o.content.originality_notes }}</p>
+                <p class="muted">{{ t('autonomous.originality', { pct: Math.round(o.originality_score * 100) }) }}</p>
                 <p class="muted">{{ t('autonomous.card.similarity') }}: {{ Object.entries(o.similarity_to_others).map(([k, v]) => `#${k} ${Math.round(Number(v) * 100)}%`).join(' · ') }}</p>
               </el-collapse-item>
             </el-collapse>
@@ -186,7 +185,7 @@
               <div class="muted">{{ t('autonomous.selected') }}</div>
               <b>{{ auto.selectedOption.value?.title || t('autonomous.noneSelected') }}</b>
             </div>
-            <el-form-item :label="t('autonomous.chapterCount')" class="count">
+            <el-form-item :label="t(isContinuing ? 'autonomous.chapterCount' : 'autonomous.finiteChapterCount')" class="count">
               <el-input-number v-model="auto.chapterCount.value" :min="1" :max="1000" data-testid="chapter-count" />
               <div class="field-hint">{{ t('autonomous.chapterRangeHint') }}</div>
             </el-form-item>
@@ -228,6 +227,7 @@
     <!-- Screen 5: Finished -->
     <div v-else class="screen" data-testid="screen-finished">
       <el-result :icon="qualityIcon" :title="t('autonomous.quality.' + (auto.job.value?.quality_status || 'completed'))" :sub-title="t('autonomous.finishedSubtitle', { chapters: auto.job.value?.chapter_count || 0, words: Number(auto.report.value?.audit?.words || 0).toLocaleString() })" data-testid="quality-status" />
+      <el-alert v-if="isContinuing" type="info" :closable="false" show-icon :title="t('creativeCompass.continuingFinished')" />
       <div class="downloads">
         <a v-for="a in auto.artifacts.value" :key="a.id" :href="artifactDownloadUrl(a.id, auto.job.value?.id)" class="download" :data-testid="`download-${a.kind}`" download>
           <el-button type="primary" plain>{{ t('autonomous.kinds.' + a.kind, a.kind) }} · {{ (a.size_bytes / 1024).toFixed(0) }} KB</el-button>
@@ -283,12 +283,17 @@ import { artifactDownloadUrl } from '@renderer/api/autonomous'
 import { CRAFT_PRESETS, type CraftPreset } from '@renderer/api/craft'
 import { fileToBase64 } from '@renderer/api/lab'
 import { listLLMConfigs, type LLMConfigRead } from '@renderer/api/setting'
-import { ANALYSIS_STAGES, GENERATION_STAGES, useAutonomousNovel } from '@renderer/composables/useAutonomousNovel'
+import { ANALYSIS_STAGES, GENERATION_STAGES, jobNarrativeHorizon, useAutonomousNovel } from '@renderer/composables/useAutonomousNovel'
 import JobProgressCard from '@renderer/components/autonomous/JobProgressCard.vue'
+import CreativeCompassEditor from '@renderer/components/creative/CreativeCompassEditor.vue'
+import { createCreativeIntent, intentForSave } from '@renderer/composables/useCreativeCompass'
+import type { CreativeIntent } from '@renderer/api/creative'
 
 const emit = defineEmits<{ (e: 'open-project', projectId: number): void }>()
 const { t } = useI18n()
 const auto = useAutonomousNovel({ ...api, fileToBase64 })
+const creativeIntent = ref<CreativeIntent>(createCreativeIntent())
+const isContinuing = computed(() => auto.job.value ? jobNarrativeHorizon(auto.job.value) === 'continuing' : creativeIntent.value.narrative_horizon !== 'finite')
 const llmConfigs = ref<LLMConfigRead[]>([])
 const dragging = ref(false)
 const showRejected = ref(false)
@@ -313,9 +318,8 @@ const form = reactive<{
   protagonist_name: string
   summary: string
   tags: string
-  similarity_to_original: string
 }>({
-  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', craft_preset: '', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, target_chapters: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '', similarity_to_original: 'moderate',
+  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', craft_preset: '', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, target_chapters: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '',
 })
 
 const stepIndex = computed(() => ['upload', 'analysis', 'choose', 'generating', 'finished'].indexOf(auto.screen.value))
@@ -355,11 +359,12 @@ function onDrop(e: DragEvent) {
 }
 async function start() {
   if (!form.llm_config_id || !canStart.value) return
-  const params: Record<string, unknown> = { llm_config_id: form.llm_config_id, mode: form.mode, quality_preset: form.quality_preset, storyline_count: form.storyline_count, preflight_acknowledged: auto.preflight.value?.passed !== true }
+  const params: Record<string, unknown> = { llm_config_id: form.llm_config_id, mode: form.mode, quality_preset: form.quality_preset, storyline_count: form.storyline_count, creative_intent: intentForSave(creativeIntent.value), preflight_acknowledged: auto.preflight.value?.passed !== true }
   if (form.craft_preset) params.craft_preset = form.craft_preset
   const spec = budgetSpec()
   if (spec) params.budget = spec
-  for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'target_chapters', 'title', 'author', 'notes', 'protagonist_name', 'summary', 'tags', 'similarity_to_original'] as const) {
+  for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'target_chapters', 'title', 'author', 'notes', 'protagonist_name', 'summary', 'tags'] as const) {
+    if (k === 'ending_preference' && isContinuing.value) continue
     if (form[k]) params[k] = form[k]
   }
   await auto.start(params as Omit<api.CreateJobRequest, 'filename' | 'content_base64'>)
@@ -385,6 +390,8 @@ onMounted(async () => {
 .job-select { width: 320px; }
 .steps { margin: 4px 0; }
 .screen { display: flex; flex-direction: column; gap: 14px; }
+.section-title { margin: 8px 0 0; font-size: 17px; color: var(--el-text-color-primary); }
+.screening-note { margin: 0; line-height: 1.6; }
 .drop { display: flex; align-items: center; justify-content: center; min-height: 120px; border: 2px dashed var(--el-border-color); border-radius: 10px; cursor: pointer; background: var(--el-fill-color-light); }
 .drop.active { border-color: var(--el-color-primary); }
 .hidden-input { display: none; }

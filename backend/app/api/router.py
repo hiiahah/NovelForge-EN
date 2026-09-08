@@ -6,6 +6,7 @@ from app.api.endpoints import autonomous as autonomous_ep
 from app.api.endpoints import bible as bible_ep
 from app.api.endpoints import chapter_reviews as chapter_reviews_ep
 from app.api.endpoints import context as context_ep
+from app.api.endpoints import creative as creative_ep
 from app.api.endpoints import foreshadow as foreshadow_ep
 from app.api.endpoints import craft as craft_ep
 from app.api.endpoints import forge as forge_ep
@@ -32,6 +33,7 @@ api_router.include_router(cards.router, prefix="", tags=["cards"])
 api_router.include_router(chapter_reviews_ep.router, prefix="/chapter-reviews", tags=["chapter-reviews"])
 
 api_router.include_router(context_ep.router, prefix="/context", tags=["context"])
+api_router.include_router(creative_ep.router, prefix="/creative", tags=["creative"])
 api_router.include_router(memory_ep.router, prefix="/memory", tags=["memory"])
 api_router.include_router(relation_graph_ep.router, prefix="/relation-graph", tags=["relation-graph"])
 api_router.include_router(foreshadow_ep.router, prefix="/foreshadow", tags=["foreshadow"])

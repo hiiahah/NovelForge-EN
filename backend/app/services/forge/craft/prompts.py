@@ -17,27 +17,28 @@ CRITIC_PROMPT_VERSION = "craft-critic-1"
 POLISH_PROMPT_VERSION = "craft-polish-1"
 HOOK_PROMPT_VERSION = "craft-hook-1"
 
-SCENE_DRAFT_DIRECTIVES = """[SCENE CRAFT — NON-NEGOTIABLE]
-- Breathing room: the beats are a route, not a checklist. Each beat gets an entry (one concrete sensory anchor, who is where), an exchange or action, the POV's private reaction, and a turn.
-- Interiority before action: before anything important happens, the POV notices, calculates, misjudges or privately comments. Readers stay for the head, not the plot.
-- Outer composure / inner commentary: the POV's spoken lines are controlled; the narration is where the sharpness, calculation and humor live. Keep the gap visible.
-- Subtext: nobody says what they want in their first line. Every line of dialogue is a move; the POV reads the moves and is sometimes wrong.
-- Paragraphs of 1-3 sentences. Dialogue on its own line. No walls.
-- Banned: 'not X, but Y' scaffolds; 'a testament to'; 'the man who…'; 'something shifted'; 'a breath he didn't know he was holding'; 'in that moment'; emotion cocktails ('a mix of fear and relief'); therapy vocabulary; narrator lectures about what a moment 'meant'.
-- Never summarize the previous scene or restate what the reader just read."""
+SCENE_DRAFT_DIRECTIVES = """[SCENE CRAFT]
+- Write original, idiomatic English. The creative compass, original Reader Contract and Style Profile govern the prose, not the source language or a cultural stereotype.
+- Let important choices and consequences unfold on the page. Allocate space by dramatic importance, not equal words per beat.
+- Use the actual POV's attention and emotional range. Earnestness, impulsiveness, warmth, grief, playfulness and restraint are equally valid; do not manufacture cynicism or a composure mask.
+- Dialogue follows each character's want and voice. Honesty, silence, direct requests and subtext are all available when motivated.
+- Vary rhythm and paragraphing with the original Style Profile and the scene. Avoid repetitive scaffolds and generic emotional explanation.
+- Preserve planned quiet, relational, comic, mournful and wonder endings. Not every chapter needs a threat or cliffhanger.
+- Continue the prior scene without repeating it. Unknown persistent facts remain unknown."""
 
 SCENE_PLAN_SYSTEM_PROMPT = (
     "You are a serialized-fiction structure editor. You turn a chapter's ordered beats into 2-5 scenes that each have a place, a time, a dramatic question and a TURN. "
-    "You never add events, characters, locations or facts beyond the beats and allowed outcomes; you only decide where the scene boundaries fall, what each scene privately does for the protagonist, and which small win it lands. "
+    "You never add events, characters, locations or facts beyond the beats and allowed outcomes; decide where scene boundaries fall and which character change, reader reward or meaningful cost each lands. "
     "Return ONLY one JSON object matching the schema. No prose, no markdown fences."
 )
 
 CRITIC_SYSTEM_PROMPT = (
-    "You are an adversarial acquisitions editor for top-tier serialized webnovels (Novelpia / Munpia / Kakao / RoyalRoad front page). You are paid to find why a chapter would lose readers. "
-    "You grade 1-10 on: authenticity (does this read like a living webnovel narrator or like generic literary AI?), voice (is the POV's personality on every page?), interiority (private calculation, noticing, humor before action), "
-    "dialogue (subtext, cadence, distinct speakers; no stiff exposition), pacing (breathing room per beat; no rushing, no idling), sensory (concrete anchors), hook (does the ending pull?), payoff (does the chapter deliver a win?). "
+    "You are a demanding editor of original English serialized fiction. Judge against the creative compass, original Reader Contract and Style Profile. "
+    "You grade 1-10 on: authenticity (specific lived experience rather than generic prose), voice (this character's distinct stance), interiority (appropriate to the chosen POV and scene), "
+    "dialogue (motivated exchanges and distinct speakers), pacing (space for choices and consequences), sensory (specific anchors), hook (the intended kind of forward interest), payoff (the promised reader reward or earned emotional cost). "
+    "Warmth, sincerity, grief, intimacy, wonder and quiet closure are not defects. Do not require an ironic narrator, secret genius, constant calculation, victory or a cliffhanger. "
     "Cite short verbatim quotes (<= 25 words). Findings must be actionable rewrite instructions, not rewrites. Protect the strongest passage by naming it. "
-    "Be harsh on: 'not X but Y' scaffolds, abstract-noun lecturing, epiphany stamps, emotion cocktails, therapy vocabulary, adverb-propped tags, melodrama, characters explaining the theme, and endings that fade instead of pulling. "
+    "Identify repetitive scaffolds, generic emotional explanation, unearned transitions and endings that fail their intended purpose. Lexical signals are diagnostics, not proof that a payoff happened. "
     "Return ONLY one JSON object: {\"scores\": {dimension: int}, \"overall\": float, \"verdict\": \"accept\"|\"polish\"|\"rewrite\", \"strongest_moment\": str, \"findings\": [{\"dimension\": str, \"severity\": \"critical\"|\"high\"|\"medium\"|\"low\", \"quote\": str, \"problem\": str, \"fix\": str}]}."
 )
 
@@ -45,21 +46,22 @@ POLISH_SYSTEM_PROMPT = (
     "You are a line editor performing a surgical polish on a chapter of an original serialized novel. You receive the chapter, the editor's cited findings and the protagonist's voice profile. "
     "Rewrite ONLY what the findings cite and the sentences immediately around them; leave every other sentence byte-identical. Never add a fact, name, place, object, injury, relationship change or piece of knowledge. "
     "Never change what happens or the order it happens in. Never touch the passage named as the strongest moment. Keep the POV, tense and paragraphing convention. "
-    "Replace tics with concrete, in-voice prose: a thing seen, a calculation, a dry private aside, a line of dialogue. Where a finding asks for interiority, add 1-3 sentences in the POV's inner register at that spot. "
+    "Use this character's actual English voice. Do not impose humor, emotional restraint or calculation absent from the profile. "
     "Return the complete chapter body only: no notes, no title, no metadata blocks."
 )
 
 HOOK_SYSTEM_PROMPT = (
-    "You are a serialized-fiction ending specialist. You rewrite ONLY the final paragraphs of a chapter so the reader must click 'next chapter'. "
-    "Allowed hook types: crisis (something goes wrong now), revelation (the POV learns or the reader sees something that reframes the chapter), decision (the POV commits to an irreversible course), threat arrival (someone or something is suddenly here), reversal (what seemed settled is not). "
-    "Rules: use only characters, places and facts already present in the chapter or the plan; do not resolve anything; do not add new information the outline does not allow; do not explain the hook; land on a short paragraph — an action, a line of dialogue or a concrete image — never a maxim about what it all meant. "
+    "You are an English serial-fiction ending editor. Rewrite ONLY the final paragraphs to fulfill the original chapter's intended ending, not to manufacture a cliffhanger. "
+    "Valid endings include crisis, revelation, decision, threat arrival, reversal, intimacy, wonder, earned grief and quiet resolution. Use the planned kind; do not replace emotional closure with danger. "
+    "Use only characters, places and facts already present in the chapter or the plan. Never resolve or add anything beyond the allowed outcomes. Land through an action, dialogue or a specific image, in the chosen voice. "
     "Return only the rewritten final paragraphs (2-4 short paragraphs), nothing else."
 )
 
 
 def _ctx_sections(context: Any, keys: Sequence[str]) -> str:
     fn = getattr(context, "sections_text_for", None)
-    return fn(keys) if callable(fn) else ""
+    always = ("output_contract", "creative_compass", "reader_contract", "style_profile", "protagonist_voice")
+    return fn(tuple(dict.fromkeys((*always, *keys)))) if callable(fn) else ""
 
 
 def build_scene_plan_prompt(context: Any, beats: Sequence[Dict[str, Any]], draft_plan: Sequence[ScenePlan], pov: str, participants: Sequence[str], word_target: int, closing_hook: str) -> str:

@@ -8,8 +8,8 @@
  * - a chapter run is only allowed for the manifest's next_allowed_chapter
  *   (or a regeneration of a committed chapter) and never while another run is active
  */
-import { computed, ref, type Ref } from 'vue'
-import type { CompileRequest, CreateOriginalRequest, IsolationReport, Manifest, PipelineRunSummary, RunChapterRequest, SourceStatus } from '@renderer/api/forge'
+import { computed, ref, watch, type Ref } from 'vue'
+import type { CompiledContext, CompileRequest, CreateOriginalRequest, IsolationReport, Manifest, PipelineRunSummary, RunChapterRequest, SourceStatus } from '@renderer/api/forge'
 
 export interface ForgeApi {
   getSourceStatus: (projectId: number) => Promise<SourceStatus>
@@ -20,7 +20,7 @@ export interface ForgeApi {
   getIsolation: (projectId: number) => Promise<IsolationReport>
   seedCanon: (projectId: number) => Promise<{ facts_seeded: number }>
   getManifest: (projectId: number) => Promise<Manifest>
-  compileChapter: (body: CompileRequest) => Promise<unknown>
+  compileChapter: (body: CompileRequest) => Promise<CompiledContext>
   runChapter: (body: RunChapterRequest) => Promise<Record<string, unknown>>
   listRuns: (projectId: number, limit?: number) => Promise<PipelineRunSummary[]>
 }
@@ -43,6 +43,8 @@ export function useForgePipeline(api: ForgeApi, projectId: Ref<number | undefine
   const busy = ref<string | null>(null)
   const error = ref<string | null>(null)
   const lastRun = ref<Record<string, unknown> | null>(null)
+  const compiledContext = ref<CompiledContext | null>(null)
+  let compileSequence = 0
 
   const isOriginal = computed(() => manifest.value?.project_role === 'original')
   const analysisComplete = computed(() => !!source.value && source.value.chapters > 0 && source.value.failed_chapters.length === 0 && source.value.analysed === source.value.chapters)
@@ -84,6 +86,7 @@ export function useForgePipeline(api: ForgeApi, projectId: Ref<number | undefine
   }
 
   async function refresh(): Promise<void> {
+    compiledContext.value = null
     const pid = projectId.value
     if (!pid) return
     const [m, s, iso, r] = await Promise.allSettled([api.getManifest(pid), api.getSourceStatus(pid), api.getIsolation(pid), api.listRuns(pid, 20)])
@@ -113,7 +116,22 @@ export function useForgePipeline(api: ForgeApi, projectId: Ref<number | undefine
   const buildExamples = () => guarded('examples', () => api.buildExamples(projectId.value!))
   const seedCanon = () => guarded('seed', () => api.seedCanon(projectId.value!))
   const createOriginal = (name: string) => guarded('create', () => api.createOriginalProject({ source_project_id: projectId.value!, name, template: 'bible' }))
-  const compile = (chapter: number, regenerate = false) => guarded('compile', () => api.compileChapter({ project_id: projectId.value!, chapter_number: chapter, regenerate }))
+  function clearCompiledContext() {
+    compileSequence += 1
+    compiledContext.value = null
+  }
+
+  async function compile(chapter: number, regenerate = false): Promise<CompiledContext | null> {
+    const pid = projectId.value
+    if (!pid || busy.value) return null
+    clearCompiledContext()
+    const sequence = compileSequence
+    const result = await guarded('compile', () => api.compileChapter({ project_id: pid, chapter_number: chapter, regenerate }))
+    if (result && pid === projectId.value && sequence === compileSequence) compiledContext.value = result
+    return result
+  }
+
+  watch(projectId, clearCompiledContext, { flush: 'sync' })
 
   async function run(chapter: number, llmConfigId: number, regenerate = false, craftPreset?: string): Promise<Record<string, unknown> | null> {
     if (!canRunChapter(chapter, regenerate)) {
@@ -128,8 +146,8 @@ export function useForgePipeline(api: ForgeApi, projectId: Ref<number | undefine
   }
 
   return {
-    source, manifest, isolation, runs, busy, error, lastRun,
+    source, manifest, isolation, runs, busy, error, lastRun, compiledContext,
     isOriginal, analysisComplete, fingerprintReady, examplesReady, isolationOk, staleCount, nextChapter, lastSynced, activeRun, activeStep, chapterBlocker,
-    canRunChapter, refresh, verify, buildFingerprint, buildExamples, seedCanon, createOriginal, compile, run,
+    canRunChapter, refresh, verify, buildFingerprint, buildExamples, seedCanon, createOriginal, compile, clearCompiledContext, run,
   }
 }

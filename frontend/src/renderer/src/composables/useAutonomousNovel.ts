@@ -8,6 +8,7 @@
  */
 import { computed, getCurrentInstance, onBeforeUnmount, ref } from 'vue'
 import type { AutonomousJob, ChapterPreviewInfo, CreateJobRequest, ExportArtifactInfo, JobResponse, PreflightRequest, PreflightResult, StorylineOption } from '@renderer/api/autonomous'
+import type { CreativeIntent } from '@renderer/api/creative'
 
 export interface AutonomousApi {
   createJob: (body: CreateJobRequest) => Promise<JobResponse>
@@ -36,6 +37,11 @@ export function artifactDownloadPath(artifactId: number, jobId: number): string 
 export const ANALYSIS_STAGES = ['INGEST', 'SOURCE_ANALYSIS', 'ANALYSIS_VERIFICATION', 'BOOK_STRUCTURE', 'FINGERPRINT_BUILD', 'EXAMPLE_LIBRARY_BUILD', 'STORYLINE_GENERATION']
 export const GENERATION_STAGES = ['NOVEL_ARCHITECTURE', 'BIBLE_BUILD', 'CHAPTER_PLAN_BUILD', 'NOVEL_PREFLIGHT', 'CHAPTER_GENERATION_LOOP', 'WHOLE_NOVEL_AUDIT', 'GLOBAL_REPAIR', 'EXPORT']
 export const ACTIVE_STATUSES = new Set(['queued', 'running'])
+
+export function jobNarrativeHorizon(job: AutonomousJob): NonNullable<CreativeIntent['narrative_horizon']> {
+  const intent = job.options.creative_intent as CreativeIntent | undefined
+  return intent?.narrative_horizon === 'continuing' ? 'continuing' : 'finite'
+}
 
 export function screenFor(job: AutonomousJob | null): Screen {
   if (!job) return 'upload'

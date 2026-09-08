@@ -15,8 +15,9 @@ distant detail first, then mid, never the recent ending state.
 
 from __future__ import annotations
 
+import json
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlmodel import Session
 
@@ -38,11 +39,13 @@ def _norm(s: str) -> str:
 
 def _hook_key(text: str) -> str:
     """Loose key for matching an opened hook with a later closure."""
-    toks = [t for t in re.findall(r"[a-z0-9']+", _norm(text)) if len(t) > 3]
+    toks = [t for t in re.findall(r"[a-z0-9']+", _norm(text)) if len(t) > 3 or t.isdigit()]
     return " ".join(sorted(set(toks))[:12])
 
 
 def _hook_matches(open_hook: str, closed_hook: str) -> bool:
+    if set(re.findall(r"\b\d+\b", open_hook)) != set(re.findall(r"\b\d+\b", closed_hook)):
+        return False
     a = set(_hook_key(open_hook).split())
     b = set(_hook_key(closed_hook).split())
     if not a or not b:
@@ -67,8 +70,6 @@ class StorySoFarCompiler:
                     continue
                 ent = state.setdefault(key, CarryForwardEntity(entity=name))
                 ent.last_seen_chapter = d.chapter_number
-                if d.locations:
-                    ent.location = d.locations[-1]
             for sc in d.state_changes:
                 key = _norm(sc.entity)
                 if not key:
@@ -81,7 +82,17 @@ class StorySoFarCompiler:
                     ent.alive = not re.search(r"\b(dead|died|killed|deceased|slain|perished)\b", _norm(sc.after))
                     ent.states["alive_dead"] = sc.after
                 elif sc.permanent or sc.kind in ("possession", "injury", "power", "status", "resource", "knowledge"):
-                    ent.states[sc.kind] = sc.after
+                    previous = ent.states.get(sc.kind)
+                    if sc.kind in ("possession", "injury", "knowledge", "power", "resource") and previous and sc.before != previous:
+                        try:
+                            snapshot = json.loads(sc.after)
+                        except (TypeError, ValueError):
+                            snapshot = None
+                        # Accepted receipts use complete JSON snapshots. Free-text digests
+                        # retain observations rather than guess additions or removals.
+                        ent.states[sc.kind] = sc.after if isinstance(snapshot, list) else previous + (f"; ch.{d.chapter_number}: {sc.after}" if sc.after not in previous else "")
+                    else:
+                        ent.states[sc.kind] = sc.after
         return sorted(state.values(), key=lambda e: (-(e.last_seen_chapter or 0), e.entity))
 
     @staticmethod
@@ -90,11 +101,12 @@ class StorySoFarCompiler:
         for d in digests:
             # Close earlier hooks that this chapter resolved.
             for closed in d.hooks_closed:
-                if not closed.complete:
-                    continue
                 for i, (ch, _, oh) in enumerate(list(open_hooks)):
                     if _hook_matches(oh.hook, closed.hook):
-                        open_hooks.pop(i)
+                        if closed.complete:
+                            open_hooks.pop(i)
+                        else:
+                            open_hooks[i] = (d.chapter_number, d, oh)
                         break
             for oh in d.hooks_opened:
                 open_hooks.append((d.chapter_number, d, oh))
@@ -102,10 +114,18 @@ class StorySoFarCompiler:
         for ch, _, oh in open_hooks:
             age = max(0, next_chapter - ch)
             strength_factor = {"strong": 0.6, "medium": 1.0, "weak": 1.6}.get(oh.strength, 1.0)
+            window = _norm(oh.expected_payoff_window)
+            limit = max(1, int(overdue_after * strength_factor))
+            if "next chapter" in window:
+                limit = 2
+            elif any(w in window for w in ("long-term", "end of volume", "end of the volume", "end of series")):
+                limit = next_chapter + 1  # No fixed date is implied by these horizons.
+            elif "arc" in window:
+                limit = max(limit, overdue_after * 3)
             out.append(DanglingHook(
                 hook=oh.hook, hook_type=oh.hook_type, opened_chapter=ch, strength=oh.strength,
                 expected_payoff_window=oh.expected_payoff_window, chapters_open=age,
-                overdue=age >= max(1, int(overdue_after * strength_factor)),
+                overdue=age >= limit,
             ))
         rank = {"strong": 0, "medium": 1, "weak": 2}
         out.sort(key=lambda h: (not h.overdue, rank.get(h.strength, 1), -h.chapters_open))
@@ -169,11 +189,12 @@ class StorySoFarCompiler:
         include_carry_forward: bool = True,
     ) -> StorySoFar:
         cfg = settings or get_settings(self.session, project_id)
-        all_digests = self.digests.digests(project_id)
+        all_digests = self.digests.fresh_digests(project_id)
         coverage = self.digests.coverage(project_id)
         written = coverage["written"]
-        through = max(written) if written else (all_digests[-1].chapter_number if all_digests else 0)
-        nxt = next_chapter or (through + 1)
+        latest = max(written) if written else (all_digests[-1].chapter_number if all_digests else 0)
+        nxt = next_chapter or (latest + 1)
+        through = min(latest, nxt - 1)
         # Only chapters before the one being written count as "so far".
         digests = [d for d in all_digests if d.chapter_number < nxt]
         budget = int(budget_chars or cfg.recap_budget_chars)
@@ -207,7 +228,7 @@ class StorySoFarCompiler:
         groups: List[List[ChapterDigest]] = []
         for d in distant:
             key = d.volume_number if d.volume_number is not None else (d.chapter_number - 1) // 10
-            if groups and (groups[-1][0].volume_number if groups[-1][0].volume_number is not None else (groups[-1][0].chapter_number - 1) // 10) == key:
+            if groups and len(groups[-1]) < 10 and (groups[-1][0].volume_number if groups[-1][0].volume_number is not None else (groups[-1][0].chapter_number - 1) // 10) == key:
                 groups[-1].append(d)
             else:
                 groups.append([d])
@@ -238,6 +259,48 @@ class StorySoFarCompiler:
         result.used_chars = len(result.text)
         return result
 
+    def retrieve(self, project_id: int, *, before_chapter: int, participants: List[str], query: str, budget_chars: int = 5000) -> Dict[str, Any]:
+        """Relevance-selected distant evidence plus recent continuity, never future or stale memory."""
+        stop = {"this", "that", "with", "from", "their", "they", "then", "when", "were", "have", "chapter", "before", "after", "about", "through", "will", "into", "must", "which"}
+
+        def tokens(text: str) -> set:
+            return {t for t in re.findall(r"[a-z0-9]+", text.lower()) if len(t) >= 4 and t not in stop}
+
+        names = {_norm(n) for n in participants}
+        terms = tokens(query) - {t for n in names for t in tokens(n)}
+        cards = {int((c.content or {}).get("chapter_number") or 0): c for c in self.digests.digest_cards(project_id)}
+        ranked = []
+        for digest in self.digests.fresh_digests(project_id):
+            if digest.chapter_number >= before_chapter:
+                continue
+            events = [e.summary for e in digest.events]
+            hooks = [h.hook for h in digest.hooks_opened]
+            changes = [f"{s.entity}: {s.after}" for s in digest.state_changes]
+            body = "\n".join([digest.one_line, *events, *changes, *hooks])
+            overlap = terms & tokens(body)
+            relevant_names = names & {_norm(n) for n in digest.participants}
+            recent = digest.chapter_number >= before_chapter - 3
+            score = len(overlap) * 8 + len(relevant_names) + (3 if recent else 0)
+            if not (overlap or recent or (relevant_names and (hooks or changes))):
+                continue
+            reason = "Relevant terms: " + ", ".join(sorted(overlap)) if overlap else ("Recent continuity" if recent else "Participant state/obligation")
+            ranked.append((score, digest, body, reason))
+        ranked.sort(key=lambda item: (-item[0], -item[1].chapter_number))
+        blocks = []
+        used = 0
+        for _, digest, body, reason in ranked:
+            card = cards[digest.chapter_number]
+            text = f"ch.{digest.chapter_number} ({reason}):\n{body[:1100]}"
+            if used + len(text) + 2 > budget_chars:
+                continue
+            blocks.append({"chapter_number": digest.chapter_number, "card_id": card.id, "source_hash": digest.source_hash, "reason": reason, "text": text})
+            used += len(text) + 2
+            if len(blocks) >= 10:
+                break
+        blocks.sort(key=lambda b: b["chapter_number"])
+        text = "\n\n".join(b["text"] for b in blocks)
+        return {"text": text, "blocks": blocks, "used_chars": len(text), "budget_chars": budget_chars, "scope": "Fresh extractive memory; omitted events remain unverified"}
+
     @staticmethod
     def _drop_tier(r: StorySoFar, name: str) -> bool:
         before = len(r.tiers)
@@ -267,6 +330,8 @@ class StorySoFarCompiler:
         parts: List[str] = [f"[Story So Far — through chapter {r.through_chapter}; you are writing chapter {r.next_chapter}]"]
         if r.missing_chapters:
             parts.append(f"(No memory for chapters {', '.join(map(str, r.missing_chapters[:12]))}{' …' if len(r.missing_chapters) > 12 else ''}: digest them for full context)")
+        if r.stale_chapters:
+            parts.append(f"(Stale memory excluded for chapters {', '.join(map(str, r.stale_chapters[:12]))}; refresh before relying on their events)")
         for t in r.tiers:
             label = {"distant": "Earlier arcs (compressed)", "mid": "Previous chapters (brief)", "recent": "Most recent chapters (detailed)"}[t.name]
             parts.append(f"### {label}\n{t.text}")

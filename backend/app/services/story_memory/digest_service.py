@@ -78,6 +78,34 @@ class DigestService:
         out.sort(key=lambda d: d.chapter_number)
         return out
 
+    def fresh_digests(self, project_id: int) -> List[ChapterDigest]:
+        """Only memory still bound to its chapter text; legacy hand-authored digests remain usable."""
+        texts = {int(_content(c).get("chapter_number") or 0): c for c in self.chapter_text_cards(project_id)}
+        result = []
+        for card in self.digest_cards(project_id):
+            digest = self.to_digest(card)
+            if digest is None or digest.stale:
+                continue
+            text_card = texts.get(digest.chapter_number)
+            if digest.source_hash and text_card and digest.source_hash != text_hash(_content(text_card).get("content")):
+                continue
+            if _content(card).get("receipt_version"):
+                if text_card is None or _content(text_card).get("sync_status") != "synchronized" or digest.chapter_card_id != text_card.id:
+                    continue
+            result.append(digest)
+        return sorted(result, key=lambda d: d.chapter_number)
+
+    def ledger_as_of(self, project_id: int, chapter: int) -> Dict[int, Dict[str, Any]]:
+        """Read earlier ledger projections without mutating today's cards."""
+        result: Dict[int, Dict[str, Any]] = {}
+        cards = sorted(self.digest_cards(project_id), key=lambda c: int(_content(c).get("chapter_number") or 0), reverse=True)
+        for card in cards:
+            c = _content(card)
+            if c.get("receipt_version") and int(c.get("chapter_number") or 0) > chapter:
+                for entry in c.get("ledger_snapshots") or []:
+                    result[entry["card_id"]] = entry["before"]
+        return result
+
     @staticmethod
     def to_digest(card: Card) -> Optional[ChapterDigest]:
         c = _content(card)

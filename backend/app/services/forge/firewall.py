@@ -28,7 +28,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from app.services.forge.textmetrics import detect_language, normalize_for_index, tokenize
 
-FIREWALL_VERSION = "firewall-1"
+FIREWALL_VERSION = "firewall-2"
 
 _CAP_TERM = re.compile(r"\b[A-Z][a-zA-Z'\-]{2,}(?:\s+[A-Z][a-zA-Z'\-]{2,}){0,2}\b")
 _HANGUL_TERM = re.compile(r"[\uac00-\ud7a3]{2,6}")
@@ -77,7 +77,8 @@ def is_clean_proper_entity(name: str) -> bool:
     if not name or not isinstance(name, str):
         return False
     n = name.strip()
-    if len(n) < 3 or len(n) > 50:
+    minimum = 2 if re.search(r"[\u3400-\u9fff\uac00-\ud7a3]", n) else 3
+    if len(n) < minimum or len(n) > 50:
         return False
     low = n.lower()
     if low in _GENERIC_ENTITY_WORDS:
@@ -93,6 +94,34 @@ def is_clean_proper_entity(name: str) -> bool:
     if any(w in GENERIC_CATEGORY_WORDS for w in words):
         return False
     return True
+
+
+def text_values(value: Any) -> Iterable[str]:
+    """Visit every nested string, including untrusted mapping keys."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            if isinstance(key, str):
+                yield key
+            yield from text_values(child)
+    elif isinstance(value, (list, tuple)):
+        for child in value:
+            yield from text_values(child)
+
+
+def _name_pattern(name: str) -> str:
+    escaped = re.escape(name)
+    if re.search(r"[\u3400-\u9fff]", name):
+        return rf"(?<![A-Za-z0-9_]){escaped}(?![A-Za-z0-9_])"
+    if re.search(r"[\uac00-\ud7a3]", name):
+        particles = r"(?:에게|한테|에서|으로|께|은|는|이|가|을|를|의|와|과|로|도|만|님)"
+        return rf"(?<![\w]){escaped}(?:(?![\w])|(?={particles}+(?![\w])))"
+    return rf"(?<![\w]){escaped}(?![\w])"
+
+
+def check_payload(value: Any, profile: "SourceProfile", **kwargs: Any) -> "FirewallReport":
+    return check_text("\n".join(text_values(value)), profile, **kwargs)
 
 
 
@@ -278,9 +307,9 @@ def check_text(
 
     # 1. named entities
     for name in sorted(profile.entity_names):
-        if name in allowed or len(name) < 3 or name in _GENERIC_ENTITY_WORDS:
+        if name in allowed or not is_clean_proper_entity(name):
             continue
-        if re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", lowered):
+        if re.search(_name_pattern(name), lowered):
             findings.append(Finding("entity_overlap", "critical", f"Source entity name '{name}' appears in the text", _find_span(text, name), name))
 
     # 2. distinctive terms
@@ -398,11 +427,7 @@ def check_bible_cards(cards: Iterable[Dict[str, Any]], profile: SourceProfile) -
         elif ctype == "Item Card":
             objects.append(name)
         dump_parts.append(name)
-        for v in content.values():
-            if isinstance(v, str):
-                dump_parts.append(v)
-            elif isinstance(v, list):
-                dump_parts += [str(x) for x in v if isinstance(x, (str, int))]
+        dump_parts.extend(text_values(content))
     text = "\n".join(dump_parts)
     report = check_text(text, profile, character_roles=roles, locations=locations, objects=objects, max_phrase_hits=0)
     for n in names:
@@ -413,4 +438,4 @@ def check_bible_cards(cards: Iterable[Dict[str, Any]], profile: SourceProfile) -
     return report
 
 
-__all__ = ["FIREWALL_VERSION", "Finding", "FirewallReport", "SourceProfile", "check_bible_cards", "check_text", "extract_candidate_terms"]
+__all__ = ["FIREWALL_VERSION", "Finding", "FirewallReport", "SourceProfile", "check_bible_cards", "check_payload", "check_text", "extract_candidate_terms", "text_values"]
