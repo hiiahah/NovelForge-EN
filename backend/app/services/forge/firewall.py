@@ -56,6 +56,9 @@ _GENERIC_ENTITY_WORDS = {
     "priest", "priestess", "bishop", "pope", "saint", "hero", "villain", "extra", "protagonist", "antagonist",
     "father", "mother", "brother", "sister", "son", "daughter", "uncle", "aunt", "cousin",
     "man", "woman", "boy", "girl", "child", "person", "someone", "anyone", "everyone",
+    "the protagonist", "the villain", "the hero", "the extra", "crowd", "death", "rose", "flower", "flowers",
+    "tree", "trees", "water", "fire", "earth", "wind", "shadow", "light", "darkness", "sun", "moon", "star", "stars",
+    "gold", "silver", "iron", "stone", "blood",
 }
 
 

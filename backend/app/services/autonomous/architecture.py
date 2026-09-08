@@ -229,8 +229,9 @@ def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[D
         problems.append({"code": "no_pov", "message": "Story contract has no POV system"})
     # Density: enough material for the chapter count.
     material = len(setups) + len(threads) * 3 + len(chars)
-    if chapter_count >= 12 and material < chapter_count * 0.6:
-        problems.append({"code": "density_low", "message": f"Planned material ({material} units) is thin for {chapter_count} chapters"})
+    min_material = min(35, max(8, round(chapter_count * 0.4)))
+    if chapter_count >= 12 and material < min_material:
+        problems.append({"code": "density_low", "message": f"Planned material ({material} units) is thin for {chapter_count} chapters (minimum {min_material})"})
     return problems
 
 
