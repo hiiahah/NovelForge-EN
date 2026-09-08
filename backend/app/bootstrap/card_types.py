@@ -247,20 +247,27 @@ def create_default_card_types(session: Session) -> None:
         "Emotional Rhythm": {"is_singleton": False, "is_ai_enabled": False, "description": "Chapter-level emotional values and reader rewards", "default_ai_context_template": None},
         "Narrative Genome": {"is_singleton": False, "is_ai_enabled": False, "description": "Reusable story mechanisms extracted from an analysed novel", "default_ai_context_template": None},
         "Originality Transformation": {"is_singleton": False, "is_ai_enabled": False, "description": "Original premise candidates derived from abstract patterns with similarity review", "default_ai_context_template": None},
+        # Forge (reverse-engineering / generation control) card types.
+        "Narrative Fingerprint": {"is_singleton": True, "is_ai_enabled": False, "description": "20-layer measurable narrative fingerprint built from the imported manuscript; consumed by the chapter context compiler and style validation", "default_ai_context_template": None},
+        "Abstract Mechanism": {"is_singleton": False, "is_ai_enabled": False, "description": "Entity-free narrative mechanism transferred from a source Narrative Genome after passing the Originality Firewall", "default_ai_context_template": None},
+        "Chapter State Packet": {"is_singleton": False, "is_ai_enabled": False, "description": "Next Chapter State Packet written by automatic synchronization after a chapter is committed", "default_ai_context_template": None},
+        # Autonomous novel pipeline.
+        "Novel Architecture": {"is_singleton": True, "is_ai_enabled": False, "description": "Complete original architecture (contract, cast, world, plot graph, timeline, setup/payoff schedule, chapter allocation) generated from the selected storyline", "default_ai_context_template": None},
+        "Source Analysis Record": {"is_singleton": False, "is_ai_enabled": False, "description": "Intermediate source-analysis record (entity resolution, Bible reconstruction digest) kept in the source project for provenance", "default_ai_context_template": None},
     }
 
     # Default AI parameter presets per type (does not include llm_config_id)
     DEFAULT_AI_PARAMS = {
         "Special Ability": {"prompt_name": "Special Ability Generation", "temperature": 0.6, "max_tokens": 4096, "timeout": 120},
         "One Sentence Summary": {"prompt_name": "One Sentence Summary", "temperature": 0.6, "max_tokens": 4096, "timeout": 120},
-        "Story Outline": {"prompt_name": "Paragraph Overview", "temperature": 0.7, "max_tokens": 8192, "timeout": 120},
-        "Worldview Setting": {"prompt_name": "Worldview Setting", "temperature": 0.7, "max_tokens": 4096, "timeout": 150},
-        "Core Blueprint": {"prompt_name": "Core Blueprint", "temperature": 0.7, "max_tokens": 8192, "timeout": 150},
-        "Volume Outline": {"prompt_name": "Volume Outline", "temperature": 0.7, "max_tokens": 8192, "timeout": 150},
-        "Writing Guide": {"prompt_name": "Writing Guide", "temperature": 0.6, "max_tokens": 8192, "timeout": 120},
-        "Stage Outline": {"prompt_name": "Stage Outline", "temperature": 0.7, "max_tokens": 8192, "timeout": 120},
-        "Chapter Outline": {"prompt_name": "Chapter Outline", "temperature": 0.7, "max_tokens": 8192, "timeout": 120},
-        "Chapter Text": {"prompt_name": "Content Generation", "temperature": 0.7, "max_tokens": 8192, "timeout": 120},
+        "Story Outline": {"prompt_name": "Paragraph Overview", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
+        "Worldview Setting": {"prompt_name": "Worldview Setting", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
+        "Core Blueprint": {"prompt_name": "Core Blueprint", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
+        "Volume Outline": {"prompt_name": "Volume Outline", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
+        "Writing Guide": {"prompt_name": "Writing Guide", "temperature": 0.6, "max_tokens": 65536, "timeout": 240},
+        "Stage Outline": {"prompt_name": "Stage Outline", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
+        "Chapter Outline": {"prompt_name": "Chapter Outline", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
+        "Chapter Text": {"prompt_name": "Content Generation", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
         "Content Review Card": None,
         "Character Card": {"prompt_name": "Character Dynamic Info Extraction", "temperature": 0.6, "max_tokens": 4096, "timeout": 120},
         "Scene Card": {"prompt_name": "Content Generation", "temperature": 0.6, "max_tokens": 4096, "timeout": 120},
@@ -268,12 +275,12 @@ def create_default_card_types(session: Session) -> None:
         "Item Card": None,
         "Concept Card": None,
         # Novel Bible 2.0
-        "Story Foundation": {"prompt_name": "Story Foundation", "temperature": 0.7, "max_tokens": 8192, "timeout": 180},
+        "Story Foundation": {"prompt_name": "Story Foundation", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
         "Reader Contract": {"prompt_name": "Reader Contract", "temperature": 0.6, "max_tokens": 4096, "timeout": 120},
         "Theme Map": {"prompt_name": "Theme Map", "temperature": 0.7, "max_tokens": 4096, "timeout": 120},
-        "Power System": {"prompt_name": "Power System", "temperature": 0.6, "max_tokens": 8192, "timeout": 180},
+        "Power System": {"prompt_name": "Power System", "temperature": 0.6, "max_tokens": 65536, "timeout": 240},
         "Style Profile": {"prompt_name": "Style Profile", "temperature": 0.6, "max_tokens": 4096, "timeout": 120},
-        "Narrative Architecture": {"prompt_name": "Narrative Architecture", "temperature": 0.7, "max_tokens": 12000, "timeout": 240},
+        "Narrative Architecture": {"prompt_name": "Narrative Architecture", "temperature": 0.7, "max_tokens": 65536, "timeout": 240},
         "Plot Thread": None,
         "Promise Payoff": None,
         "Knowledge Fact": None,
@@ -285,6 +292,11 @@ def create_default_card_types(session: Session) -> None:
         "Emotional Rhythm": None,
         "Narrative Genome": None,
         "Originality Transformation": None,
+        "Narrative Fingerprint": None,
+        "Abstract Mechanism": None,
+        "Chapter State Packet": None,
+        "Novel Architecture": None,
+        "Source Analysis Record": None,
     }
 
     # Mapping from type name to built-in response model (used directly to generate json_schema)

@@ -10,11 +10,9 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import List, Optional
 
-from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
@@ -23,7 +21,13 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel
 
+from alembic import command
+
 BASELINE_REVISION = "0001_baseline"
+# Tables that exist at the baseline revision. Legacy (pre-Alembic) databases are
+# brought to exactly this shape before being stamped; later tables come from
+# their own revisions.
+BASELINE_TABLES = frozenset({"cardtype", "kgrelation", "knowledge", "llmconfig", "project", "prompt", "workflow", "bibleupdatereview", "card", "foreshadowitem", "workflowrun", "nodeexecutionstate"})
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 ALEMBIC_INI = BACKEND_DIR / "alembic.ini"
 ALEMBIC_DIR = BACKEND_DIR / "alembic"
@@ -56,7 +60,7 @@ def _has_user_tables(engine: Engine) -> bool:
     return bool(names)
 
 
-def auto_add_missing_columns(engine: Engine) -> List[str]:
+def auto_add_missing_columns(engine: Engine, only_tables: Optional[frozenset] = None) -> List[str]:
     """Add columns that exist in the models but not in the database.
 
     Only columns with a server_default (or nullable) can be added safely with
@@ -65,6 +69,8 @@ def auto_add_missing_columns(engine: Engine) -> List[str]:
     inspector = inspect(engine)
     added: List[str] = []
     for table_name, table in SQLModel.metadata.tables.items():
+        if only_tables is not None and table_name not in only_tables:
+            continue
         if not inspector.has_table(table_name):
             continue
         existing = {col["name"] for col in inspector.get_columns(table_name)}
@@ -94,11 +100,14 @@ def upgrade_database(engine: Engine) -> dict:
     with engine.connect() as conn:
         cfg.attributes["connection"] = conn
         if legacy:
-            # Tables predate Alembic: create any missing tables/columns, then
-            # adopt the baseline so real revisions apply from here on.
-            SQLModel.metadata.create_all(conn)
+            # Tables predate Alembic: create any missing *baseline* tables and
+            # columns, then adopt the baseline so real revisions apply from
+            # here on. Tables introduced by later revisions must be created by
+            # those revisions, otherwise ``upgrade head`` would fail on them.
+            baseline_tables = [t for name, t in SQLModel.metadata.tables.items() if name in BASELINE_TABLES]
+            SQLModel.metadata.create_all(conn, tables=baseline_tables)
             conn.commit()
-            result["added_columns"] = auto_add_missing_columns(engine)
+            result["added_columns"] = auto_add_missing_columns(engine, only_tables=BASELINE_TABLES)
             command.stamp(cfg, BASELINE_REVISION)
             conn.commit()
         command.upgrade(cfg, "head")

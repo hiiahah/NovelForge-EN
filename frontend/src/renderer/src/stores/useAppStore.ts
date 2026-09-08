@@ -4,7 +4,7 @@ import i18n, { getStoredLocale, storeLocale, type AppLocale } from '@renderer/i1
 
 export const useAppStore = defineStore('app', () => {
   // Current view
-  const currentView = ref<'dashboard' | 'editor' | 'ideas' | 'workflows' | 'code-workflows' | 'triggers'>('dashboard')
+  const currentView = ref<'dashboard' | 'editor' | 'ideas' | 'workflows' | 'code-workflows' | 'triggers' | 'autonomous'>('dashboard')
 
   // Theme state
   const isDarkMode = ref(false)
@@ -28,7 +28,7 @@ export const useAppStore = defineStore('app', () => {
   const isWorkflows = computed(() => currentView.value === 'workflows')
 
   // Actions
-  function setCurrentView(view: 'dashboard' | 'editor' | 'ideas' | 'workflows' | 'code-workflows' | 'triggers') {
+  function setCurrentView(view: 'dashboard' | 'editor' | 'ideas' | 'workflows' | 'code-workflows' | 'triggers' | 'autonomous') {
     currentView.value = view
   }
 
@@ -54,6 +54,10 @@ export const useAppStore = defineStore('app', () => {
 
   function goToTriggers() {
     currentView.value = 'triggers'
+  }
+
+  function goToAutonomous() {
+    currentView.value = 'autonomous'
   }
 
   function toggleTheme() {
@@ -144,6 +148,7 @@ export const useAppStore = defineStore('app', () => {
     goToWorkflows,
     goToCodeWorkflows,
     goToTriggers,
+    goToAutonomous,
     toggleTheme,
     setTheme,
     applyTheme,

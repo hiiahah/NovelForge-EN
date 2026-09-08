@@ -4,6 +4,8 @@
     "ideas": "Ideas",
     "workflow": "Workflow",
     "toggleTheme": "Toggle theme",
-    "settings": "Settings"
+    "settings": "Settings",
+    "autonomous": "Create Novel",
+    "autonomousTitle": "Create a complete original novel from an EPUB"
   }
 }

@@ -120,6 +120,9 @@ class ManuscriptImportResponse(BaseModel):
     total_words: int
     excluded_count: int = 0
     excluded_words: int = 0
+    manuscript_id: str = ""
+    unchanged: bool = False
+    invalidated: int = 0
 
 
 class ManuscriptListResponse(BaseModel):
@@ -134,6 +137,26 @@ class LabRunRequest(BaseModel):
     analysis_concurrency: int = Field(default=2, ge=1, le=32)
     window_size: int = Field(default=40, ge=5, le=200)
     max_stage_count: int = Field(default=24, ge=3, le=60)
+    # Analysis scope (normalized chapter numbers). Defaults: whole manuscript, missing only.
+    start_chapter: int = Field(default=0, ge=0, description="First chapter to analyse (0 = from the start)")
+    end_chapter: int = Field(default=0, ge=0, description="Last chapter to analyse, inclusive (0 = to the end)")
+    include_chapters: List[int] = Field(default_factory=list, description="Explicit chapter numbers to analyse (overrides the range)")
+    exclude_chapters: List[int] = Field(default_factory=list, description="Chapter numbers to skip")
+    only_missing: bool = Field(default=True, description="Skip chapters whose analysis is already done")
+    only_stale: bool = Field(default=False, description="Also re-analyse done chapters whose source text or prompt version changed")
+
+
+class LabRunPlan(BaseModel):
+    """Cost preview for a Lab run: what would be sent to the model, without sending anything."""
+    project_id: int
+    chapters_total: int
+    chapters_done: int
+    chapters_failed: int
+    chapters_selected: int
+    selected_chapter_numbers: List[int]
+    estimated_input_tokens: int
+    estimated_model_calls: int
+    manuscript_id: str = ""
 
 
 class LabRunStatus(BaseModel):
@@ -262,6 +285,8 @@ def import_manuscript(req: ManuscriptImportRequest, session: Session = Depends(g
             chapters=chapters,
             replace_existing=req.replace_existing,
             source_filename=req.filename,
+            source_bytes=_decode_upload(req.content_base64),
+            corrections=req.corrections,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -286,25 +311,74 @@ def manuscript_defaults():
 
 
 # ------------------------------------------------------------------ workflow
-def _lab_workflow_code(base_code: str, *, project_id: int, llm_config_id: int, concurrency: int, window_size: int, max_stage_count: int) -> str:
+def _lab_workflow_code(base_code: str, *, project_id: int, llm_config_id: int, concurrency: int, window_size: int, max_stage_count: int, scope: Optional[Dict[str, Any]] = None) -> str:
     code = re.sub(r"Logic\.SelectProject\([^)]*\)", f"Logic.SelectProject(project_id={int(project_id)})", base_code, count=1)
     code = re.sub(r"Logic\.SelectLLM\([^)]*\)", f"Logic.SelectLLM(llm_config_id={int(llm_config_id)})", code, count=1)
     code = re.sub(r"'window_size':\s*\d+", f"'window_size': {int(window_size)}", code, count=1)
     code = re.sub(r"'max_stage_count':\s*\d+", f"'max_stage_count': {int(max_stage_count)}", code, count=1)
     code = re.sub(r"'analysis_concurrency':\s*\d+", f"'analysis_concurrency': {int(concurrency)}", code, count=1)
+    if scope:
+        code = re.sub(r"'start_chapter':\s*\d+", f"'start_chapter': {int(scope.get('start_chapter') or 0)}", code, count=1)
+        code = re.sub(r"'end_chapter':\s*\d+", f"'end_chapter': {int(scope.get('end_chapter') or 0)}", code, count=1)
+        code = re.sub(r"'include_chapters':\s*\[[^\]]*\]", f"'include_chapters': {sorted({int(x) for x in scope.get('include_chapters') or []})}", code, count=1)
+        code = re.sub(r"'exclude_chapters':\s*\[[^\]]*\]", f"'exclude_chapters': {sorted({int(x) for x in scope.get('exclude_chapters') or []})}", code, count=1)
+        code = re.sub(r"'only_missing':\s*(True|False)", f"'only_missing': {bool(scope.get('only_missing', True))}", code, count=1)
+        code = re.sub(r"'only_stale':\s*(True|False)", f"'only_stale': {bool(scope.get('only_stale', False))}", code, count=1)
     return code
+
+
+def _scope_of(req: LabRunRequest) -> Dict[str, Any]:
+    return {"start_chapter": req.start_chapter, "end_chapter": req.end_chapter, "include_chapters": req.include_chapters, "exclude_chapters": req.exclude_chapters, "only_missing": req.only_missing, "only_stale": req.only_stale}
+
+
+def _plan_run(session: Session, req: LabRunRequest) -> LabRunPlan:
+    from app.services.forge.corpus import load_source_chapters
+    from app.services.lab.lab_helpers import ANALYSIS_PROMPT_VERSION, fn_lab_chapter_items
+
+    chapters = load_source_chapters(session, req.project_id)
+    cards = [{"id": ch.card_id, "content": {**(ch.analysis or {}), "source_text": ch.text, "chapter_number": ch.chapter_number, "source_text_hash": ch.text_hash}} for ch in chapters]
+    items = fn_lab_chapter_items(cards, prompt_version=ANALYSIS_PROMPT_VERSION, **_scope_of(req))
+    words = sum(int(it.get("word_count") or 0) for it in items)
+    return LabRunPlan(
+        project_id=req.project_id,
+        chapters_total=len(chapters),
+        chapters_done=sum(1 for ch in chapters if (ch.analysis or {}).get("analysis_status") == "done"),
+        chapters_failed=sum(1 for ch in chapters if (ch.analysis or {}).get("analysis_status") == "failed"),
+        chapters_selected=len(items),
+        selected_chapter_numbers=[int(it["chapter_no"]) for it in items],
+        estimated_input_tokens=int(words * 1.4) + len(items) * 1500,
+        estimated_model_calls=len(items),
+        manuscript_id=chapters[0].manuscript_id if chapters else "",
+    )
+
+
+def _builtin_lab_workflow_code() -> Optional[str]:
+    from app.bootstrap.workflows import get_all_workflow_files
+
+    try:
+        return (get_all_workflow_files().get(LAB_WORKFLOW_NAME) or {}).get("code") or None
+    except Exception as exc:  # pragma: no cover - filesystem problems fall back to the DB row
+        logger.warning(f"[Lab] could not read built-in workflow file: {exc}")
+        return None
 
 
 def _project_lab_workflow(session: Session, req: LabRunRequest) -> Workflow:
     """Return the project-scoped copy of the built-in Lab workflow (created/updated on demand)."""
-    base = session.exec(select(Workflow).where(Workflow.name == LAB_WORKFLOW_NAME)).first()
-    if not base or not base.definition_code:
+    # The shipped .wf file is the source of truth: built-in rows are only refreshed
+    # at startup when BOOTSTRAP_OVERWRITE is set, and a stale row would silently
+    # ignore the analysis scope (and analyse the whole manuscript).
+    base_code = _builtin_lab_workflow_code()
+    if not base_code:
+        base = session.exec(select(Workflow).where(Workflow.name == LAB_WORKFLOW_NAME)).first()
+        base_code = base.definition_code if base else None
+    if not base_code:
         raise HTTPException(status_code=500, detail=f"Built-in workflow '{LAB_WORKFLOW_NAME}' is missing")
     name = f"{LAB_WORKFLOW_NAME} · project {req.project_id}"
     wf = session.exec(select(Workflow).where(Workflow.name == name)).first()
     code = _lab_workflow_code(
-        base.definition_code, project_id=req.project_id, llm_config_id=req.llm_config_id,
+        base_code, project_id=req.project_id, llm_config_id=req.llm_config_id,
         concurrency=req.analysis_concurrency, window_size=req.window_size, max_stage_count=req.max_stage_count,
+        scope=_scope_of(req),
     )
     if wf is None:
         wf = Workflow(name=name, description=f"Project-scoped Lab run for project {req.project_id}", is_built_in=False, is_active=True, dsl_version=2, definition_code=code, keep_run_history=True)
@@ -376,6 +450,13 @@ def _run_status(session: Session, run: WorkflowRun) -> LabRunStatus:
     )
 
 
+@router.post("/workflow/plan", response_model=LabRunPlan, summary="Cost preview for a Lab run: which chapters the scope selects and the estimated model calls / input tokens (no model call)")
+def plan_lab_workflow(req: LabRunRequest, session: Session = Depends(get_session)):
+    if not session.get(Project, req.project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    return _plan_run(session, req)
+
+
 @router.post("/workflow/run", response_model=LabRunStatus, summary="Start the Lab reverse-engineering workflow for a project (idempotent while a run is active)")
 async def start_lab_workflow(req: LabRunRequest, session: Session = Depends(get_session)):
     if not session.get(Project, req.project_id):
@@ -383,21 +464,17 @@ async def start_lab_workflow(req: LabRunRequest, session: Session = Depends(get_
     llm_cfg = session.get(LLMConfig, req.llm_config_id)
     if not llm_cfg:
         raise HTTPException(status_code=400, detail=f"LLM configuration {req.llm_config_id} not found")
-    provider = (llm_cfg.provider or "").strip().lower()
-    if provider not in {"authnd", "genspark"}:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Lab reverse-engineering workflow requires an AuthND or Genspark configuration (got provider '{llm_cfg.provider}')",
-        )
-    target_model = (llm_cfg.model_name or "").strip().lower()
-    if provider == "authnd" and target_model and "kimi" not in target_model and target_model != "moonshotai/kimi-k3":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Lab reverse-engineering workflow requires the AuthND Kimi model (got '{llm_cfg.model_name}')",
-        )
+    from app.services.forge.models import validate_lab_llm_config
+
+    ok, reason = validate_lab_llm_config(llm_cfg)
+    if not ok:
+        raise HTTPException(status_code=400, detail=reason)
     manuscript = ManuscriptImportService(session).list_manuscript(req.project_id)
     if not manuscript.get("chapters"):
         raise HTTPException(status_code=400, detail="No imported manuscript in this project. Import chapters first.")
+    plan = _plan_run(session, req)
+    if plan.chapters_selected == 0:
+        raise HTTPException(status_code=400, detail="The requested analysis scope selects no chapters (all selected chapters are already analysed, or the range is empty). Use only_stale / only_missing=false to re-analyse.")
     wf = _project_lab_workflow(session, req)
     existing = _active_run(session, wf.id)
     if existing:

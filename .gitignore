@@ -1,81 +1,67 @@
-# 数据库相关
-backend/*.db
-backend/**/*.db
+# Node / Vite / Electron build outputs
+node_modules/
+dist/
+dist-electron/
+dist-web/
+out/
+.vite/
+*.local
 
-# Python缓存
-**/__pycache__/
+# Python / pytest / backend
+venv/
+backend/venv/
+backend/app.db
+backend/forge.db
+backend/novelforge*.db
+backend/**/*.db
+__pycache__/
 *.py[cod]
 *$py.class
-
-# Python虚拟环境
-venv/
-env/
-.venv/
-.env/
-
-# Alembic migrations are source code and must be committed.
-
-# 忽略所有md文档，除了README
-*.md
-!README.md
-!README.MD
-!CLA.md
-!CONTRIBUTING.md
-!ROADMAP.md
-!rules/**/*.md
-!rules/**/*.mdc
-
-
-primitive_models/
-docs/
 .pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.eggs/
 
-.windsurf/
-.windsurfrules
-.agent/
-.kiro/
-
-# IDE配置
+# OS / Editor artifacts
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# 系统文件
-.DS_Store
-Thumbs.db
-desktop.ini
+# Environment files
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# 日志文件
+# Logs
+logs/
 *.log
-*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# 临时文件
-*.tmp
-*.temp 
-
-backend/migrate_db.py
-backend/dist
-backend/build
-*.spec
-*.sh
-*.mako
-!backend/alembic/script.py.mako
-
-# Node modules
-node_modules/
-
-# Cookies and scratch files
-*genspark_cookies*
-# User-supplied reference material and local scratch (never committed)
-.hoplite/attachments/
-.hoplite/scratch/
+# Story & Generation Archives (Never track heavy intermediate artifacts)
+generated_novels/
+temp_epubs/
+story_archives/
 *.epub
-books/
-story_progress.json
+*.mobi
+*.azw3
+
+# Local test scratchpads & one-off experiments
+test_*.py
+scratch_*.py
 generate_master_bible.py
 generate_novel_volume1.py
 run_teardown_timid_noble_lady.py
 backend/openapi.json
+backend/**/*.db-shm
+backend/**/*.db-wal
+.hoplite/archive/
+.hoplite/shots/
+docs/evidence/

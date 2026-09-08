@@ -28,6 +28,13 @@ settings = Logic.Expression(
 #</node>
 
 
+#@node(description="Analysis scope: chapter range / explicit lists, and whether already-analysed or stale chapters are re-sent. Defaults analyse only what is missing.")
+scope = Logic.Expression(
+    expression="{'start_chapter': 0, 'end_chapter': 0, 'include_chapters': [], 'exclude_chapters': [], 'only_missing': True, 'only_stale': False}"
+  )
+#</node>
+
+
 #@node(description="Load the imported manuscript chapters (Chapter Analysis cards holding source_text)")
 chapter_cards = Card.Query(
     project_id=project.project_id,
@@ -37,16 +44,16 @@ chapter_cards = Card.Query(
 #</node>
 
 
-#@node(description="Build batch items: content = chapter source text, plus chapter identity")
+#@node(description="Build batch items for the selected scope only: content = chapter source text, plus chapter identity")
 chapter_items = Logic.Expression(
-    expression="lab_chapter_items(chapter_cards.cards)"
+    expression="lab_chapter_items(chapter_cards.cards, start_chapter=scope.result.start_chapter, end_chapter=scope.result.end_chapter, include_chapters=scope.result.include_chapters, exclude_chapters=scope.result.exclude_chapters, only_missing=scope.result.only_missing, only_stale=scope.result.only_stale, prompt_version='Lab - Chapter Analysis@2')"
   )
 #</node>
 
 
 #@node(description="Guard: the manuscript must be imported first")
 assert_imported = Logic.Assert(
-    condition="len(chapter_items.result) > 0",
+    condition="len(lab_chapter_items(chapter_cards.cards)) > 0",
     message="No imported chapters found. Use Novel Intelligence Studio -> Extract Bible -> Import manuscript first."
   )
 #</node>
@@ -95,9 +102,31 @@ analysis_cards = Card.BatchUpsert(
 #</node>
 
 
+#@node(description="Fresh analyses plus previously completed chapters (scoped runs never drop earlier work); only verified evidence feeds later stages, failed chapters are reported, never silently dropped")
+verified_records = Logic.Expression(
+    expression="lab_verified_records(lab_merge_stored_analyses(analysis_records.result, chapter_cards.cards))"
+  )
+#</node>
+
+
+#@node(description="Chapters whose analysis failed or whose evidence could not be verified")
+failed_chapters = Logic.Expression(
+    expression="lab_failed_chapters(lab_merge_stored_analyses(analysis_records.result, chapter_cards.cards))"
+  )
+#</node>
+
+
+#@node(description="Guard: at least one chapter analysis must have verified evidence")
+assert_verified = Logic.Assert(
+    condition="len(verified_records.result) > 0",
+    message="No chapter analysis produced verifiable evidence. Check the analysis model and retry."
+  )
+#</node>
+
+
 #@node(description="Processing windows for arc detection (a processing detail, not a story boundary)")
 windows = Logic.Expression(
-    expression="lab_windows(analysis_records.result, size=settings.result.window_size)"
+    expression="lab_windows(verified_records.result, size=settings.result.window_size)"
   )
 #</node>
 
@@ -141,7 +170,7 @@ arc_candidates = Logic.Expression(
 stage_prompt = Prompt.Load(
     prompt_id="Lab - Global Stage Reconciliation",
     variables={
-      "total_chapters": "${len(analysis_records.result)}",
+      "total_chapters": "${len(verified_records.result)}",
       "max_stage_count": "${settings.result.max_stage_count}",
       "arc_candidates": "${json_stringify(arc_candidates.result)}"
     }
@@ -164,7 +193,7 @@ structure = AI.StructuredGenerate(
 
 #@node(description="Normalize stage ranges so chapters 1..N are covered contiguously")
 stages_normalized = Logic.Expression(
-    expression="normalize_ranges(structure.data.stages or [], start=1, end=len(analysis_records.result))"
+    expression="normalize_ranges(structure.data.stages or [], start=1, end=len(verified_records.result))"
   )
 #</node>
 
@@ -185,7 +214,7 @@ structure_card = Card.Create(
 
 #@node(description="Aggregate participant mentions per chapter")
 mentions = Logic.Expression(
-    expression="lab_entity_mentions(analysis_records.result)"
+    expression="lab_entity_mentions(verified_records.result)"
   )
 #</node>
 
@@ -269,7 +298,7 @@ scene_cards = Card.BatchUpsert(
 
 #@node(description="Compact digest of all chapter analyses for Bible reconstruction")
 analyses_digest = Logic.Expression(
-    expression="lab_analysis_digest(analysis_records.result, max_chars=120000, per_chapter_chars=600)"
+    expression="lab_analysis_digest(verified_records.result, max_chars=120000, per_chapter_chars=600)"
   )
 #</node>
 
@@ -278,7 +307,7 @@ analyses_digest = Logic.Expression(
 bible_prompt = Prompt.Load(
     prompt_id="Lab - Bible Reconstruction",
     variables={
-      "total_chapters": "${len(analysis_records.result)}",
+      "total_chapters": "${len(verified_records.result)}",
       "entities": "${json_stringify(entities.data.entities)}",
       "stages": "${json_stringify(stages_normalized.result)}",
       "analyses_digest": "${analyses_digest.result}"
@@ -364,7 +393,7 @@ relationship_cards = Card.BatchUpsert(
 
 #@node(description="Emotional rhythm across the whole book")
 rhythm = Logic.Expression(
-    expression="lab_emotional_rhythm(analysis_records.result)"
+    expression="lab_emotional_rhythm(verified_records.result)"
   )
 #</node>
 
@@ -396,7 +425,7 @@ genome_prompt = Prompt.Load(
       "source_title": "${chapter_items.result[0].volume if chapter_items.result else 'Imported novel'}",
       "stages": "${json_stringify(stages_normalized.result)}",
       "bible_digest": "${bible_digest.result}",
-      "analyses_digest": "${lab_analysis_digest(analysis_records.result, max_chars=60000, per_chapter_chars=300)}"
+      "analyses_digest": "${lab_analysis_digest(verified_records.result, max_chars=60000, per_chapter_chars=300)}"
     }
   )
 #</node>

@@ -6,8 +6,8 @@ Unified management of all configuration items, supporting environment variables 
 import os
 import sys
 from pathlib import Path
-from typing import Optional
-from pydantic_settings import BaseSettings
+from typing import ClassVar, Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
@@ -20,11 +20,12 @@ class DatabaseSettings(BaseSettings):
     # Whether to print SQL logs
     echo: bool = Field(default=False, alias="DB_ECHO")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
     
     def get_database_url(self) -> str:
         """Get database URL
@@ -58,11 +59,12 @@ class KnowledgeGraphSettings(BaseSettings):
     # Knowledge graph provider
     provider: str = Field(default="sqlmodel", alias="KNOWLEDGE_GRAPH_PROVIDER")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 class Neo4jSettings(BaseSettings):
@@ -77,11 +79,12 @@ class Neo4jSettings(BaseSettings):
     graph_db_user: Optional[str] = Field(default=None, alias="GRAPH_DB_USER")
     graph_db_password: Optional[str] = Field(default=None, alias="GRAPH_DB_PASSWORD")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
     
     def get_uri(self) -> str:
         """Get URI (compatible with legacy environment variables)"""
@@ -104,11 +107,12 @@ class BootstrapSettings(BaseSettings):
     # Whether to overwrite built-in card type schemas
     overwrite_card_schemas: bool = Field(default=False, alias="BOOTSTRAP_OVERWRITE_CARD_SCHEMAS")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
     
     @property
     def should_overwrite(self) -> bool:
@@ -137,11 +141,12 @@ class AISettings(BaseSettings):
     # Maximum retry count on model call failure
     max_tool_call_retries: int = Field(default=3, alias="MAX_TOOL_CALL_RETRIES")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 class AppSettings(BaseSettings):
@@ -159,24 +164,39 @@ class AppSettings(BaseSettings):
     # API prefix
     api_prefix: str = Field(default="/api", alias="API_PREFIX")
     
-    # CORS allowed origins
-    cors_origins: str = Field(default="*", alias="CORS_ORIGINS")
+    # Server bind address. NovelForge has no authentication or per-user authorization:
+    # it is a local, single-user application. The default binds to loopback only;
+    # exposing it on other interfaces (HOST=0.0.0.0) is unsupported and unsafe.
+    host: str = Field(default="127.0.0.1", alias="HOST")
+    port: int = Field(default=54321, alias="PORT")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    # CORS allowed origins (comma separated). The default is the local-only policy:
+    # loopback dev-server origins on any port plus the "null" origin Electron sends for
+    # file:// pages. Set CORS_ORIGINS="*" only when the backend is unreachable from other hosts.
+    cors_origins: str = Field(default="local", alias="CORS_ORIGINS")
     
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+    
+    LOCAL_ORIGIN_REGEX: ClassVar[str] = r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
+
     def get_cors_origins_list(self) -> list:
-        """Get CORS origin list
-        
-        Returns:
-            Origin list
-        """
+        """Explicit origin list; ``local`` adds only the Electron ``null`` origin (loopback origins come from the regex)."""
         if self.cors_origins == "*":
             return ["*"]
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        if self.cors_origins.strip() == "local":
+            return ["null"]
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    def get_cors_origin_regex(self) -> Optional[str]:
+        return self.LOCAL_ORIGIN_REGEX if self.cors_origins.strip() == "local" else None
+
+    def is_loopback_host(self) -> bool:
+        return self.host.strip() in ("127.0.0.1", "localhost", "::1")
 
 
 class ContextSettings(BaseSettings):
@@ -187,11 +207,12 @@ class ContextSettings(BaseSettings):
     relation_radius: int = Field(default=1, alias="CONTEXT_RELATION_RADIUS")
     recent_chapters_window: int = Field(default=3, alias="CONTEXT_RECENT_CHAPTERS_WINDOW")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 class WorkflowSettings(BaseSettings):
@@ -200,11 +221,42 @@ class WorkflowSettings(BaseSettings):
     # Persistence record retention period (days)
     retention_persistent_days: int = Field(default=30, alias="WORKFLOW_RETENTION_PERSISTENT_DAYS")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+
+class AutonomousSettings(BaseSettings):
+    """Autonomous novel job durability and budget settings."""
+
+    # Lease held by a worker on a job; must exceed the longest single provider call.
+    lease_seconds: int = Field(default=300, alias="AUTONOMOUS_LEASE_SECONDS")
+    # Independent heartbeat renews the lease this often (30-60 s recommended).
+    heartbeat_seconds: int = Field(default=45, alias="AUTONOMOUS_HEARTBEAT_SECONDS")
+    # Default job budgets (0 = unlimited); a job's own ``budget`` overrides these.
+    default_max_calls: int = Field(default=0, alias="AUTONOMOUS_DEFAULT_MAX_CALLS")
+    default_max_total_tokens: int = Field(default=0, alias="AUTONOMOUS_DEFAULT_MAX_TOTAL_TOKENS")
+    default_max_repair_calls: int = Field(default=0, alias="AUTONOMOUS_DEFAULT_MAX_REPAIR_CALLS")
+    # Test-only failpoints (never enabled in production); comma-separated failpoint names.
+    failpoints: str = Field(default="", alias="AUTONOMOUS_FAILPOINTS")
+    # Upload hardening.
+    max_upload_bytes: int = Field(default=60 * 1024 * 1024, alias="AUTONOMOUS_MAX_UPLOAD_BYTES")
+    max_zip_entries: int = Field(default=5000, alias="AUTONOMOUS_MAX_ZIP_ENTRIES")
+    max_expanded_bytes: int = Field(default=400 * 1024 * 1024, alias="AUTONOMOUS_MAX_EXPANDED_BYTES")
+    max_compression_ratio: int = Field(default=200, alias="AUTONOMOUS_MAX_COMPRESSION_RATIO")
+    max_entry_bytes: int = Field(default=20 * 1024 * 1024, alias="AUTONOMOUS_MAX_ENTRY_BYTES")
+    max_chapters: int = Field(default=2000, alias="AUTONOMOUS_MAX_CHAPTERS")
+    max_text_chars: int = Field(default=30_000_000, alias="AUTONOMOUS_MAX_TEXT_CHARS")
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 class Settings:
@@ -217,6 +269,7 @@ class Settings:
         self.ai = AISettings()
         self.bootstrap = BootstrapSettings()
         self.workflow = WorkflowSettings()
+        self.autonomous = AutonomousSettings()
         self.context = ContextSettings()
         self.app = AppSettings()
     

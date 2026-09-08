@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
-import { Setting, Sunny, Moon, Document } from '@element-plus/icons-vue'
+import { Setting, Sunny, Moon, Document, MagicStick } from '@element-plus/icons-vue'
 import { useAppStore } from '@renderer/stores/useAppStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
 import { useUpdateStore } from '@renderer/stores/useUpdateStore'
@@ -25,6 +25,11 @@ function openSettingsDialog() {
 function openWorkflowManager() {
   appStore.goToWorkflows()
   window.location.hash = '#/workflows'
+}
+
+function openAutonomous() {
+  appStore.goToAutonomous()
+  window.location.hash = '#/autonomous'
 }
 
 function handleLogoClick() {
@@ -51,6 +56,10 @@ function openIdeasWorkbench() {
       <span class="logo-text">Novel Forge</span>
     </div>
     <div class="actions-container">
+      <el-button type="success" :title="t('header.autonomousTitle')" data-testid="header-autonomous" @click="openAutonomous">
+        <el-icon><MagicStick /></el-icon>
+        <span style="margin-left:6px;">{{ t('header.autonomous') }}</span>
+      </el-button>
       <el-button type="primary" :title="t('header.ideasWorkbench')" @click="openIdeasWorkbench">
         <el-icon><Document /></el-icon>
         <span style="margin-left:6px;">{{ t('header.ideas') }}</span>
