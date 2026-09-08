@@ -112,8 +112,13 @@ def create_original_project(
     names: List[str] = []
     for card in bible.cards_of_type(source_project_id, "Character Card") + bible.cards_of_type(source_project_id, "Organization Card") + bible.cards_of_type(source_project_id, "Scene Card") + bible.cards_of_type(source_project_id, "Item Card"):
         c = _c(card)
-        names.append(str(c.get("name") or card.title))
-        names += [str(a) for a in (c.get("aliases") or [])]
+        n = str(c.get("name") or card.title).strip()
+        if fw.is_clean_proper_entity(n):
+            names.append(n)
+        for a in (c.get("aliases") or []):
+            al = str(a).strip()
+            if fw.is_clean_proper_entity(al):
+                names.append(al)
     profile = fw.SourceProfile.from_chapters(chapters, manuscript_id=chapters[0].manuscript_id, entity_names=names)
 
     project, _ = project_service.create_project(session, ProjectCreate(name=name, description=description or f"Original project derived from source project {source_project_id} (mechanisms only)", template=template))
@@ -169,8 +174,13 @@ def isolation_report(session: Session, original_project_id: int) -> Dict[str, An
         names: List[str] = []
         for card in bible.cards_of_type(manifest.source_project_id, "Character Card") + bible.cards_of_type(manifest.source_project_id, "Organization Card") + bible.cards_of_type(manifest.source_project_id, "Scene Card") + bible.cards_of_type(manifest.source_project_id, "Item Card"):
             c = _c(card)
-            names.append(str(c.get("name") or card.title))
-            names += [str(a) for a in (c.get("aliases") or [])]
+            n = str(c.get("name") or card.title).strip()
+            if fw.is_clean_proper_entity(n):
+                names.append(n)
+            for a in (c.get("aliases") or []):
+                al = str(a).strip()
+                if fw.is_clean_proper_entity(al):
+                    names.append(al)
         if chapters:
             profile = fw.SourceProfile.from_chapters(chapters, manuscript_id=chapters[0].manuscript_id, entity_names=names)
             cards = []

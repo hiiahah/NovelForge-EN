@@ -238,10 +238,57 @@ def validate_architecture(arch: Dict[str, Any], *, chapter_count: int) -> List[D
 def firewall_architecture(arch: Dict[str, Any], profile: Optional[fw.SourceProfile]) -> List[Dict[str, Any]]:
     if profile is None:
         return []
+    problems: List[Dict[str, Any]] = []
+
+    # 1. Structural entity check: Ensure declared novel entities do not collide with source entities
+    source_entities = {e.lower() for e in profile.entity_names}
+    declared_names: List[Tuple[str, str]] = []
+    for c in arch.get("characters") or []:
+        if isinstance(c, dict):
+            if c.get("name"):
+                declared_names.append(("Character", str(c["name"]).strip()))
+            for a in (c.get("aliases") or []):
+                if a:
+                    declared_names.append(("Character alias", str(a).strip()))
+    for f in arch.get("factions") or []:
+        if isinstance(f, dict) and f.get("name"):
+            declared_names.append(("Faction", str(f["name"]).strip()))
+    for l in arch.get("locations") or []:
+        if isinstance(l, dict) and l.get("name"):
+            declared_names.append(("Location", str(l["name"]).strip()))
+    for it in arch.get("items") or []:
+        if isinstance(it, dict) and it.get("name"):
+            declared_names.append(("Item", str(it["name"]).strip()))
+
+    for kind, n in declared_names:
+        low = n.lower()
+        if low in source_entities and low not in fw._GENERIC_ENTITY_WORDS:
+            problems.append({
+                "code": "source_leak:entity_overlap",
+                "message": f"{kind} '{n}' matches source entity name",
+                "subject": n,
+            })
+
+    # 2. Text check: Detect long phrase copying, dialogue copying, or accidental verbatim quotation
     text = json.dumps(arch, ensure_ascii=False)
-    names = {c.get("name", ""): "character" for c in arch.get("characters") or [] if isinstance(c, dict)}
-    rep = fw.check_text(text, profile, character_roles=names, locations=[l.get("name", "") for l in arch.get("locations") or [] if isinstance(l, dict)], objects=[i.get("name", "") for i in arch.get("items") or [] if isinstance(i, dict)])
-    return [{"code": f"source_leak:{f.check}", "message": f.detail, "subject": f.matched} for f in rep.findings if f.severity in ("critical", "high")]
+    allowed = [name for _, name in declared_names]
+    rep = fw.check_text(
+        text,
+        profile,
+        allowed_names=allowed,
+        character_roles={c.get("name", ""): "character" for c in arch.get("characters") or [] if isinstance(c, dict)},
+        locations=[l.get("name", "") for l in arch.get("locations") or [] if isinstance(l, dict)],
+        objects=[i.get("name", "") for i in arch.get("items") or [] if isinstance(i, dict)],
+    )
+    for f in rep.findings:
+        if f.check in ("long_phrase_overlap", "dialogue_overlap", "accidental_quotation"):
+            problems.append({
+                "code": f"source_leak:{f.check}",
+                "message": f.detail,
+                "subject": f.matched,
+            })
+
+    return problems
 
 
 # ------------------------------------------------------------------ prompt

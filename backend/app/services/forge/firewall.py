@@ -59,7 +59,41 @@ _GENERIC_ENTITY_WORDS = {
     "the protagonist", "the villain", "the hero", "the extra", "crowd", "death", "rose", "flower", "flowers",
     "tree", "trees", "water", "fire", "earth", "wind", "shadow", "light", "darkness", "sun", "moon", "star", "stars",
     "gold", "silver", "iron", "stone", "blood",
+    "wolf", "wolves", "rook", "rooks", "pawn", "pawns", "knight", "knights", "mage", "mages",
+    "snow", "butler", "coachman", "servants", "rabbit", "rabbits", "mom", "dad", "papa", "gramps", "grandpa",
+    "young man", "old man", "principal", "dean", "dorm master", "evil god", "god", "goddess", "saintess",
+    "head maid", "narrator", "dog", "cat", "horse", "dragon", "beast", "sword", "shield", "bow", "spear",
 }
+
+GENERIC_CATEGORY_WORDS = {
+    "students", "servants", "professors", "officials", "captives", "workers", "guards",
+    "heads", "mages", "knights", "teachers", "maids", "subordinates", "monsters", "people",
+    "nobles", "elders", "bandits", "merchants", "attendants", "faculty", "classmates", "members",
+}
+
+
+def is_clean_proper_entity(name: str) -> bool:
+    """Return True if ``name`` represents a specific named entity/proper noun rather than generic conversational noise."""
+    if not name or not isinstance(name, str):
+        return False
+    n = name.strip()
+    if len(n) < 3 or len(n) > 50:
+        return False
+    low = n.lower()
+    if low in _GENERIC_ENTITY_WORDS:
+        return False
+    if low.startswith(("the ", "a ", "an ")):
+        return False
+    # Parenthetical metadata or chapter citation residue from extraction
+    if any(m in low for m in [": chapters [", "(mentioned)", "(referenced)", "(discussed)", "(memory)", "(dream child)", "(unnamed)", "(duplicate)", "(fifth)", "(anticipated)"]):
+        return False
+    words = [w for w in re.split(r"\s+", low) if w]
+    if len(words) > 3:
+        return False
+    if any(w in GENERIC_CATEGORY_WORDS for w in words):
+        return False
+    return True
+
 
 
 def _ngrams(tokens: Sequence[str], n: int) -> Set[Tuple[str, ...]]:
@@ -141,7 +175,7 @@ class SourceProfile:
         joined = "\n".join(str(t) for t in texts)
         lang = detect_language(joined)
         prof = cls(manuscript_id=manuscript_id, language=lang, phrase_window=phrase_window, ngram_n=ngram_n)
-        prof.entity_names = {e.strip().lower() for e in entity_names if e and e.strip() and e.strip().lower() not in _GENERIC_ENTITY_WORDS}
+        prof.entity_names = {e.strip().lower() for e in entity_names if is_clean_proper_entity(e)}
         terms = extract_candidate_terms(joined, lang)
         # A distinctive term recurs (>= 3) and is not a common word. For Latin
         # text a single capitalized word must occur at least once *inside* a

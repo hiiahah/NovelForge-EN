@@ -116,16 +116,26 @@ def source_profile_for(session: Session, project_id: int) -> Optional[fw.SourceP
     objects: List[str] = []
     for card in bible.cards_of_type(manifest.source_project_id, "Character Card"):
         c = _c(card)
-        n = str(c.get("name") or card.title)
-        names.append(n)
+        n = str(c.get("name") or card.title).strip()
+        if fw.is_clean_proper_entity(n):
+            names.append(n)
         roles[n] = str(c.get("role_type") or "")
-        names += [str(a) for a in (c.get("aliases") or [])]
+        for a in (c.get("aliases") or []):
+            al = str(a).strip()
+            if fw.is_clean_proper_entity(al):
+                names.append(al)
     for card in bible.cards_of_type(manifest.source_project_id, "Organization Card"):
-        names.append(str(_c(card).get("name") or card.title))
+        oname = str(_c(card).get("name") or card.title).strip()
+        if fw.is_clean_proper_entity(oname):
+            names.append(oname)
     for card in bible.cards_of_type(manifest.source_project_id, "Scene Card"):
-        locations.append(str(_c(card).get("name") or card.title))
+        sname = str(_c(card).get("name") or card.title).strip()
+        if fw.is_clean_proper_entity(sname):
+            locations.append(sname)
     for card in bible.cards_of_type(manifest.source_project_id, "Item Card"):
-        objects.append(str(_c(card).get("name") or card.title))
+        iname = str(_c(card).get("name") or card.title).strip()
+        if fw.is_clean_proper_entity(iname):
+            objects.append(iname)
     summaries: List[str] = []
     beats: List[str] = []
     for ch in chapters:
