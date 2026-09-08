@@ -4,13 +4,34 @@ Centrally manages LLM config reading and LangChain ChatModel construction to avo
 repeated parameter assembly in the business layer.
 """
 
-from typing import Optional
+import asyncio
+from typing import Any, Dict, Optional
 
+import httpx
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_qwq import ChatQwen
 from sqlmodel import Session
+
+_SHARED_ASYNC_CLIENTS: Dict[Any, httpx.AsyncClient] = {}
+
+
+def get_shared_async_client() -> httpx.AsyncClient:
+    """Return a shared httpx.AsyncClient with connection pooling keyed by running event loop."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    client = _SHARED_ASYNC_CLIENTS.get(loop)
+    if client is None or client.is_closed:
+        client = httpx.AsyncClient(
+            limits=httpx.Limits(max_keepalive_connections=50, max_connections=100, keepalive_expiry=120.0),
+            timeout=httpx.Timeout(connect=60.0, read=300.0, write=60.0, pool=60.0),
+        )
+        if loop is not None:
+            _SHARED_ASYNC_CLIENTS[loop] = client
+    return client
 
 from app.db.models import LLMConfig
 from app.services import llm_config_service
@@ -109,6 +130,7 @@ def build_chat_model_from_payload(
         model_kwargs = {
             "model": model_name,
             "api_key": api_key,
+            "http_async_client": get_shared_async_client(),
             **_build_openai_family_transport_kwargs(transport),
             **common_kwargs,
         }

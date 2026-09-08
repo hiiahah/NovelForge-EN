@@ -674,7 +674,17 @@ def _get_session() -> requests.Session:
     session = getattr(_thread_local, "session", None)
     if session is None:
         session = requests.Session()
-        session.headers.update({"user-agent": USER_AGENT})
+        from requests.adapters import HTTPAdapter
+
+        adapter = HTTPAdapter(
+            pool_connections=50,
+            pool_maxsize=50,
+            max_retries=1,
+            pool_block=False,
+        )
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        session.headers.update({"user-agent": USER_AGENT, "Connection": "keep-alive"})
         _thread_local.session = session
     return session
 

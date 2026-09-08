@@ -36,7 +36,10 @@ def craft_options_for(options: Dict[str, Any]) -> Optional[CraftOptions]:
     preset = str(options.get("craft_preset") or {"economy": "economy", "quality": "full"}.get(str(options.get("quality_preset") or ""), "balanced")).lower()
     if preset in ("off", "none", "legacy"):
         return None
-    return CraftOptions.preset(preset)
+    opts = CraftOptions.preset(preset)
+    if "model_scene_plan" in options:
+        opts.model_scene_plan = bool(options["model_scene_plan"])
+    return opts
 
 
 def _c(card: Optional[Card]) -> Dict[str, Any]:

@@ -339,6 +339,8 @@ async def craft_chapter(
                 break
             raw = res["raw"]
             critic = res["critic"]
+            if not any(f.severity in ("critical", "high") for f in critic.findings) and critic.overall >= 8.0:
+                break
         if opts.hook_sharpen:
             hook = hooks_mod.analyze_hook(_prose_and_blocks(raw)["prose"], closing_hook_plan=inputs.closing_hook, language=inputs.language)
             if hook.is_soft or hook.strength < opts.min_hook_strength:
