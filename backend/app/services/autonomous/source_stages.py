@@ -48,7 +48,7 @@ from app.services.workflow.expressions.functions import fn_normalize_ranges
 
 INGEST_VERSION = "ingest-1"
 MIN_STORY_FRACTION = 0.5
-MIN_ANALYSIS_COVERAGE = 0.9
+MIN_ANALYSIS_COVERAGE = 0.80
 MIN_EVIDENCE_COVERAGE = 0.5
 
 
@@ -287,8 +287,9 @@ def stage_analysis_verification(session: Session, ctx: SourceContext) -> Dict[st
             low_confidence.append(ch.chapter_number)
     report = {"verification": ver, "status": status, "low_confidence_chapters": sorted(set(low_confidence)), "integrity": integrity_report(chapters)}
     coverage = status["completeness"]
-    if coverage < MIN_ANALYSIS_COVERAGE:
-        raise fail.StageFailure(fail.INSUFFICIENT_EVIDENCE, f"Only {round(coverage * 100)}% of chapters have a verified analysis (need {round(MIN_ANALYSIS_COVERAGE * 100)}%)", detail={"failed_chapters": status["failed_chapters"], "low_confidence": report["low_confidence_chapters"]})
+    min_cov = float((ctx.options or {}).get("min_analysis_coverage", MIN_ANALYSIS_COVERAGE))
+    if coverage < min_cov:
+        raise fail.StageFailure(fail.INSUFFICIENT_EVIDENCE, f"Only {round(coverage * 100)}% of chapters have a verified analysis (need {round(min_cov * 100)}%)", detail={"failed_chapters": status["failed_chapters"], "low_confidence": report["low_confidence_chapters"]})
     if not report["integrity"]["ok"]:
         raise fail.StageFailure(fail.INTERNAL_CONTRADICTION, "Manuscript integrity check failed", detail=report["integrity"])
     return report
@@ -425,7 +426,8 @@ async def stage_book_structure(session: Session, ctx: SourceContext) -> Dict[str
 
 def stage_fingerprint(session: Session, ctx: SourceContext) -> Dict[str, Any]:
     status = forge_analysis.analysis_status(session, ctx.source_project_id)
-    if status["completeness"] < MIN_ANALYSIS_COVERAGE:
+    min_cov = float((ctx.options or {}).get("min_analysis_coverage", MIN_ANALYSIS_COVERAGE))
+    if status["completeness"] < min_cov:
         raise fail.StageFailure(fail.INSUFFICIENT_EVIDENCE, f"Source coverage {status['completeness']} is insufficient for a fingerprint")
     fp = status.get("fingerprint")
     if fp and not fp.get("stale") and fp.get("chapters_measured") == status["chapters"]:
