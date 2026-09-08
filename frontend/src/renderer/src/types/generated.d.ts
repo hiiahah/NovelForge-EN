@@ -1152,6 +1152,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/creative/projects/{project_id}/compass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Compass */
+        get: operations["read_compass_api_creative_projects__project_id__compass_get"];
+        /** Update Compass */
+        put: operations["update_compass_api_creative_projects__project_id__compass_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/foreshadow/delete/{item_id}": {
         parameters: {
             query?: never;
@@ -4953,6 +4971,16 @@ export interface components {
             summary?: string | null;
             /** Tags */
             tags?: string | null;
+            /**
+             * Target Arcs
+             * @description Approximate target arc/volume count
+             */
+            target_arcs?: number | null;
+            /**
+             * Target Chapters
+             * @description Approximate target chapter count for the novel (calibrates storyline scope and arc complexity)
+             */
+            target_chapters?: number | null;
             /** Title */
             title?: string | null;
             /** Total Words */
@@ -4977,6 +5005,121 @@ export interface components {
              * @default bible
              */
             template: string | null;
+        };
+        /** CreativeCompass */
+        CreativeCompass: {
+            intent?: components["schemas"]["CreativeIntent"];
+            /** Lessons */
+            lessons?: components["schemas"]["InfluenceLesson"][];
+            /**
+             * Output Language
+             * @default en
+             * @constant
+             */
+            output_language: "en";
+            /**
+             * Source Language
+             * @default und
+             * @enum {string}
+             */
+            source_language: "en" | "ko" | "zh" | "und";
+            /** Source Manuscript Id */
+            source_manuscript_id?: string | null;
+            /** Source Project Id */
+            source_project_id?: number | null;
+            /**
+             * Version
+             * @default creative-compass-1
+             * @constant
+             */
+            version: "creative-compass-1";
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** CreativeCompassResponse */
+        CreativeCompassResponse: {
+            /** Card Id */
+            card_id?: number | null;
+            compass: components["schemas"]["CreativeCompass"];
+            /** Directives */
+            directives: string;
+            /** Project Id */
+            project_id: number;
+            /**
+             * Replanning Required
+             * @default false
+             */
+            replanning_required: boolean;
+            /** Revision */
+            revision?: string | null;
+            /** Warnings */
+            warnings?: string[];
+        };
+        /** CreativeCompassUpdate */
+        CreativeCompassUpdate: {
+            /**
+             * Expected Revision
+             * @description The revision last read; required when updating an existing compass.
+             */
+            expected_revision?: string | null;
+            intent: components["schemas"]["CreativeIntent"];
+        };
+        /** CreativeIntent */
+        CreativeIntent: {
+            /**
+             * Arc Length
+             * @description Preferred chapters per renewable arc; not a rigid beat formula.
+             * @default 30
+             */
+            arc_length: number;
+            /**
+             * Cultural Grounding
+             * @description Chosen social context and culturally meaningful distinctions to render intelligibly, without flattening them.
+             * @default
+             */
+            cultural_grounding: string;
+            /**
+             * Deliberate Departures
+             * @description How this work should deliberately find its own identity.
+             */
+            deliberate_departures?: string[];
+            /**
+             * Narrative Horizon
+             * @description Continuing: this run closes local arcs, not the whole series. Finite: this commission includes the series ending.
+             * @default continuing
+             * @enum {string}
+             */
+            narrative_horizon: "continuing" | "finite";
+            /**
+             * Planning Window
+             * @description Maximum detailed chapters planned ahead of accepted prose. Later arcs remain flexible intentions.
+             * @default 8
+             */
+            planning_window: number;
+            /**
+             * Prose Voice
+             * @description The new work's English voice, register, emotional range, and reading experience; not an author's style to imitate.
+             * @default
+             */
+            prose_voice: string;
+            /**
+             * Reader Experience
+             * @description What returning readers should feel, want, and receive.
+             * @default
+             */
+            reader_experience: string;
+            /**
+             * Retain Strengths
+             * @description Abstract storytelling strengths to study, never scenes or expression to reuse.
+             */
+            retain_strengths?: string[];
+            /**
+             * Source Tradition
+             * @description Author-confirmed storytelling tradition, not the language of the uploaded file. Never inferred from script.
+             * @default unspecified
+             * @enum {string}
+             */
+            source_tradition: "unspecified" | "english" | "korean" | "chinese" | "hybrid";
         };
         /** CriticFinding */
         CriticFinding: {
@@ -5730,7 +5873,13 @@ export interface components {
              * @default none
              * @enum {string}
              */
-            hook_type: "crisis" | "revelation" | "decision" | "threat_arrival" | "reversal" | "question" | "none";
+            hook_type: "crisis" | "revelation" | "decision" | "threat_arrival" | "reversal" | "question" | "relationship" | "wonder" | "emotional" | "quiet" | "none";
+            /**
+             * Intentional Close
+             * @description The plan calls for a quiet, relational, emotional or wonder ending; lack of threat is not failure
+             * @default false
+             */
+            intentional_close: boolean;
             /**
              * Is Soft
              * @description True when the ending fades out instead of pulling the reader forward
@@ -5763,6 +5912,28 @@ export interface components {
              * @default
              */
             tail_excerpt: string;
+        };
+        /** InfluenceLesson */
+        InfluenceLesson: {
+            /**
+             * Application
+             * @default
+             */
+            application: string;
+            /** Evidence Chapters */
+            evidence_chapters?: number[];
+            /** Mechanism */
+            mechanism: string;
+            /**
+             * Reader Effect
+             * @default
+             */
+            reader_effect: string;
+            /**
+             * Risk
+             * @default
+             */
+            risk: string;
         };
         /** IngestRelationsFromPreviewRequest */
         IngestRelationsFromPreviewRequest: {
@@ -7815,7 +7986,7 @@ export interface components {
             index: number;
             /**
              * Interiority Focus
-             * @description What the protagonist is privately calculating, resenting, noticing or misreading during this scene
+             * @description The POV's particular attention, feeling, reflection or reasoning, consistent with their voice
              * @default
              */
             interiority_focus: string;
@@ -7827,7 +7998,7 @@ export interface components {
             location: string;
             /**
              * Micro Payoff
-             * @description The small win, deduction, verbal victory or comic beat the scene delivers (empty if none planned)
+             * @description The earned reader reward: understanding, intimacy, wonder, grief, humor, progress or victory (empty if none planned)
              * @default
              */
             micro_payoff: string;
@@ -11041,6 +11212,72 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     }[];
+                };
+            };
+        };
+    };
+    read_compass_api_creative_projects__project_id__compass_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreativeCompassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_compass_api_creative_projects__project_id__compass_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreativeCompassUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreativeCompassResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
