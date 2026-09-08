@@ -75,6 +75,13 @@
     "balancedHelp": "Splits into multiple rounds with budgets by target word count; non-final rounds have a hard cap, the final round is not hard-truncated.",
     "balancedTokenNote": "This mode may consume more tokens; if word count isn't strict, use the prompt constraint mode.",
     "startContinuation": "Start continuation",
+    "storyMemorySection": "Story memory",
+    "includeStoryMemory": "Inject Story So Far (recap of every digested chapter)",
+    "includeChapterBrief": "Inject Next Chapter Brief (must address / avoid)",
+    "storyMemoryHelp": "Both blocks are compiled server-side from chapter digests and the Bible; they are what lets chapter 300 remember chapter 12. Unchecked = this run only.",
+    "memoryStatus": "{digested} / {written} earlier chapters remembered",
+    "memoryMissing": "{n} not digested",
+    "memoryOverdue": "{n} overdue hook(s)",
 
     "openContextDrawer": "Open context drawer (Alt+K)",
     "contextInjection": "Context injection",

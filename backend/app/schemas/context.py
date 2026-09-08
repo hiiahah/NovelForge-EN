@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.relation_extract import RelationItem
+from app.schemas.story_memory import NextChapterBrief, StorySoFar
 
 
 class AssembleContextRequest(BaseModel):
@@ -21,6 +22,9 @@ class AssembleContextRequest(BaseModel):
 	max_chapter_id: Optional[int] = Field(default=None, description="Ignore relation events after this chapter")
 	current_draft_tail: Optional[str] = Field(default=None, description="Context template (draft tail)")
 	recent_chapters_window: Optional[int] = Field(default=None, description="Recent window (kept for future extension)")
+	include_story_memory: Optional[bool] = Field(default=None, description="Include the Story So Far recap compiled from chapter digests (default true)")
+	include_chapter_brief: Optional[bool] = Field(default=None, description="Force-include the Next Chapter Brief regardless of project settings (default false)")
+	story_memory_quota_chars: Optional[int] = Field(default=None, ge=500, description="Override the Story So Far budget (characters)")
 
 
 class ItemSummary(BaseModel):
@@ -77,6 +81,8 @@ class AssembleContextResponse(BaseModel):
 	budget_stats: Dict[str, Any] = Field(default_factory=dict, description="Context word budget stats (may include nested parts dict)")
 	facts_structured: Optional[FactsStructured] = Field(default=None, description="Structured fact subgraph")
 	bible_context: Optional[BibleContext] = Field(default=None, description="Compiled Novel Bible slice for this chapter")
+	story_memory: Optional[StorySoFar] = Field(default=None, description="Story So Far recap compiled from chapter digests")
+	chapter_brief: Optional[NextChapterBrief] = Field(default=None, description="Next Chapter Brief (what to address / avoid)")
 
 
 class ContextSettingsModel(BaseModel):

@@ -79,6 +79,12 @@ In long-form writing, the greatest challenges are maintaining consistency, ensur
 <a id="core-features"></a>
 ## ✨ Core Features
 
+*   **🧠 Story Memory (whole-book context that never drifts)**
+    *   Every written chapter gets a **Chapter Digest** — a compact structured memory (events, persistent state changes, who-learned-what, hooks opened/closed, promises, exact ending state) extracted once and kept fresh automatically when the text changes.
+    *   A deterministic **Story So Far** compiler folds every digest into a tiered, budgeted recap (recent chapters in detail → older arcs compressed) plus a **carry-forward world state** (where everyone is, what they hold, who is dead) and the **dangling hooks** the reader is still waiting on. It is injected into every chapter continuation, so chapter 300 still remembers chapter 12.
+    *   **Continuity Guard** checks a draft before you accept it: prohibited reveals, dead characters acting, lost items reappearing, location teleports, unknown recurring names, dropped hooks, forbidden outcomes — instantly, with an optional deep model pass; click an issue to jump to the text.
+    *   **Next Chapter Brief** tells the model (and you) what the coming chapter *must* address, *should* consider and must *avoid*, from overdue promises, neglected threads, pending relationship shifts and the outline. **Bible Health** scores coverage with fix hints. See [docs/story-memory.md](./docs/story-memory.md).
+
 *   **📖 Novel Intelligence Studio (Novel Bible 2.0)**
     *   A dedicated **Novel Bible** tab in the editor. *Create Bible* builds a deep, evidence-backed Bible before you write (Story Foundation, Reader Contract, Theme Map, Power System, Style Profile, Narrative Architecture, plus ledgers for Plot Threads, Promises & Payoffs, Knowledge Facts, Relationship Arcs, World Rules and Timeline Events). Every fact carries a truth status (`canon / believed / planned / inferred / disputed / obsolete`), confidence, and chapter evidence.
     *   **Living Bible**: after writing a chapter, "Propose Bible updates" extracts changes as a reviewable proposal — accept, reject, edit, postpone, mark as plan-not-canon, intentional contradiction, or unreliable narration. Nothing is written silently; accepted changes keep a value history.
@@ -121,6 +127,18 @@ In long-form writing, the greatest challenges are maintaining consistency, ensur
 <a id="changelog"></a>
 
 ## 📅 Changelog
+<details open>
+<summary>v0.11.0 — Story Memory</summary>
+
+- **Chapter Digest** card type: one structured extraction per written chapter (events with significance, persistent state changes, knowledge deltas, hooks opened/closed, promises, named extras, exact ending state, continuity risks, tension/hook metrics). Keyed by a text hash; unchanged text is never re-extracted, edited text marks the digest stale.
+- **Auto-digest on save**: Chapter Text saves with enough words digest in a background thread (per-project `Story Memory Settings` card: on/off, minimum words, digest model, windows, budgets, injection toggles). Batch endpoint digests every missing/stale chapter.
+- **Story So Far compiler** (deterministic): tiered recap (recent → mid → distant), carry-forward world state (location, possessions, injuries, alive/dead), dangling hooks with overdue detection, story clock and the previous chapter's exact ending. Budgeted; always keeps the previous ending.
+- **Automatic injection**: `/api/context/assemble` and chapter continuation now carry `story_memory` and `chapter_brief`; the Continue dialog exposes per-run toggles and a memory status line, and forwards the outline's POV.
+- **Continuity Guard**: `prohibited_reveal`, `dead_entity`, `possession_conflict`, `location_teleport`, `unknown_entity`, `head_hopping`, `time_inversion`, `dropped_strong_hook`, `forbidden_outcome`; optional LLM pass merges cited contradictions. New **Continuity** tab in the chapter editor with click-to-jump issues and "Digest this chapter".
+- **Next Chapter Brief** (must / should / avoid / rhythm) and **Bible Health** score with per-dimension fix hints. New **Story Memory** section in the Novel Bible studio (timeline with tension strip, digest detail, exact recap text, world state, dangling hooks, brief, settings).
+- Docs: [docs/story-memory.md](./docs/story-memory.md). Tests: `backend/tests/test_story_memory.py`, `composables/__tests__/useStoryMemory.test.ts`.
+
+</details>
 <details>
 <summary>v0.10.0 — Novel Intelligence Studio</summary>
 

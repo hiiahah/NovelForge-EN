@@ -345,6 +345,9 @@
 			:target-word-count="continuationDialogState.targetWordCount"
 			:word-control-mode="continuationDialogState.wordControlMode"
 			:guidance="continuationDialogState.guidance"
+			:include-story-memory="continuationDialogState.includeStoryMemory"
+			:include-chapter-brief="continuationDialogState.includeChapterBrief"
+			:memory-status="continuationMemoryStatus"
 			@confirm="handleContinuationDialogConfirm"
 		/>
 
@@ -1230,7 +1233,8 @@ import {
 import { extractBibleUpdates } from '@renderer/api/bible'
 import { ArrowDown, ArrowUp, Document, MagicStick, CircleClose, Connection, List, Timer, Select, Loading, Search, Close } from '@element-plus/icons-vue'
 import AIPerCardParams from '../common/AIPerCardParams.vue'
-import ContinuationBudgetDialog, { type ContinuationWordControlMode } from './dialogs/ContinuationBudgetDialog.vue'
+import ContinuationBudgetDialog, { type ContinuationMemoryStatus, type ContinuationWordControlMode } from './dialogs/ContinuationBudgetDialog.vue'
+import { getStorySoFar, getStoryMemorySettings } from '@renderer/api/storyMemory'
 import { resolveTemplate } from '@renderer/services/contextResolver'
 import { getCardContextTemplates, getContextTemplateByKind, normalizeContextTemplateKind, type ContextTemplateKind, type ContextTemplates } from '@renderer/services/contextSlots'
 import { notifyTaskDone } from '@renderer/utils/taskDoneNotifier'
@@ -1852,14 +1856,19 @@ const dynamicPreviewApplying = ref(false)
 const relationsPreviewApplying = ref(false)
 const memoryPreviewApplying = ref(false)
 const continuationDialogVisible = ref(false)
+const continuationMemoryStatus = ref<ContinuationMemoryStatus | null>(null)
 const continuationDialogState = reactive<{
 	targetWordCount: number
 	wordControlMode: ContinuationWordControlMode
 	guidance: string
+	includeStoryMemory: boolean
+	includeChapterBrief: boolean
 }>({
 	targetWordCount: 3000,
 	wordControlMode: 'balanced',
 	guidance: '',
+	includeStoryMemory: true,
+	includeChapterBrief: true,
 })
 
 const memoryPreviewTitleResolved = computed(() => {
@@ -2792,12 +2801,40 @@ async function executeAIContinuation() {
 	continuationDialogState.wordControlMode = defaults.wordControlMode
 	continuationDialogState.guidance = defaults.guidance
 	continuationDialogVisible.value = true
+	void loadContinuationMemoryStatus()
+}
+
+// Story Memory preview for the continuation dialog: project defaults for the
+// toggles plus how much of the book is actually remembered right now.
+async function loadContinuationMemoryStatus() {
+	continuationMemoryStatus.value = null
+	const projectId = projectStore.currentProject?.id || (localCard as any)?.project_id
+	if (!projectId) return
+	const chapterNumber = (localCard as any)?.content?.chapter_number ?? (props.contextParams as any)?.chapter_number
+	try {
+		const [cfg, recap] = await Promise.all([
+			getStoryMemorySettings(projectId),
+			getStorySoFar({ project_id: projectId, next_chapter: typeof chapterNumber === 'number' ? chapterNumber : null }),
+		])
+		continuationDialogState.includeStoryMemory = cfg.settings.inject_into_continuation !== false
+		continuationDialogState.includeChapterBrief = cfg.settings.inject_brief_into_continuation !== false
+		continuationMemoryStatus.value = {
+			written: (recap.digested_chapters || []).length + (recap.missing_chapters || []).length,
+			digested: (recap.digested_chapters || []).length,
+			missing: (recap.missing_chapters || []).length,
+			overdue: (recap.dangling_hooks || []).filter(h => h.overdue).length,
+		}
+	} catch (e) {
+		console.warn('[StoryMemory] status preview unavailable:', e)
+	}
 }
 
 function handleContinuationDialogConfirm(payload: {
 	targetWordCount: number
 	wordControlMode: ContinuationWordControlMode
 	guidance: string
+	includeStoryMemory: boolean
+	includeChapterBrief: boolean
 }) {
 	activeContinuationConfig.targetWordCount = payload.targetWordCount
 	activeContinuationConfig.wordControlMode = payload.wordControlMode
@@ -2815,6 +2852,8 @@ async function runContinuationWithConfig(payload: {
 	targetWordCount: number
 	wordControlMode: ContinuationWordControlMode
 	guidance: string
+	includeStoryMemory?: boolean
+	includeChapterBrief?: boolean
 }) {
 	if (!ensureNoPendingAiEdit()) return
 	const llmConfigId = resolveLlmConfigId()
@@ -2856,6 +2895,13 @@ async function runContinuationWithConfig(payload: {
 	;(requestData as any).target_word_count = payload.targetWordCount
 	;(requestData as any).word_control_mode = payload.wordControlMode
 	;(requestData as any).continuation_guidance = payload.guidance || undefined
+	// Story Memory toggles chosen in the dialog (undefined = follow project settings).
+	if (typeof payload.includeStoryMemory === 'boolean') (requestData as any).include_story_memory = payload.includeStoryMemory
+	if (typeof payload.includeChapterBrief === 'boolean') (requestData as any).include_chapter_brief = payload.includeChapterBrief
+	try {
+		const outlinePov = resolveChapterOutlinePov()
+		if (outlinePov) (requestData as any).pov = outlinePov
+	} catch {}
 
 	try {
 		const { temperature, max_tokens, timeout } = resolveSampling()
@@ -3345,6 +3391,15 @@ function applyContinuationScope(requestData: ContinuationRequest) {
 	} catch {}
 }
 
+// POV declared on this chapter's outline card (drives knowledge boundaries server-side).
+function resolveChapterOutlinePov(): string | null {
+	const n = (localCard.content as any)?.chapter_number ?? (props.contextParams as any)?.chapter_number
+	if (n == null) return null
+	const outline = (cards.value || []).find((c: any) => c?.card_type?.name === 'Chapter Outline' && Number(c?.content?.chapter_number) === Number(n))
+	const pov = (outline?.content as any)?.pov
+	return typeof pov === 'string' && pov.trim() ? pov.trim() : null
+}
+
 function extractParticipantsForCurrentChapter(): string[] {
 	try {
 		const list = (localCard.content as any)?.entity_list
@@ -3716,6 +3771,18 @@ editorStore.setPersistActiveChapterDraft(async () => {
 	} catch {
 		return false
 	}
+})
+
+// Story Memory / Continuity panel: read the live draft and jump to a flagged span.
+editorStore.setGetActiveChapterDraft(() => getText() || '')
+editorStore.setSelectChapterRange((from: number, to: number) => {
+	if (!view) return
+	const max = view.state.doc.length
+	const a = Math.max(0, Math.min(from, max))
+	const b = Math.max(a, Math.min(to, max))
+	view.dispatch({ selection: { anchor: a, head: b }, scrollIntoView: true })
+	setHighlight(a, b)
+	view.focus()
 })
 
 async function extractDynamicInfo() {
@@ -4198,6 +4265,8 @@ onUnmounted(() => {
 	try { view?.destroy() } catch {}
 	editorStore.setApplyChapterReplacements(null)
 	editorStore.setPersistActiveChapterDraft(null)
+	editorStore.setGetActiveChapterDraft(null)
+	editorStore.setSelectChapterRange(null)
 	editorStore.setTriggerExtractDynamicInfo(null)
 	editorStore.setTriggerExtractRelations(null)
 	editorStore.setTriggerExtractSceneState(null)

@@ -23,6 +23,9 @@ def assemble(req: AssembleContextRequest, session: Session = Depends(get_session
         relation_radius=req.relation_radius,
         edge_type_whitelist=req.edge_type_whitelist,
         max_chapter_id=req.max_chapter_id,
+        include_story_memory=req.include_story_memory is not False,
+        include_chapter_brief=bool(req.include_chapter_brief),
+        story_memory_quota_chars=req.story_memory_quota_chars,
     )
     try:
         ctx = assemble_context(session, params)

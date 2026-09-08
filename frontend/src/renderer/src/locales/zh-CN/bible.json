@@ -21,7 +21,8 @@
       "analysis": "Analysis",
       "updates": "Update Review",
       "audits": "Audits",
-      "forge": "Forge 流水线"
+      "forge": "Forge 流水线",
+      "memory": "故事记忆"
     },
     "empty": {
       "section": "Nothing here yet.",

@@ -21,7 +21,8 @@
       "analysis": "Analysis",
       "updates": "Update Review",
       "audits": "Audits",
-      "forge": "Forge Pipeline"
+      "forge": "Forge Pipeline",
+      "memory": "Story Memory"
     },
     "empty": {
       "section": "Nothing here yet.",

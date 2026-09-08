@@ -34,6 +34,10 @@ class ContinuationRequest(BaseModel):
     prompt_name: Optional[str] = Field(default=None, description="Prompt name selected by the parameter card")
     # Whether to append the "directly output continuous novel body" suffix (default True for backward compatibility with existing continuation)
     append_continuous_novel_directive: bool = Field(default=True, description="Whether to append the continuous novel body directive")
+    # Story Memory (None = follow the project's Story Memory settings)
+    pov: Optional[str] = Field(default=None, description="POV character for this chapter (drives knowledge boundaries)")
+    include_story_memory: Optional[bool] = Field(default=None, description="Inject the Story So Far recap; None follows project settings")
+    include_chapter_brief: Optional[bool] = Field(default=None, description="Inject the Next Chapter Brief; None follows project settings")
 
 class ContinuationResponse(BaseModel):
     content: str
