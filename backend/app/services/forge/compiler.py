@@ -384,6 +384,11 @@ class ChapterContextCompiler:
         pov_state = {attr: fv.value for (subj, attr), fv in state.items() if subj == pov_name.lower()}
         knows = pov_state.get("knows") or []
         sections.append(Section("pov", "POV (explicit, fixed for the whole chapter)", f"{pov_name} — {_trim((_c(pov_card).get('voice') or {}).get('sentence_tendency') if pov_card else '', 160)}; narrate only what {pov_name} perceives, remembers or infers.", mandatory=True, card_ids=[pov_card.id] if pov_card else [], priority=6))
+        pv = (_c(pov_card).get("protagonist_voice") or {}) if pov_card else {}
+        if isinstance(pv, dict) and any(pv.values()):
+            from app.services.forge.craft.subtext import render_voice, voice_from_card
+
+            sections.append(Section("protagonist_voice", f"PROTAGONIST VOICE — {pov_name.upper()} (inner register; keep the gap between narration and speech visible)", render_voice(voice_from_card(_c(pov_card)), pov_name), card_ids=[pov_card.id], revisions=[_rev(pov_card)], priority=6))
         boundary_lines = [f"- knows: {_trim(k, 200)}" for k in (knows if isinstance(knows, list) else [knows])][:20]
         for card in self.bible.cards_of_type(project_id, "Knowledge Fact"):
             c = _c(card)

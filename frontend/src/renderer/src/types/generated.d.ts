@@ -1067,6 +1067,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/craft/grade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deterministic webnovel critic grade for any chapter text (no model call) */
+        post: operations["grade_api_craft_grade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/craft/grade/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grade a Chapter Text card by id */
+        post: operations["grade_card_api_craft_grade_card_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/craft/presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Craft presets available to the Forge run and autonomous jobs */
+        get: operations["presets_api_craft_presets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/craft/scene-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deterministic scene decomposition + subtext packets for a chapter outline (no model call) */
+        post: operations["scene_plan_api_craft_scene_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/craft/tics/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The AI-tic catalogue the critic enforces */
+        get: operations["tic_catalogue_api_craft_tics_catalogue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/foreshadow/delete/{item_id}": {
         parameters: {
             query?: never;
@@ -4334,6 +4419,70 @@ export interface components {
             /** Word Count */
             word_count: number;
         };
+        /**
+         * CharacterAgenda
+         * @description What one character wants and hides in this scene; compiled from the Bible before dialogue is written.
+         */
+        CharacterAgenda: {
+            /**
+             * Address Pov As
+             * @description How they address the protagonist
+             * @default
+             */
+            address_pov_as: string;
+            /**
+             * Fear In Scene
+             * @description What they are afraid the scene will cost them
+             * @default
+             */
+            fear_in_scene: string;
+            /**
+             * Leverage
+             * @description What they believe gives them power in this exchange
+             * @default
+             */
+            leverage: string;
+            /** Name */
+            name: string;
+            /** Never Says */
+            never_says?: string[];
+            /**
+             * Relationship Now
+             * @description Private relationship state with the protagonist as of the previous chapter
+             * @default
+             */
+            relationship_now: string;
+            /**
+             * Speech
+             * @description Cadence, sentence length, formality, honorifics, banter style
+             * @default
+             */
+            speech: string;
+            /**
+             * Suppressing
+             * @description The emotion or secret they are holding back
+             * @default
+             */
+            suppressing: string;
+            /**
+             * Tactic
+             * @description How they pursue the want: flattery, threat, silence, deflection, bargaining…
+             * @default
+             */
+            tactic: string;
+            /**
+             * Tell When Lying
+             * @description Physical or verbal tell when deceiving
+             * @default
+             */
+            tell_when_lying: string;
+            /**
+             * Wants From Pov
+             * @description What this character wants from the protagonist in this scene, concretely
+             * @default
+             */
+            wants_from_pov: string;
+        };
         /** CharacterDeepenRequest */
         CharacterDeepenRequest: {
             /** Card Id */
@@ -4737,6 +4886,11 @@ export interface components {
             content_base64: string;
             /** Content Rating */
             content_rating?: string | null;
+            /**
+             * Craft Preset
+             * @description Prose Craft preset override: off | economy | balanced | full (defaults follow quality_preset)
+             */
+            craft_preset?: string | null;
             /** Ending Preference */
             ending_preference?: string | null;
             /** Fallback Llm Config Id */
@@ -4823,6 +4977,80 @@ export interface components {
              * @default bible
              */
             template: string | null;
+        };
+        /** CriticFinding */
+        CriticFinding: {
+            /**
+             * Dimension
+             * @enum {string}
+             */
+            dimension: "authenticity" | "voice" | "interiority" | "dialogue" | "pacing" | "sensory" | "hook" | "payoff" | "ai_tics";
+            /**
+             * Fix
+             * @description Concrete rewrite instruction (not a rewrite)
+             * @default
+             */
+            fix: string;
+            /**
+             * Problem
+             * @description What is wrong, in editor language
+             */
+            problem: string;
+            /**
+             * Quote
+             * @description Short verbatim quote (<= 25 words) locating the problem
+             * @default
+             */
+            quote: string;
+            /**
+             * Severity
+             * @default medium
+             * @enum {string}
+             */
+            severity: "critical" | "high" | "medium" | "low";
+        };
+        /**
+         * CriticReport
+         * @description Adversarial webnovel editor verdict on one chapter draft.
+         */
+        CriticReport: {
+            /** Findings */
+            findings?: components["schemas"]["CriticFinding"][];
+            /**
+             * Overall
+             * @default 0
+             */
+            overall: number;
+            /**
+             * Scores
+             * @description 1-10 per dimension: authenticity, voice, interiority, dialogue, pacing, sensory, hook, payoff
+             */
+            scores?: {
+                [key: string]: number;
+            };
+            /**
+             * Source
+             * @default deterministic
+             * @enum {string}
+             */
+            source: "deterministic" | "model" | "merged";
+            /**
+             * Strongest Moment
+             * @description The best passage; protect it during polish
+             * @default
+             */
+            strongest_moment: string;
+            /**
+             * Tic Count
+             * @default 0
+             */
+            tic_count: number;
+            /**
+             * Verdict
+             * @default polish
+             * @enum {string}
+             */
+            verdict: "accept" | "polish" | "rewrite";
         };
         /** DanglingHook */
         DanglingHook: {
@@ -5417,6 +5645,52 @@ export interface components {
              */
             prompt_template?: string | null;
         };
+        /** GradeCardRequest */
+        GradeCardRequest: {
+            /** Card Id */
+            card_id: number;
+            /** Project Id */
+            project_id: number;
+        };
+        /** GradeRequest */
+        GradeRequest: {
+            /**
+             * Closing Hook
+             * @description Planned closing hook (from the outline), used to suggest a hook type
+             * @default
+             */
+            closing_hook: string;
+            /** Language */
+            language?: string | null;
+            /**
+             * Pov
+             * @default
+             */
+            pov: string;
+            /** Text */
+            text: string;
+            /** Word Target */
+            word_target?: number | null;
+        };
+        /** GradeResponse */
+        GradeResponse: {
+            critic: components["schemas"]["CriticReport"];
+            hook: components["schemas"]["HookAnalysis"];
+            /** Language */
+            language: string;
+            /** Needs Polish */
+            needs_polish: boolean;
+            /** Tic Summary */
+            tic_summary: {
+                [key: string]: unknown;
+            };
+            /** Tics */
+            tics: {
+                [key: string]: unknown;
+            }[];
+            /** Words */
+            words: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -5442,6 +5716,53 @@ export interface components {
             score: number;
             /** Weight */
             weight: number;
+        };
+        /** HookAnalysis */
+        HookAnalysis: {
+            /**
+             * Ending Class
+             * @description classify_ending() result: question_hook, dialogue_hook, suspended_hook, punch_line, emotional_close, image_close, quiet_close
+             * @default
+             */
+            ending_class: string;
+            /**
+             * Hook Type
+             * @default none
+             * @enum {string}
+             */
+            hook_type: "crisis" | "revelation" | "decision" | "threat_arrival" | "reversal" | "question" | "none";
+            /**
+             * Is Soft
+             * @description True when the ending fades out instead of pulling the reader forward
+             * @default false
+             */
+            is_soft: boolean;
+            /**
+             * Micro Payoffs
+             * @description Detected wins in the chapter: deduction, tactical, verbal, comedic, status
+             */
+            micro_payoffs?: string[];
+            /**
+             * Payoff Missing
+             * @default false
+             */
+            payoff_missing: boolean;
+            /**
+             * Strength
+             * @default 0
+             */
+            strength: number;
+            /**
+             * Suggested Hook
+             * @description Which hook type the outline's closing_hook / next chapter implies
+             * @default
+             */
+            suggested_hook: string;
+            /**
+             * Tail Excerpt
+             * @default
+             */
+            tail_excerpt: string;
         };
         /** IngestRelationsFromPreviewRequest */
         IngestRelationsFromPreviewRequest: {
@@ -6565,6 +6886,21 @@ export interface components {
              */
             timeout_seconds: number;
         };
+        /** PresetInfo */
+        PresetInfo: {
+            /** Description */
+            description: string;
+            /** Estimated Calls */
+            estimated_calls: string;
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            };
+        };
         /** ProjectCreate */
         ProjectCreate: {
             /** Description */
@@ -7365,6 +7701,11 @@ export interface components {
             budget_chars: number;
             /** Chapter Number */
             chapter_number: number;
+            /**
+             * Craft Preset
+             * @description Prose Craft preset: off | economy | balanced | full. None = legacy single-shot
+             */
+            craft_preset?: string | null;
             /** Expected Canon Revision */
             expected_canon_revision?: number | null;
             /**
@@ -7438,6 +7779,111 @@ export interface components {
             status: string;
             /** Workflow Id */
             workflow_id: number;
+        };
+        /**
+         * ScenePlan
+         * @description One narrative scene: a contiguous group of outline beats that share a place, time and dramatic question.
+         */
+        ScenePlan: {
+            /**
+             * Beat Indexes
+             * @description 1-based indexes of the outline beats this scene covers, in order
+             */
+            beat_indexes: number[];
+            /**
+             * Dramatic Question
+             * @description The single question the reader wants answered by the end of the scene
+             * @default
+             */
+            dramatic_question: string;
+            /**
+             * Entry State
+             * @description Emotional and physical state the POV enters with
+             * @default
+             */
+            entry_state: string;
+            /**
+             * Exit State
+             * @description Emotional and physical state the POV leaves with; must set up the next scene
+             * @default
+             */
+            exit_state: string;
+            /**
+             * Index
+             * @description 1-based scene index
+             */
+            index: number;
+            /**
+             * Interiority Focus
+             * @description What the protagonist is privately calculating, resenting, noticing or misreading during this scene
+             * @default
+             */
+            interiority_focus: string;
+            /**
+             * Location
+             * @description Where the scene takes place (must be an allowed location or neutral)
+             * @default
+             */
+            location: string;
+            /**
+             * Micro Payoff
+             * @description The small win, deduction, verbal victory or comic beat the scene delivers (empty if none planned)
+             * @default
+             */
+            micro_payoff: string;
+            /**
+             * Present
+             * @description Characters physically present (allowed participants only)
+             */
+            present?: string[];
+            /**
+             * Story Time
+             * @description Time of day / elapsed time relative to the previous scene
+             * @default
+             */
+            story_time: string;
+            /**
+             * Title
+             * @description Working title, e.g. 'Confrontation at the gate'
+             * @default
+             */
+            title: string;
+            /**
+             * Turn
+             * @description What changes: a decision, revelation, reversal or escalation. Every scene must turn.
+             * @default
+             */
+            turn: string;
+            /**
+             * Word Share
+             * @description Fraction of the chapter word target this scene should take
+             * @default 0
+             */
+            word_share: number;
+        };
+        /** ScenePlanRequest */
+        ScenePlanRequest: {
+            /** Chapter Number */
+            chapter_number: number;
+            /** Outline Card Id */
+            outline_card_id?: number | null;
+            /** Project Id */
+            project_id: number;
+        };
+        /** ScenePlanResponse */
+        ScenePlanResponse: {
+            /** Chapter Number */
+            chapter_number: number;
+            /** Participants */
+            participants: string[];
+            /** Pov */
+            pov: string;
+            /** Scenes */
+            scenes: components["schemas"]["ScenePlan"][];
+            /** Subtext */
+            subtext: components["schemas"]["SubtextPacket"][];
+            /** Voice */
+            voice: string;
         };
         /** SelectStorylineRequest */
         SelectStorylineRequest: {
@@ -7614,6 +8060,25 @@ export interface components {
              * @default
              */
             text: string;
+        };
+        /** SubtextPacket */
+        SubtextPacket: {
+            /** Agendas */
+            agendas?: components["schemas"]["CharacterAgenda"][];
+            /**
+             * Pov Private Agenda
+             * @description What the protagonist wants from this scene and will not say aloud
+             * @default
+             */
+            pov_private_agenda: string;
+            /**
+             * Pov Reads Wrong
+             * @description Something the protagonist misreads about another character here (dramatic irony fuel)
+             * @default
+             */
+            pov_reads_wrong: string;
+            /** Scene Index */
+            scene_index: number;
         };
         /** SuggestRequest */
         SuggestRequest: {
@@ -10435,6 +10900,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grade_api_craft_grade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GradeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    grade_card_api_craft_grade_card_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GradeCardRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    presets_api_craft_presets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresetInfo"][];
+                };
+            };
+        };
+    };
+    scene_plan_api_craft_scene_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScenePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScenePlanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tic_catalogue_api_craft_tics_catalogue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
         };

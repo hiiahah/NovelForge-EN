@@ -35,6 +35,7 @@ from app.services.forge import sync as sync_mod
 from app.services.forge import validators as v
 from app.services.forge.compiler import ChapterContextCompiler, CompiledChapterContext, ContextCompileError
 from app.services.forge.corpus import load_source_chapters
+from app.services.forge.craft import CraftInputs, CraftOptions, craft_chapter
 from app.services.forge.textmetrics import infer_pov, measure
 
 PIPELINE_VERSION = "pipeline-1"
@@ -73,6 +74,7 @@ class PipelineOptions:
     use_examples: bool = True
     fail_sync_on: Sequence[str] = ()
     style_max_failed: int = 4
+    craft: Optional["CraftOptions"] = None  # None = legacy single-shot drafting with no craft passes
 
 
 @dataclass
@@ -89,6 +91,7 @@ class PipelineResult:
     model_calls: int = 0
     repair_attempts: int = 0
     chapter_card_id: Optional[int] = None
+    craft: Dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> Dict[str, Any]:
         return dict(self.__dict__)
@@ -240,6 +243,53 @@ def _upsert_chapter_text(session: Session, project_id: int, ctx: CompiledChapter
     return card
 
 
+def craft_inputs_for(session: Session, ctx: CompiledChapterContext) -> CraftInputs:
+    """Resolve the Bible material the craft passes need (cards, relationships, knowledge gaps) for this chapter."""
+    bible = BibleService(session)
+    outline = session.get(Card, ctx.outline_card_id)
+    oc = _c(outline) if outline else {}
+    beats = [b for b in (oc.get("beats") or []) if isinstance(b, dict)]
+    cards_by_name: Dict[str, Dict[str, Any]] = {}
+    for card in bible.cards_of_type(ctx.project_id, "Character Card"):
+        c = dict(_c(card))
+        c.setdefault("name", card.title)
+        cards_by_name[str(c["name"]).strip().lower()] = c
+        for alias in c.get("aliases") or []:
+            cards_by_name.setdefault(str(alias).strip().lower(), c)
+    relationships: Dict[str, Dict[str, Any]] = {}
+    pov_l = ctx.pov.lower()
+    for card in bible.cards_of_type(ctx.project_id, "Relationship Arc"):
+        c = _c(card)
+        a, b = str(c.get("character_a") or "").strip(), str(c.get("character_b") or "").strip()
+        if a.lower() == pov_l and b:
+            relationships[b.lower()] = c
+        elif b.lower() == pov_l and a:
+            relationships[a.lower()] = c
+    gaps: Dict[str, List[str]] = {}
+    for card in bible.cards_of_type(ctx.project_id, "Knowledge Fact"):
+        c = _c(card)
+        knowers = {str(k.get("entity", "")).lower(): k for k in (c.get("knowers") or []) if isinstance(k, dict)}
+        pov_state = (knowers.get(pov_l) or {}).get("state")
+        if pov_state in ("knows",):
+            continue
+        for name, k in knowers.items():
+            if name != pov_l and k.get("state") == "knows":
+                gaps.setdefault(name, []).append(str(c.get("fact") or card.title))
+    prev_scene = ""
+    for s in ctx.sections:
+        if s.key == "scene_state":
+            prev_scene = s.text
+            break
+    location = ""
+    if prev_scene.startswith("location: "):
+        location = prev_scene.split(";")[0].replace("location: ", "").strip()
+    return CraftInputs(
+        pov=ctx.pov, participants=list(ctx.participants), beats=beats, word_target=int(ctx.word_target or 2500),
+        closing_hook=str(oc.get("closing_hook") or ""), location=location if location and location != "None" else "",
+        cards_by_name=cards_by_name, relationships=relationships, knowledge_gaps=gaps,
+    )
+
+
 def _run_row(session: Session, project_id: int, chapter_number: int, ctx: Optional[CompiledChapterContext]) -> ChapterPipelineRun:
     manifest = provenance.get_manifest(session, project_id, create=True)
     row = ChapterPipelineRun(project_id=project_id, chapter_number=chapter_number, outline_card_id=ctx.outline_card_id if ctx else None, status="running", stage="compile", canon_revision_before=int(manifest.canon_revision), context_hash=ctx.context_hash if ctx else "", context_manifest=ctx.manifest if ctx else {})
@@ -290,10 +340,27 @@ async def run_chapter(
     fingerprint = _c(BibleService(session).singleton(project_id, "Narrative Fingerprint"))
     profile = source_profile_for(session, project_id)
     model_calls = 0
+    craft_report: Dict[str, Any] = {}
     try:
         _finish(session, row, stage="draft")
-        raw = await drafter(role="drafting", system_prompt=DRAFT_SYSTEM_PROMPT, user_prompt=build_draft_prompt(ctx), context=ctx)
-        model_calls += 1
+        draft_system, draft_user = DRAFT_SYSTEM_PROMPT, build_draft_prompt(ctx)
+
+        async def _single_shot() -> str:
+            return await drafter(role="drafting", system_prompt=draft_system, user_prompt=draft_user, context=ctx)
+
+        if opts.craft is None:
+            raw = await _single_shot()
+            model_calls += 1
+        else:
+            inputs = craft_inputs_for(session, ctx)
+            if opts.craft.protagonist_voice and not any(s.key == "protagonist_voice" for s in ctx.sections):
+                from app.services.forge.craft.passes import voice_section_text
+
+                draft_user = draft_user + f"\n\n[PROTAGONIST VOICE — {ctx.pov}]\n" + voice_section_text(inputs)
+            outcome = await craft_chapter(drafter, ctx, base_system_prompt=draft_system, base_user_prompt=draft_user, inputs=inputs, opts=opts.craft, single_shot=_single_shot)
+            raw = outcome.prose
+            model_calls += outcome.model_calls
+            craft_report = outcome.report.model_dump(mode="json")
         prose = raw
         _finish(session, row, stage="validate", model_calls=model_calls)
         report, all_claims, model_claims = validate_draft(session, ctx, prose, profile=profile, fingerprint=fingerprint, style_max_failed=opts.style_max_failed)
@@ -310,9 +377,11 @@ async def run_chapter(
             history.append(report.as_dict())
         final_report = report.as_dict()
         final_report["history"] = history
+        if craft_report:
+            final_report["craft"] = craft_report
         if report.blocking:
             _finish(session, row, status="rejected", stage="validate", validation_report=final_report, style_report=report.style, model_calls=model_calls, repair_attempts=attempts, error=f"{len(report.blocking)} blocking issue(s) remain after {attempts} repair attempt(s)")
-            return PipelineResult(status="rejected", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, error={"code": "validation_failed", "blocking": [i.as_dict() for i in report.blocking]})
+            return PipelineResult(status="rejected", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, error={"code": "validation_failed", "blocking": [i.as_dict() for i in report.blocking]}, craft=craft_report)
         prose_only, model_claims = claims_mod.split_prose_and_claims(prose)
         _finish(session, row, stage="commit", validation_report=final_report, style_report=report.style, model_calls=model_calls, repair_attempts=attempts)
         card = _upsert_chapter_text(session, project_id, ctx, prose_only, validation=final_report)
@@ -332,9 +401,9 @@ async def run_chapter(
                 session.add(card)
                 session.commit()
             _finish(session, row, status="sync_failed", stage="sync", error=str(exc), model_calls=model_calls, repair_attempts=attempts, validation_report=final_report, style_report=report.style)
-            return PipelineResult(status="sync_failed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose_only, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, chapter_card_id=card.id if card else None, error={"code": "sync_failed", "message": str(exc)})
+            return PipelineResult(status="sync_failed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose_only, validation=final_report, style=report.style, model_calls=model_calls, repair_attempts=attempts, chapter_card_id=card.id if card else None, error={"code": "sync_failed", "message": str(exc)}, craft=craft_report)
         _finish(session, row, status="committed", stage="done", sync_report=sync_report, canon_revision_after=sync_report["canon_revision_after"], model_calls=model_calls, repair_attempts=attempts, validation_report=final_report, style_report=report.style)
-        return PipelineResult(status="committed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose_only, validation=final_report, style=report.style, sync=sync_report, model_calls=model_calls, repair_attempts=attempts, chapter_card_id=card.id)
+        return PipelineResult(status="committed", run_id=row.id, chapter_number=chapter_number, context=ctx.as_dict(), prose=prose_only, validation=final_report, style=report.style, sync=sync_report, model_calls=model_calls, repair_attempts=attempts, chapter_card_id=card.id, craft=craft_report)
     except Exception as exc:  # unexpected failure: never report success
         session.rollback()
         _finish(session, row, status="error", error=f"{type(exc).__name__}: {exc}", model_calls=model_calls)
@@ -359,7 +428,8 @@ class LLMDrafter:
         cid = self.role_configs.get(role) or self.role_configs.get("drafting")
         if not cid:
             raise RuntimeError(f"No LLM configuration for role '{role}'")
-        model = build_chat_model(session=self.session, llm_config_id=int(cid), temperature=self.temperature if role == "drafting" else 0.3, max_tokens=self.max_tokens, timeout=self.timeout)
+        temperature = {"drafting": self.temperature, "hook": min(1.0, self.temperature + 0.1), "polish": 0.5, "scene_planner": 0.4, "critic": 0.2}.get(role, 0.3)
+        model = build_chat_model(session=self.session, llm_config_id=int(cid), temperature=temperature, max_tokens=self.max_tokens, timeout=self.timeout)
         result = await model.ainvoke([SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)])
         content = getattr(result, "content", result)
         if isinstance(content, list):
@@ -367,4 +437,4 @@ class LLMDrafter:
         return str(content)
 
 
-__all__ = ["DRAFT_PROMPT_VERSION", "DRAFT_SYSTEM_PROMPT", "PIPELINE_VERSION", "REPAIR_PROMPT_VERSION", "Drafter", "LLMDrafter", "PipelineOptions", "PipelineResult", "build_draft_prompt", "build_repair_prompt", "run_chapter", "source_profile_for", "validate_draft"]
+__all__ = ["DRAFT_PROMPT_VERSION", "DRAFT_SYSTEM_PROMPT", "PIPELINE_VERSION", "REPAIR_PROMPT_VERSION", "CraftOptions", "Drafter", "LLMDrafter", "PipelineOptions", "PipelineResult", "build_draft_prompt", "build_repair_prompt", "craft_inputs_for", "run_chapter", "source_profile_for", "validate_draft"]

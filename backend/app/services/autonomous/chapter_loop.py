@@ -24,11 +24,19 @@ from app.services.autonomous import failures as fail
 from app.services.autonomous.chapter_plan import existing_outlines, replan_from
 from app.services.autonomous.model_client import ForgeDrafterAdapter, ModelClient
 from app.services.forge import provenance
-from app.services.forge.pipeline import PipelineOptions, PipelineResult, run_chapter
+from app.services.forge.pipeline import CraftOptions, PipelineOptions, PipelineResult, run_chapter
 
 MAX_CHAPTER_REGENERATIONS = 2
 WORD_DRIFT_TOLERANCE = 0.35
 ACCEPTED_WARNING_SEVERITIES = ("medium", "low")
+
+
+def craft_options_for(options: Dict[str, Any]) -> Optional[CraftOptions]:
+    """Job options -> craft preset. ``craft_preset`` wins; otherwise follow ``quality_preset``; 'off' disables the layer."""
+    preset = str(options.get("craft_preset") or {"economy": "economy", "quality": "full"}.get(str(options.get("quality_preset") or ""), "balanced")).lower()
+    if preset in ("off", "none", "legacy"):
+        return None
+    return CraftOptions.preset(preset)
 
 
 def _c(card: Optional[Card]) -> Dict[str, Any]:
@@ -80,11 +88,12 @@ async def generate_next_chapter(session: Session, *, project_id: int, chapter_co
     if n > chapter_count:
         return {"complete": True, "chapter": None}
     drafter = ForgeDrafterAdapter(client)
-    pipeline_opts = PipelineOptions(max_repairs=int(options.get("max_repairs") or 2), budget_chars=budget_chars, word_target=word_target, regenerate=False)
+    craft = craft_options_for(options)
+    pipeline_opts = PipelineOptions(max_repairs=int(options.get("max_repairs") or 2), budget_chars=budget_chars, word_target=word_target, regenerate=False, craft=craft)
     result: Optional[PipelineResult] = None
     for attempt in range(MAX_CHAPTER_REGENERATIONS + 1):
         if attempt:
-            pipeline_opts = PipelineOptions(max_repairs=int(options.get("max_repairs") or 2) + 1, budget_chars=budget_chars, word_target=word_target, regenerate=True)
+            pipeline_opts = PipelineOptions(max_repairs=int(options.get("max_repairs") or 2) + 1, budget_chars=budget_chars, word_target=word_target, regenerate=True, craft=craft)
         check()
         result = await run_chapter(session, project_id=project_id, chapter_number=n, drafter=drafter, options=pipeline_opts)
         failpoints.hit("after_chapter_commit")
@@ -100,7 +109,8 @@ async def generate_next_chapter(session: Session, *, project_id: int, chapter_co
     replan: Dict[str, Any] = {"replanned": 0}
     if dev["material"] and n < chapter_count:
         replan = await replan_from(session, project_id=project_id, chapter_count=chapter_count, client=client, options=options, after_chapter=n, reasons=dev["reasons"])
-    return {"complete": n >= chapter_count, "chapter": n, "run_id": result.run_id, "chapter_card_id": result.chapter_card_id, "model_calls": result.model_calls, "repair_attempts": result.repair_attempts, "style_score": (result.style or {}).get("adherence_score"), "validation_passed": (result.validation or {}).get("passed"), "deviation": dev, "replan": replan}
+    craft_summary = {"mode": (result.craft or {}).get("mode"), "score": ((result.craft or {}).get("critic_after") or {}).get("overall"), "accepted": (result.craft or {}).get("accepted"), "passes": [p.get("name") for p in (result.craft or {}).get("passes") or []]} if result.craft else None
+    return {"complete": n >= chapter_count, "chapter": n, "run_id": result.run_id, "chapter_card_id": result.chapter_card_id, "model_calls": result.model_calls, "repair_attempts": result.repair_attempts, "style_score": (result.style or {}).get("adherence_score"), "validation_passed": (result.validation or {}).get("passed"), "craft": craft_summary, "deviation": dev, "replan": replan}
 
 
 def loop_status(session: Session, project_id: int, chapter_count: int) -> Dict[str, Any]:
@@ -109,4 +119,4 @@ def loop_status(session: Session, project_id: int, chapter_count: int) -> Dict[s
     return {"committed": int(manifest.latest_committed_chapter), "chapter_count": chapter_count, "runs": len(runs), "rejected_runs": sum(1 for r in runs if r.status == "rejected"), "model_calls": sum(r.model_calls for r in runs), "repair_attempts": sum(r.repair_attempts for r in runs)}
 
 
-__all__ = ["ACCEPTED_WARNING_SEVERITIES", "MAX_CHAPTER_REGENERATIONS", "WORD_DRIFT_TOLERANCE", "deviation_report", "generate_next_chapter", "loop_status"]
+__all__ = ["ACCEPTED_WARNING_SEVERITIES", "MAX_CHAPTER_REGENERATIONS", "WORD_DRIFT_TOLERANCE", "craft_options_for", "deviation_report", "generate_next_chapter", "loop_status"]

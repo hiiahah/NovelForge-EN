@@ -156,7 +156,7 @@ class AppSettings(BaseSettings):
     app_name: str = Field(default="NovelForge", alias="APP_NAME")
     
     # Application version
-    app_version: str = Field(default="0.11.0", alias="APP_VERSION")
+    app_version: str = Field(default="0.12.0", alias="APP_VERSION")
     
     # Whether to enable debug mode
     debug: bool = Field(default=False, alias="DEBUG")

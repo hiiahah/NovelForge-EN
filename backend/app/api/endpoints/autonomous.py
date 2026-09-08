@@ -72,6 +72,7 @@ class CreateJobRequest(BaseModel):
     words_per_chapter: Optional[int] = Field(default=None, ge=300, le=20000)
     total_words: Optional[int] = Field(default=None, ge=1000)
     quality_preset: str = Field(default="balanced", description="economy | balanced | quality")
+    craft_preset: Optional[str] = Field(default=None, description="Prose Craft preset override: off | economy | balanced | full (defaults follow quality_preset)")
     storyline_count: int = Field(default=7, ge=5, le=10)
     fallback_llm_config_id: Optional[int] = None
     notes: Optional[str] = None
@@ -158,7 +159,8 @@ def _response(session: Session, job: AutonomousNovelJob) -> JobResponse:
 
 
 def _quality_options(preset: str) -> Dict[str, Any]:
-    return {"economy": {"max_repairs": 1, "analysis_concurrency": 50}, "quality": {"max_repairs": 3, "analysis_concurrency": 50}}.get(preset, {"max_repairs": 2, "analysis_concurrency": 50})
+    # quality preset also selects the Prose Craft preset unless the request overrides it.
+    return {"economy": {"max_repairs": 1, "analysis_concurrency": 50, "craft_preset": "economy"}, "quality": {"max_repairs": 3, "analysis_concurrency": 50, "craft_preset": "full"}}.get(preset, {"max_repairs": 2, "analysis_concurrency": 50, "craft_preset": "balanced"})
 
 
 @router.post("/preflight", response_model=Dict[str, Any], summary="Provider preflight: validate an LLM configuration (reachability, model availability, text + structured output, usage, fallback) before a long job")
@@ -188,7 +190,10 @@ async def create_job(req: CreateJobRequest, session: Session = Depends(get_sessi
     filename = safe_filename(req.filename)
     inspect_zip_upload(data, filename)
     options = {k: v for k, v in req.model_dump(exclude={"filename", "content_base64", "llm_config_id", "mode", "role_llm_config_ids", "budget", "idempotency_key"}).items() if v not in (None, "", {}, False)}
+    explicit_craft = options.get("craft_preset")
     options.update(_quality_options(req.quality_preset))
+    if explicit_craft:
+        options["craft_preset"] = explicit_craft
     budget = {k: v for k, v in (req.budget.model_dump() if req.budget else {}).items() if v}
     problems = budget_mod.validate_budget_spec(budget)
     if problems:

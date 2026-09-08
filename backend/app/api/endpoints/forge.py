@@ -28,7 +28,7 @@ from app.services.forge import models as forge_models
 from app.services.forge import provenance
 from app.services.forge import transfer
 from app.services.forge.compiler import ChapterContextCompiler, ContextCompileError
-from app.services.forge.pipeline import LLMDrafter, PipelineOptions, run_chapter
+from app.services.forge.pipeline import CraftOptions, LLMDrafter, PipelineOptions, run_chapter
 
 router = APIRouter()
 
@@ -168,6 +168,7 @@ class RunChapterRequest(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 65536
     timeout: float = 240.0
+    craft_preset: Optional[str] = Field(default=None, description="Prose Craft preset: off | economy | balanced | full. None = legacy single-shot")
 
 
 @router.post("/chapters/run", summary="Run compile -> draft -> validate -> repair -> commit -> synchronize for one chapter")
@@ -178,7 +179,8 @@ async def run_chapter_endpoint(req: RunChapterRequest, session: Session = Depend
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     drafter = LLMDrafter(session, {r: res.llm_config_id for r, res in roles.items()}, temperature=req.temperature, max_tokens=req.max_tokens, timeout=req.timeout)
-    result = await run_chapter(session, project_id=req.project_id, chapter_number=req.chapter_number, drafter=drafter, outline_card_id=req.outline_card_id, pov=req.pov, participants=req.participants, expected_canon_revision=req.expected_canon_revision, options=PipelineOptions(max_repairs=req.max_repairs, budget_chars=req.budget_chars, word_target=req.word_target, regenerate=req.regenerate))
+    craft = CraftOptions.preset(req.craft_preset) if req.craft_preset and req.craft_preset != "off" else None
+    result = await run_chapter(session, project_id=req.project_id, chapter_number=req.chapter_number, drafter=drafter, outline_card_id=req.outline_card_id, pov=req.pov, participants=req.participants, expected_canon_revision=req.expected_canon_revision, options=PipelineOptions(max_repairs=req.max_repairs, budget_chars=req.budget_chars, word_target=req.word_target, regenerate=req.regenerate, craft=craft))
     out = result.as_dict()
     out["model_roles"] = {r: res.as_dict() for r, res in roles.items()}
     if result.context:
@@ -195,6 +197,7 @@ def list_runs(project_id: int, limit: int = 20, session: Session = Depends(get_s
         "canon_revision_before": r.canon_revision_before, "canon_revision_after": r.canon_revision_after, "context_hash": r.context_hash,
         "validation_passed": (r.validation_report or {}).get("passed"), "blocking_issues": (r.validation_report or {}).get("blocking"),
         "style_score": (r.style_report or {}).get("adherence_score"), "originality_passed": ((r.validation_report or {}).get("originality") or {}).get("passed"),
+        "craft_score": (((r.validation_report or {}).get("craft") or {}).get("critic_after") or {}).get("overall"), "craft_mode": ((r.validation_report or {}).get("craft") or {}).get("mode"),
         "repair_attempts": r.repair_attempts, "model_calls": r.model_calls, "error": r.error, "created_at": r.created_at.isoformat() if r.created_at else None,
     } for r in rows]
 

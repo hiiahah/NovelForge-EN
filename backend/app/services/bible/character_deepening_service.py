@@ -24,7 +24,7 @@ from app.services.bible.bible_service import BibleService
 
 PROMPT_NAME = "Character Bible Deepening"
 
-_GROUP_FIELDS = ("dramatic_design", "voice", "competence", "arc_milestones", "consistency_rules", "aliases")
+_GROUP_FIELDS = ("dramatic_design", "voice", "competence", "arc_milestones", "consistency_rules", "aliases", "protagonist_voice")
 
 
 def _trim(text: Any, limit: int) -> str:

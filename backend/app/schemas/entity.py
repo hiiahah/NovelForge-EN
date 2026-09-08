@@ -115,6 +115,7 @@ class CharacterCard(CharacterCardCore):
     competence: Optional["CharacterCompetence"] = Field(default=None, description="Competence profile; filled by Character Bible Deepening", json_schema_extra={"x-ai-exclude": True})
     arc_milestones: List["ArcMilestone"] = Field(default_factory=list, description="Planned vs actual arc milestones; filled by Character Bible Deepening", json_schema_extra={"x-ai-exclude": True})
     consistency_rules: Optional["CharacterConsistencyRules"] = Field(default=None, description="Behavioural / knowledge / moral / voice rules available to chapter generation", json_schema_extra={"x-ai-exclude": True})
+    protagonist_voice: Optional["ProtagonistVoice"] = Field(default=None, description="Inner-monologue register used when this character is the POV; filled by Character Bible Deepening", json_schema_extra={"x-ai-exclude": True})
     history: List["HistoryEntry"] = Field(default_factory=list, description="Value history maintained by the Living Bible", json_schema_extra={"x-ai-exclude": True})
 
     @field_validator("dynamic_info", mode="before")
@@ -198,5 +199,6 @@ from app.schemas.bible import (  # noqa: E402
     CharacterVoice,
     HistoryEntry,
 )
+from app.schemas.craft import ProtagonistVoice  # noqa: E402
 
 CharacterCard.model_rebuild()
