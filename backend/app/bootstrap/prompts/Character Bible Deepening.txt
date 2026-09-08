@@ -19,6 +19,15 @@
     - arc_milestones: in order, covering starting_state -> inciting_pressure -> first_adaptation -> midpoint_realization -> regression -> crisis_choice -> transformation -> ending_state. Use chapter_hint like "Volume 1, early" when exact chapters are unknown. status is "planned".
     - consistency_rules: 3-6 behavioral_rules; knowledge_restrictions phrased as "does not know X until Y"; moral_restrictions; voice_restrictions.
     - aliases: titles, nicknames, how enemies and family refer to them.
+    - protagonist_voice (the register the narration takes when this character is the POV — fill it for every character, richly for protagonists and POV candidates):
+        - archetype: one phrase a serialized-fiction reader would recognize (cynical pragmatist, deadpan observer, reluctant genius, cheerful survivalist, scheming optimist, tired professional…).
+        - inner_register vs composure_mask: the private narration and the public manner must differ. The gap between them is the character's charisma on the page. Say exactly how each sounds.
+        - notices_first: 3-5 concrete things they clock in any room before anything else (exits, hierarchy, prices, hands, who is lying, what is edible).
+        - private_humor: what amuses them that they would never say aloud.
+        - self_deception: the thing they tell themselves that the reader can see through; the narrator must never see through it.
+        - calculation_style: how they think on the page — odds, lists, worst-case, precedent, reading people, running tallies.
+        - signature_moves: 2-4 recurring interior gestures (grading people out of ten, naming things wrong on purpose, keeping a debt ledger, translating what people say into what they want).
+        - forbidden_interior: interior tics that would break this voice (earnest self-pity, therapy vocabulary, explaining the theme, generic awe).
 
 - Constraints:
     1. Everything must be consistent with the worldview, story foundation and theme map provided in context.

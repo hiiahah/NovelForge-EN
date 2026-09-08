@@ -79,6 +79,12 @@ In long-form writing, the greatest challenges are maintaining consistency, ensur
 <a id="core-features"></a>
 ## ✨ Core Features
 
+*   **✒️ Prose Craft (multi-pass chapter quality engine)**
+    *   Chapter generation is no longer one rushed call. Beats are grouped into **scenes**, each drafted with the previous scene's *exact* ending lines, last spoken line and physical positions carried forward, then stitched.
+    *   **Subtext packets** compiled from the Bible before any dialogue: what every character present wants from the protagonist in this scene, what they are suppressing, their leverage, tactic, speech cadence and forms of address — plus what the protagonist is likely to misread. A **Protagonist Voice** profile (archetype, inner register vs. outer composure, what they notice first, private humor, self-deception) is stored on the Character Card and injected into every scene.
+    *   An **adversarial webnovel critic** grades every draft 1–10 on authenticity, voice, interiority, dialogue, pacing, sensory grounding, hook and payoff, backed by a deterministic **AI-tic catalogue** ("not X, but Y", "a testament to", "the man who…", "a breath he didn't know he was holding", emotion cocktails, therapy-speak…). A **surgical line polish** rewrites only the cited spans; a **hook sharpener** rewrites a soft fade-out ending into a crisis / revelation / decision / threat-arrival hook. Every pass is guarded — output that scores lower is discarded.
+    *   Presets `off · economy · balanced · full` on the Forge panel and Create Novel; an instant **Craft grade** card in the editor works with no model at all. See [docs/prose-craft.md](./docs/prose-craft.md).
+
 *   **🧠 Story Memory (whole-book context that never drifts)**
     *   Every written chapter gets a **Chapter Digest** — a compact structured memory (events, persistent state changes, who-learned-what, hooks opened/closed, promises, exact ending state) extracted once and kept fresh automatically when the text changes.
     *   A deterministic **Story So Far** compiler folds every digest into a tiered, budgeted recap (recent chapters in detail → older arcs compressed) plus a **carry-forward world state** (where everyone is, what they hold, who is dead) and the **dangling hooks** the reader is still waiting on. It is injected into every chapter continuation, so chapter 300 still remembers chapter 12.
@@ -128,6 +134,20 @@ In long-form writing, the greatest challenges are maintaining consistency, ensur
 
 ## 📅 Changelog
 <details open>
+<summary>v0.12.0 — Prose Craft</summary>
+
+- **Scene-by-scene drafting**: outline beats are grouped into 2–5 scenes (deterministic grouping by function tags / participant changes, or a model plan validated for exact beat coverage). Each scene is drafted with a `[THIS SCENE — k of n]` brief and the previous scene's exact ending lines, last speaker, physical positions and carried tension; intermediate scenes cannot emit chapter metadata; scenes are stitched with the scene-break convention.
+- **Subtext packets**: per-scene agendas for every present character compiled from `dramatic_design`, `voice`, `competence`, `consistency_rules`, Relationship Arcs and Knowledge Facts the POV lacks (want-from-POV, suppressing, leverage, fear, tactic, tell-when-lying, speech, address, never-says) plus the POV's private agenda and a likely misread.
+- **Protagonist Voice** Character Card group (`protagonist_voice`: archetype, inner register vs composure mask, notices first, private humor, self-deception, calculation style, signature moves, forbidden interior). Filled by *Character Bible Deepening*; compiled into the Forge context as a `PROTAGONIST VOICE` section; derived from existing Bible groups when absent.
+- **Webnovel critic**: deterministic grader (AI-tic catalogue with per-rule tolerance, interiority share, dialogue share and lecture speeches, sensory density, paragraph walls, hook/payoff) merged with an adversarial model editor; verdicts accept / polish / rewrite.
+- **Line polish** (only cited spans; adaptive length floor; rejected if the deterministic score falls) and **hook sharpener** (final two paragraphs → crisis / revelation / decision / threat arrival / reversal; fade-out detector; rejected unless measurably stronger). Metadata blocks are protected across both.
+- **Presets** `off | economy | balanced | full` — `PipelineOptions.craft`, `craft_preset` on `POST /api/forge/chapters/run` and on Create Novel jobs (defaults follow `quality_preset`). New autonomous roles `scene_planner`, `webnovel_critic`, `line_polisher`, `hook_editor`. Craft report stored on every pipeline run (`validation_report.craft`) and summarized in the run list (`craft_score`, `craft_mode`).
+- **API** `/api/craft/*`: grade any text or Chapter Text card, deterministic scene plan + subtext + voice for an outline, presets, tic catalogue.
+- **UI**: *Prose craft* selector + *Craft* score column in the Forge Pipeline panel; *Prose craft* selector in Create Novel; **Craft grade** card in the editor's Continuity tab (instant, no model; per-dimension bars, ending hook diagnosis, micro-payoffs, click-to-jump findings). en / zh-CN.
+- Docs: [docs/prose-craft.md](./docs/prose-craft.md). Tests: `backend/tests/test_prose_craft.py` (14 tests, no live model), `useForgePipeline.test.ts`.
+
+</details>
+<details>
 <summary>v0.11.0 — Story Memory</summary>
 
 - **Chapter Digest** card type: one structured extraction per written chapter (events with significance, persistent state changes, knowledge deltas, hooks opened/closed, promises, named extras, exact ending state, continuity risks, tension/hook metrics). Keyed by a text hash; unchanged text is never re-extracted, edited text marks the digest stale.

@@ -86,7 +86,13 @@
             </el-select>
           </el-form-item>
           <el-form-item :label="t('bible.forge.chapterNumber')"><el-input-number v-model="chapter" :min="1" :max="forge.nextChapter.value" /></el-form-item>
+          <el-form-item :label="t('craft.preset')">
+            <el-select v-model="craftPreset" data-testid="forge-craft-preset">
+              <el-option v-for="p in CRAFT_PRESETS" :key="p" :value="p" :label="t('craft.presets.' + p)" />
+            </el-select>
+          </el-form-item>
         </div>
+        <p class="muted craft-hint" data-testid="forge-craft-hint">{{ t('craft.presetHint.' + craftPreset) }}</p>
       </el-form>
       <div class="actions">
         <el-button size="small" :disabled="!!forge.busy.value" @click="forge.compile(chapter, chapter < forge.nextChapter.value)">{{ t('bible.forge.compileOnly') }}</el-button>
@@ -107,6 +113,12 @@
         </el-table-column>
         <el-table-column :label="t('bible.forge.style')" width="80" align="right">
           <template #default="{ row }">{{ typeof row.style_score === 'number' ? Math.round(row.style_score * 100) + '%' : '—' }}</template>
+        </el-table-column>
+        <el-table-column :label="t('craft.score')" width="90" align="right">
+          <template #default="{ row }">
+            <el-tag v-if="typeof row.craft_score === 'number'" size="small" effect="plain" :type="row.craft_score >= 8.5 ? 'success' : row.craft_score >= 6 ? 'warning' : 'danger'" :title="row.craft_mode || ''">{{ row.craft_score.toFixed(1) }}</el-tag>
+            <span v-else class="muted">—</span>
+          </template>
         </el-table-column>
         <el-table-column :label="t('bible.forge.repairs')" width="80" prop="repair_attempts" align="right" />
         <el-table-column :label="t('bible.forge.canonRevision')" width="90" align="right">
@@ -129,6 +141,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { useLLMConfigStore } from '@renderer/stores/useLLMConfigStore'
 import * as forgeApi from '@renderer/api/forge'
+import { CRAFT_PRESETS, type CraftPreset } from '@renderer/api/craft'
 import { FORGE_STEPS, useForgePipeline } from '@renderer/composables/useForgePipeline'
 
 const props = defineProps<{ projectId?: number }>()
@@ -140,6 +153,7 @@ const forge = useForgePipeline(forgeApi, toRef(props, 'projectId'))
 const originalName = ref('')
 const llmConfigId = ref<number | undefined>(undefined)
 const chapter = ref(1)
+const craftPreset = ref<CraftPreset>('full')
 const source = computed(() => forge.source.value)
 const manifest = computed(() => forge.manifest.value)
 
@@ -157,7 +171,7 @@ async function createOriginal() {
 }
 async function runChapter() {
   if (!llmConfigId.value) return
-  const res = await forge.run(chapter.value, llmConfigId.value, chapter.value < forge.nextChapter.value)
+  const res = await forge.run(chapter.value, llmConfigId.value, chapter.value < forge.nextChapter.value, craftPreset.value)
   if (res) {
     const status = String(res.status)
     if (status === 'committed') ElMessage.success(t('bible.forge.runCommitted', { n: chapter.value }))
@@ -189,5 +203,6 @@ onMounted(async () => {
 .actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
 .create { display: flex; gap: 8px; margin-top: 8px; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; }
+.craft-hint { margin-top: -4px; }
 .stale { margin-top: 6px; }
 </style>

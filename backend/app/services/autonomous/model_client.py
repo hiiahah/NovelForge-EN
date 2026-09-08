@@ -70,10 +70,15 @@ ROLE_POLICIES: Dict[str, RolePolicy] = {
     "repair_editor": RolePolicy("repair_editor", 0.4, 65536, 2400, 10),
     "whole_novel_editor": RolePolicy("whole_novel_editor", 0.4, 65536, 2400, 10),
     "preflight": RolePolicy("preflight", 0.0, 200, 60, 0),
+    # Prose Craft roles (scene-by-scene drafting, adversarial critic, surgical polish, hook sharpening).
+    "scene_planner": RolePolicy("scene_planner", 0.4, 16000, 900, 6),
+    "webnovel_critic": RolePolicy("webnovel_critic", 0.2, 16000, 900, 6),
+    "line_polisher": RolePolicy("line_polisher", 0.5, 65536, 2400, 6),
+    "hook_editor": RolePolicy("hook_editor", 0.8, 8000, 600, 6),
 }
 
 # The legacy Forge pipeline roles map onto autonomous roles.
-FORGE_ROLE_MAP = {"drafting": "drafter", "repair": "repair_editor", "analysis": "source_analyst", "planning": "chapter_planner", "validator": "continuity_validator", "evaluator": "style_evaluator"}
+FORGE_ROLE_MAP = {"drafting": "drafter", "repair": "repair_editor", "analysis": "source_analyst", "planning": "chapter_planner", "validator": "continuity_validator", "evaluator": "style_evaluator", "scene_planner": "scene_planner", "critic": "webnovel_critic", "polish": "line_polisher", "hook": "hook_editor"}
 
 CLARIFIED_SCHEMA_SUFFIX = "\n\n[FORMAT REPAIR]\nYour previous answer did not validate against the required JSON schema{errors}. Return ONLY one JSON object that validates against the schema: no prose, no markdown fences, no comments, every required field present."
 JSON_MODE_SUFFIX = "Return ONLY one JSON object (no prose, no markdown fences) that validates against this JSON schema:\n{schema}"
@@ -516,10 +521,12 @@ class ForgeDrafterAdapter:
         self.stage = stage
 
     async def __call__(self, *, role: str, system_prompt: str, user_prompt: str, context: Any) -> str:
+        from app.services.forge.craft.prompts import CRITIC_PROMPT_VERSION, HOOK_PROMPT_VERSION, POLISH_PROMPT_VERSION, SCENE_PLAN_PROMPT_VERSION
         from app.services.forge.pipeline import DRAFT_PROMPT_VERSION, REPAIR_PROMPT_VERSION
 
+        versions = {"drafting": DRAFT_PROMPT_VERSION, "repair": REPAIR_PROMPT_VERSION, "scene_planner": SCENE_PLAN_PROMPT_VERSION, "critic": CRITIC_PROMPT_VERSION, "polish": POLISH_PROMPT_VERSION, "hook": HOOK_PROMPT_VERSION}
         auto_role = FORGE_ROLE_MAP.get(role, role)
-        return await self.client.text(role=auto_role, system_prompt=system_prompt, user_prompt=user_prompt, prompt_version=DRAFT_PROMPT_VERSION if role == "drafting" else REPAIR_PROMPT_VERSION, stage=f"{self.stage}:ch{getattr(context, 'chapter_number', '?')}")
+        return await self.client.text(role=auto_role, system_prompt=system_prompt, user_prompt=user_prompt, prompt_version=versions.get(role, REPAIR_PROMPT_VERSION), stage=f"{self.stage}:ch{getattr(context, 'chapter_number', '?')}")
 
 
 def validate_or_raise(schema: Type[T], data: Any) -> T:

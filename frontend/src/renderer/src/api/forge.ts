@@ -54,6 +54,8 @@ export interface PipelineRunSummary {
   blocking_issues?: number | null
   style_score?: number | null
   originality_passed?: boolean | null
+  craft_score?: number | null
+  craft_mode?: string | null
   repair_attempts?: number | null
   model_calls?: number | null
   error?: Record<string, unknown> | null

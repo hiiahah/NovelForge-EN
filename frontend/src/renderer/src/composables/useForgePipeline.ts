@@ -115,12 +115,14 @@ export function useForgePipeline(api: ForgeApi, projectId: Ref<number | undefine
   const createOriginal = (name: string) => guarded('create', () => api.createOriginalProject({ source_project_id: projectId.value!, name, template: 'bible' }))
   const compile = (chapter: number, regenerate = false) => guarded('compile', () => api.compileChapter({ project_id: projectId.value!, chapter_number: chapter, regenerate }))
 
-  async function run(chapter: number, llmConfigId: number, regenerate = false): Promise<Record<string, unknown> | null> {
+  async function run(chapter: number, llmConfigId: number, regenerate = false, craftPreset?: string): Promise<Record<string, unknown> | null> {
     if (!canRunChapter(chapter, regenerate)) {
       error.value = chapterBlocker.value || 'chapter_not_allowed'
       return null
     }
-    const res = await guarded('run', () => api.runChapter({ project_id: projectId.value!, chapter_number: chapter, llm_config_id: llmConfigId, regenerate }))
+    const body: RunChapterRequest = { project_id: projectId.value!, chapter_number: chapter, llm_config_id: llmConfigId, regenerate }
+    if (craftPreset) body.craft_preset = craftPreset
+    const res = await guarded('run', () => api.runChapter(body))
     if (res) lastRun.value = res
     return res
   }

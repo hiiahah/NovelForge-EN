@@ -22,6 +22,8 @@ from typing import Any, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
+from app.schemas.craft import ProtagonistVoice
+
 
 # ---------------------------------------------------------------------------
 # Shared provenance vocabulary
@@ -267,6 +269,7 @@ class CharacterBibleDeepening(BaseModel):
     arc_milestones: List[ArcMilestone] = Field(default_factory=list, description="Planned arc milestones in order")
     consistency_rules: CharacterConsistencyRules = Field(default_factory=CharacterConsistencyRules)
     aliases: List[str] = Field(default_factory=list, description="Aliases, titles and nicknames")
+    protagonist_voice: ProtagonistVoice = Field(default_factory=ProtagonistVoice, description="Inner-monologue register for when this character narrates: archetype, private register vs. spoken composure, what they notice first, private humor, self-deception, calculation style, signature interior moves, forbidden interior tics")
 
 
 # ---------------------------------------------------------------------------

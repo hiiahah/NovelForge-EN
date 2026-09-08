@@ -36,6 +36,14 @@
       </div>
     </el-card>
 
+    <CraftGradePanel
+      :get-text="currentDraft"
+      :pov="pov ?? null"
+      :closing-hook="((outline as any)?.closing_hook as string) || null"
+      :word-target="((outline as any)?.word_target as number) || null"
+      @jump="(span) => emit('jump', span)"
+    />
+
     <el-card class="tool-card" shadow="never">
       <template #header>
         <div class="card-head">
@@ -112,6 +120,7 @@ import { getAIConfigOptions } from '@renderer/api/ai'
 import type { ContinuityIssue } from '@renderer/api/storyMemory'
 import { useStoryMemory, type ReportView } from '@renderer/composables/useStoryMemory'
 import { useEditorStore } from '@renderer/stores/useEditorStore'
+import CraftGradePanel from '@renderer/components/panels/CraftGradePanel.vue'
 
 const props = defineProps<{
   projectId?: number

@@ -102,4 +102,14 @@ describe('useForgePipeline', () => {
     expect(await forge.compile(4)).toBeNull()
     expect(forge.error.value).toBe('Chapter 3 has not been committed')
   })
+
+  it('forwards the Prose Craft preset to the run request and omits it when not chosen', async () => {
+    const api = makeApi()
+    const forge = useForgePipeline(api, ref(2))
+    await forge.refresh()
+    await forge.run(4, 7, false, 'full')
+    expect(api.runChapter).toHaveBeenLastCalledWith({ project_id: 2, chapter_number: 4, llm_config_id: 7, regenerate: false, craft_preset: 'full' })
+    await forge.run(4, 7)
+    expect((api.runChapter as any).mock.calls[1][0]).not.toHaveProperty('craft_preset')
+  })
 })

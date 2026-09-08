@@ -1,0 +1,80 @@
+{
+  "craft": {
+    "preset": "Prose craft",
+    "score": "Craft",
+    "followQuality": "Follow quality preset",
+    "presets": {
+      "off": "Legacy single-shot",
+      "economy": "Single-shot + critic",
+      "balanced": "Scenes + polish",
+      "full": "Elite multi-pass"
+    },
+    "presetHint": {
+      "off": "One drafting call; deterministic validators only. Fastest, lowest quality.",
+      "economy": "One drafting call with the protagonist's inner voice injected; the webnovel critic grades the result but does not rewrite.",
+      "balanced": "Beats grouped into scenes, one drafting call per scene with subtext packets, model critic, up to 2 surgical polish passes, hook sharpening.",
+      "full": "Model-planned scenes, scene-by-scene drafting with subtext packets, adversarial critic, up to 3 surgical polish passes, hook sharpening. Maximum quality; token cost is not a concern."
+    },
+    "gradeTitle": "Craft grade",
+    "gradeHint": "Instant webnovel critic: AI tics, interiority, dialogue, pacing, sensory grounding, hook and payoff. No model call.",
+    "gradeNow": "Grade draft",
+    "noText": "Nothing to grade — the chapter is empty.",
+    "failed": "Craft grade failed.",
+    "clean": "No findings. The critic would accept this chapter.",
+    "words": "{n} words",
+    "tics": "{n} AI tics",
+    "findings": "{n} finding(s) — click one to jump to it",
+    "hook": "Ending hook",
+    "endingClass": "Ending reads as: {c}",
+    "hookSuggest": "Soft ending. Rewrite the last two paragraphs as a {h} hook.",
+    "payoffs": "Micro-payoffs",
+    "noPayoff": "no win detected",
+    "verdict": { "accept": "Accept", "polish": "Polish", "rewrite": "Rewrite" },
+    "dim": {
+      "authenticity": "Authenticity",
+      "authenticityHint": "Reads like a living webnovel narrator, not generic literary AI",
+      "voice": "Voice",
+      "voiceHint": "The POV's personality is on every page",
+      "interiority": "Interiority",
+      "interiorityHint": "Private calculation, noticing and humor before action",
+      "dialogue": "Dialogue",
+      "dialogueHint": "Subtext, cadence, distinct speakers, no lecture speeches",
+      "pacing": "Pacing",
+      "pacingHint": "Breathing room per beat; short paragraphs; no walls",
+      "sensory": "Sensory",
+      "sensoryHint": "Concrete anchors per 1000 words",
+      "hook": "Hook",
+      "hookHint": "The ending pulls the reader into the next chapter",
+      "payoff": "Payoff",
+      "payoffHint": "At least one earned small win in the chapter",
+      "ai_tics": "AI tics"
+    },
+    "hookType": {
+      "crisis": "crisis",
+      "revelation": "revelation",
+      "decision": "decision",
+      "threat_arrival": "threat arrival",
+      "reversal": "reversal",
+      "question": "question",
+      "none": "none"
+    },
+    "ending": {
+      "question_hook": "question hook",
+      "dialogue_hook": "dialogue hook",
+      "suspended_hook": "suspended line",
+      "punch_line": "punch line",
+      "emotional_close": "emotional close",
+      "image_close": "image close",
+      "quiet_close": "quiet fade-out",
+      "empty": "empty"
+    },
+    "payoff": {
+      "deduction": "deduction",
+      "tactical": "tactical win",
+      "verbal_win": "verbal win",
+      "comedic": "comic beat",
+      "status": "status gain",
+      "reward": "reward"
+    }
+  }
+}

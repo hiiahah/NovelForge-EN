@@ -51,7 +51,14 @@
               <el-radio-button value="quality">{{ t('autonomous.presets.quality') }}</el-radio-button>
             </el-radio-group>
           </el-form-item>
+          <el-form-item :label="t('craft.preset')">
+            <el-select v-model="form.craft_preset" data-testid="autonomous-craft-preset" style="width: 100%">
+              <el-option value="" :label="t('craft.followQuality')" />
+              <el-option v-for="p in CRAFT_PRESETS" :key="p" :value="p" :label="t('craft.presets.' + p)" />
+            </el-select>
+          </el-form-item>
         </div>
+        <p class="muted craft-hint">{{ t('craft.presetHint.' + (form.craft_preset || qualityToCraft(form.quality_preset))) }}</p>
         <el-collapse class="prefs">
           <el-collapse-item :title="t('autonomous.preferences')">
             <div class="grid">
@@ -272,6 +279,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import * as api from '@renderer/api/autonomous'
 import { artifactDownloadUrl } from '@renderer/api/autonomous'
+import { CRAFT_PRESETS, type CraftPreset } from '@renderer/api/craft'
 import { fileToBase64 } from '@renderer/api/lab'
 import { listLLMConfigs, type LLMConfigRead } from '@renderer/api/setting'
 import { ANALYSIS_STAGES, GENERATION_STAGES, useAutonomousNovel } from '@renderer/composables/useAutonomousNovel'
@@ -284,10 +292,12 @@ const llmConfigs = ref<LLMConfigRead[]>([])
 const dragging = ref(false)
 const showRejected = ref(false)
 const fileInput = ref<HTMLInputElement>()
+function qualityToCraft(q: string): CraftPreset { return q === 'economy' ? 'economy' : q === 'quality' ? 'full' : 'balanced' }
 const form = reactive<{
   llm_config_id: number | undefined
   mode: api.AutonomousMode
   quality_preset: 'economy' | 'balanced' | 'quality'
+  craft_preset: '' | CraftPreset
   genre: string
   genre_intensity: string
   content_rating: string
@@ -303,7 +313,7 @@ const form = reactive<{
   tags: string
   similarity_to_original: string
 }>({
-  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '', similarity_to_original: 'moderate',
+  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', craft_preset: '', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '', similarity_to_original: 'moderate',
 })
 
 const stepIndex = computed(() => ['upload', 'analysis', 'choose', 'generating', 'finished'].indexOf(auto.screen.value))
@@ -344,6 +354,7 @@ function onDrop(e: DragEvent) {
 async function start() {
   if (!form.llm_config_id || !canStart.value) return
   const params: Record<string, unknown> = { llm_config_id: form.llm_config_id, mode: form.mode, quality_preset: form.quality_preset, storyline_count: form.storyline_count, preflight_acknowledged: auto.preflight.value?.passed !== true }
+  if (form.craft_preset) params.craft_preset = form.craft_preset
   const spec = budgetSpec()
   if (spec) params.budget = spec
   for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'title', 'author', 'notes', 'protagonist_name', 'summary', 'tags', 'similarity_to_original'] as const) {
@@ -367,6 +378,7 @@ onMounted(async () => {
 .hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .hero h1 { margin: 0 0 4px; font-size: 24px; }
 .subtitle, .muted { color: var(--el-text-color-secondary); font-size: 13px; }
+.craft-hint { margin: -6px 0 6px; font-size: 12px; }
 .hero-actions { display: flex; gap: 8px; align-items: center; }
 .job-select { width: 320px; }
 .steps { margin: 4px 0; }
