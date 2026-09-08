@@ -450,7 +450,8 @@ class JobRunner:
             lease_mod.release(self.session, self.lease)
             return
         policy = fail.POLICIES[failure.category]
-        action = policy.action_for(attempt_no)
+        opt_max = (job.options or {}).get("max_attempts") or (job.options or {}).get("max_retries")
+        action = policy.action_for(attempt_no, max_attempts_override=int(opt_max) if opt_max else None)
         ctx = recovery.RecoveryContext(session=self.session, job=job, stage=stage, stage_attempt=attempt_no, failure=failure, action=action)
         outcome = recovery.execute(ctx)
         # Handlers mutate the ORM job (options / next stage). Capture the intent, then discard the dirty

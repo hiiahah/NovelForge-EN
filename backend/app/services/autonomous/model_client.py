@@ -55,20 +55,20 @@ class RolePolicy:
 
 
 ROLE_POLICIES: Dict[str, RolePolicy] = {
-    "source_extractor": RolePolicy("source_extractor", 0.2, 12000, 2000, 3),
-    "source_analyst": RolePolicy("source_analyst", 0.3, 16000, 2000, 3),
-    "fingerprint_synthesizer": RolePolicy("fingerprint_synthesizer", 0.3, 12000, 1800, 3),
-    "storyline_ideator": RolePolicy("storyline_ideator", 0.9, 65536, 2400, 3),
-    "originality_critic": RolePolicy("originality_critic", 0.2, 8000, 600, 2),
-    "novel_architect": RolePolicy("novel_architect", 0.5, 65536, 2400, 3),
-    "chapter_planner": RolePolicy("chapter_planner", 0.5, 65536, 2400, 3),
-    "drafter": RolePolicy("drafter", 0.8, 65536, 2400, 2),
+    "source_extractor": RolePolicy("source_extractor", 0.2, 12000, 2000, 10),
+    "source_analyst": RolePolicy("source_analyst", 0.3, 16000, 2000, 10),
+    "fingerprint_synthesizer": RolePolicy("fingerprint_synthesizer", 0.3, 12000, 1800, 10),
+    "storyline_ideator": RolePolicy("storyline_ideator", 0.9, 65536, 2400, 10),
+    "originality_critic": RolePolicy("originality_critic", 0.2, 8000, 600, 10),
+    "novel_architect": RolePolicy("novel_architect", 0.5, 65536, 2400, 10),
+    "chapter_planner": RolePolicy("chapter_planner", 0.5, 65536, 2400, 10),
+    "drafter": RolePolicy("drafter", 0.8, 65536, 2400, 10),
     "claim_extractor": RolePolicy("claim_extractor", 0.1, 6000, 300, 2),
-    "continuity_validator": RolePolicy("continuity_validator", 0.1, 6000, 300, 2),
-    "independent_verifier": RolePolicy("independent_verifier", 0.1, 8000, 600, 2),
+    "continuity_validator": RolePolicy("continuity_validator", 0.1, 6000, 300, 10),
+    "independent_verifier": RolePolicy("independent_verifier", 0.1, 8000, 600, 10),
     "style_evaluator": RolePolicy("style_evaluator", 0.2, 4000, 300, 2),
-    "repair_editor": RolePolicy("repair_editor", 0.4, 65536, 2400, 2),
-    "whole_novel_editor": RolePolicy("whole_novel_editor", 0.4, 65536, 2400, 2),
+    "repair_editor": RolePolicy("repair_editor", 0.4, 65536, 2400, 10),
+    "whole_novel_editor": RolePolicy("whole_novel_editor", 0.4, 65536, 2400, 10),
     "preflight": RolePolicy("preflight", 0.0, 200, 60, 0),
 }
 
@@ -382,7 +382,16 @@ class LLMModelClient:
         fallback_used = False
         last_exc: Optional[BaseException] = None
         last_category = fail.INTERNAL_ERROR
-        max_attempts = policy.max_retries + 1
+        max_retries = policy.max_retries
+        if self.job_id is not None and hasattr(self.session, "get"):
+            try:
+                from app.db.models import AutonomousNovelJob
+                j = self.session.get(AutonomousNovelJob, self.job_id)
+                if j and (j.options or {}).get("max_retries"):
+                    max_retries = int(j.options["max_retries"])
+            except Exception:
+                pass
+        max_attempts = max_retries + 1
         while attempts < max_attempts:
             attempts += 1
             est_in = _estimate_tokens(system_prompt, prompt)
