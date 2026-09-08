@@ -71,6 +71,8 @@ class CreateJobRequest(BaseModel):
     romance_level: Optional[str] = None
     words_per_chapter: Optional[int] = Field(default=None, ge=300, le=20000)
     total_words: Optional[int] = Field(default=None, ge=1000)
+    target_chapters: Optional[int] = Field(default=None, ge=1, le=2000, description="Approximate target chapter count for the novel (calibrates storyline scope and arc complexity)")
+    target_arcs: Optional[int] = Field(default=None, ge=1, le=50, description="Approximate target arc/volume count")
     quality_preset: str = Field(default="balanced", description="economy | balanced | quality")
     craft_preset: Optional[str] = Field(default=None, description="Prose Craft preset override: off | economy | balanced | full (defaults follow quality_preset)")
     storyline_count: int = Field(default=7, ge=5, le=10)

@@ -30,6 +30,8 @@ export interface CreateJobRequest {
   romance_level?: string
   words_per_chapter?: number
   total_words?: number
+  target_chapters?: number
+  target_arcs?: number
   quality_preset?: 'economy' | 'balanced' | 'quality'
   storyline_count?: number
   fallback_llm_config_id?: number

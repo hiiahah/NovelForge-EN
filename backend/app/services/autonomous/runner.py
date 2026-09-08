@@ -230,7 +230,7 @@ class JobRunner:
 
     def _preferences(self, job: AutonomousNovelJob) -> Dict[str, Any]:
         opts = job.options or {}
-        return {
+        prefs = {
             k: opts.get(k)
             for k in (
                 "genre_intensity",
@@ -243,9 +243,19 @@ class JobRunner:
                 "summary",
                 "tags",
                 "similarity_to_original",
+                "target_chapters",
+                "target_arcs",
+                "words_per_chapter",
+                "total_words",
             )
-            if opts.get(k)
+            if opts.get(k) is not None
         }
+        if "target_chapters" not in prefs and opts.get("total_words") and opts.get("words_per_chapter"):
+            try:
+                prefs["target_chapters"] = max(1, round(int(opts["total_words"]) / int(opts["words_per_chapter"])))
+            except (ValueError, ZeroDivisionError):
+                pass
+        return prefs
 
     # --------------------------------------------------------------- stages
     async def _run_stage(self, job: AutonomousNovelJob, stage: str) -> Dict[str, Any]:

@@ -118,14 +118,41 @@ def source_brief(session: Session, source_project_id: int, *, preferences: Dict[
             lines.append(f"- Similarity to Reference: {prefs['similarity_to_original']}. (loose = abstract structural inspiration only; moderate = balanced thematic/pacing homage; close = close structural parallel while changing all entities).")
         if "tags" in prefs:
             lines.append(f"- Required Tags / Tropes: {prefs['tags']}")
+        target_ch = prefs.get("target_chapters")
+        if target_ch:
+            try:
+                tch = int(target_ch)
+                tarcs = int(prefs.get("target_arcs") or max(2, min(12, round(tch / 50))))
+                ch_per_arc = max(5, round(tch / tarcs))
+                lines.append(f"- Target Scale: Approximately {tch} chapters across {tarcs} major volumes/arcs (~{ch_per_arc} chapters each).")
+                if tch >= 100:
+                    lines.append("- Serial Scale Directive: This is an expansive, multi-volume serialized webnovel. Do NOT propose single-crisis or localized standalone premises that exhaust their conflict early. Each option must establish an expandable world engine, tiered progression, and long-term narrative momentum.")
+            except (ValueError, TypeError):
+                pass
         for k, v in prefs.items():
-            if k not in ("protagonist_name", "summary", "similarity_to_original", "tags"):
+            if k not in ("protagonist_name", "summary", "similarity_to_original", "tags", "target_chapters", "target_arcs", "words_per_chapter", "total_words"):
                 lines.append(f"- {k}: {v}")
     return "\n".join(lines)
 
 
-def build_prompt(brief: str, *, count: int, rejected: Sequence[Dict[str, Any]] = ()) -> str:
-    parts = [brief, f"\n[TASK]\nGenerate exactly {count} substantially different, detailed original storyline options. For each option fill every field of the schema in depth: premise 120-250 words; 4-6 act entries covering setup, first turn, midpoint, crisis, climax and resolution; a main cast of 4-7 original names; chapter_suitability_min/max as a realistic range."]
+def build_prompt(brief: str, *, count: int, rejected: Sequence[Dict[str, Any]] = (), target_chapters: Optional[int] = None) -> str:
+    tch = int(target_chapters) if target_chapters and str(target_chapters).isdigit() else None
+    if tch and tch >= 100:
+        tarcs = max(2, min(12, round(tch / 50)))
+        task_desc = (
+            f"Generate exactly {count} substantially different, detailed original storyline options specifically architected for a {tch}-chapter serialized webnovel across {tarcs} major volumes/arcs. "
+            f"For each option fill every field of the schema in depth: premise 150-300 words explaining the expandable world engine, tiered progression, and long-term momentum; "
+            f"4-8 act entries where each act represents a major multi-chapter volume/arc with escalating stakes; a main cast of 5-8 original names; "
+            f"chapter_suitability_min/max set realistically around {round(tch * 0.8)}-{round(tch * 1.25)}."
+        )
+    else:
+        task_desc = (
+            f"Generate exactly {count} substantially different, detailed original storyline options. "
+            f"For each option fill every field of the schema in depth: premise 120-250 words; "
+            f"4-6 act entries covering setup, first turn, midpoint, crisis, climax and resolution; a main cast of 4-7 original names; "
+            f"chapter_suitability_min/max as a realistic range."
+        )
+    parts = [brief, f"\n[TASK]\n{task_desc}"]
     if rejected:
         parts.append("\n[REJECTED IN A PREVIOUS ROUND — do not produce anything resembling these]")
         for r in rejected[:10]:
@@ -199,7 +226,17 @@ def gate_options(options: Sequence[Dict[str, Any]], profile: Optional[fw.SourceP
     return out, matrix
 
 
-def recommended_range(opt: Dict[str, Any], source_chapters: int) -> Tuple[int, int]:
+def recommended_range(opt: Dict[str, Any], source_chapters: int, target_chapters: Optional[int] = None) -> Tuple[int, int]:
+    if target_chapters:
+        try:
+            tch = int(target_chapters)
+            lo = int(opt.get("chapter_suitability_min") or 0) or max(3, round(tch * 0.8))
+            hi = int(opt.get("chapter_suitability_max") or 0) or max(lo + 1, round(tch * 1.25))
+            if hi < lo:
+                lo, hi = hi, lo
+            return max(3, lo), max(lo + 1, hi)
+        except (ValueError, TypeError):
+            pass
     lo = int(opt.get("chapter_suitability_min") or 0) or max(8, round(source_chapters * 0.5))
     hi = int(opt.get("chapter_suitability_max") or 0) or max(lo + 4, round(source_chapters * 1.5))
     if hi < lo:
@@ -207,7 +244,7 @@ def recommended_range(opt: Dict[str, Any], source_chapters: int) -> Tuple[int, i
     return max(3, lo), max(lo + 1, hi)
 
 
-def persist_candidates(session: Session, *, job_id: int, source_project_id: int, options: Sequence[Dict[str, Any]], matrix: List[List[float]], source_chapters: int, replace: bool = True) -> List[StorylineCandidate]:
+def persist_candidates(session: Session, *, job_id: int, source_project_id: int, options: Sequence[Dict[str, Any]], matrix: List[List[float]], source_chapters: int, target_chapters: Optional[int] = None, replace: bool = True) -> List[StorylineCandidate]:
     if replace:
         for row in session.exec(select(StorylineCandidate).where(StorylineCandidate.job_id == job_id)).all():
             session.delete(row)
@@ -215,7 +252,7 @@ def persist_candidates(session: Session, *, job_id: int, source_project_id: int,
     rows: List[StorylineCandidate] = []
     for i, opt in enumerate(options):
         clean = {k: v for k, v in opt.items() if not k.startswith("_")}
-        lo, hi = recommended_range(clean, source_chapters)
+        lo, hi = recommended_range(clean, source_chapters, target_chapters=target_chapters)
         row = StorylineCandidate(
             job_id=job_id, source_project_id=source_project_id, option_index=i, title=str(clean.get("title") or f"Option {i + 1}")[:200], content={**clean, "schema_version": AUTONOMOUS_SCHEMA_VERSION},
             originality_score=float(opt.get("_originality", {}).get("score") or 0.0), originality_report=opt.get("_originality") or {},
@@ -231,6 +268,7 @@ def persist_candidates(session: Session, *, job_id: int, source_project_id: int,
 async def stage_storyline_generation(session: Session, *, job_id: int, source_project_id: int, client: ModelClient, preferences: Dict[str, Any], count: int = TARGET_OPTIONS, max_rounds: int = 2) -> Dict[str, Any]:
     from app.services.forge.corpus import load_source_chapters
 
+    target_chapters = preferences.get("target_chapters")
     profile = source_profile(session, source_project_id)
     brief = source_brief(session, source_project_id, preferences=preferences)
     source_chapters = len(load_source_chapters(session, source_project_id))
@@ -241,7 +279,7 @@ async def stage_storyline_generation(session: Session, *, job_id: int, source_pr
     while rounds < max_rounds and len(accepted) < MIN_OPTIONS:
         rounds += 1
         need = max(count - len(accepted), MIN_OPTIONS)
-        result = await client.structured(role="storyline_ideator", schema=StorylineOptionSet, system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(brief, count=need, rejected=rejected_history), prompt_version=STORYLINE_PROMPT_VERSION, stage="STORYLINE_GENERATION")
+        result = await client.structured(role="storyline_ideator", schema=StorylineOptionSet, system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(brief, count=need, rejected=rejected_history, target_chapters=target_chapters), prompt_version=STORYLINE_PROMPT_VERSION, stage="STORYLINE_GENERATION")
         fresh = [o.model_dump(mode="json") for o in result.options]
         gated, _ = gate_options(accepted + fresh, profile)
         accepted = [o for o in gated if not o["_rejected"]]
@@ -250,7 +288,7 @@ async def stage_storyline_generation(session: Session, *, job_id: int, source_pr
         all_gated = gated
     final, matrix = gate_options(all_gated, profile)
     survivors = [o for o in final if not o["_rejected"]]
-    rows = persist_candidates(session, job_id=job_id, source_project_id=source_project_id, options=final, matrix=matrix, source_chapters=source_chapters)
+    rows = persist_candidates(session, job_id=job_id, source_project_id=source_project_id, options=final, matrix=matrix, source_chapters=source_chapters, target_chapters=target_chapters)
     session.commit()
     if len(survivors) < MIN_OPTIONS:
         raise fail.StageFailure(fail.PLANNING_IMPOSSIBILITY, f"Only {len(survivors)} storyline options passed originality/diversity gates after {rounds} round(s); need {MIN_OPTIONS}", detail={"rejected": rejected_history[:20]})

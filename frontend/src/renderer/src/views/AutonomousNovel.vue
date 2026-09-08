@@ -77,6 +77,7 @@
               <el-form-item :label="t('autonomous.pref.ending_preference')"><el-select v-model="form.ending_preference" clearable><el-option v-for="v in ['triumphant', 'bittersweet', 'tragic', 'open', 'no preference']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.romance_level')"><el-select v-model="form.romance_level" clearable><el-option v-for="v in ['none', 'subplot', 'central']" :key="v" :value="v" :label="v" /></el-select></el-form-item>
               <el-form-item :label="t('autonomous.pref.words_per_chapter')"><el-input-number v-model="form.words_per_chapter" :min="300" :max="20000" :step="100" /></el-form-item>
+              <el-form-item :label="t('autonomous.pref.target_chapters')"><el-input-number v-model="form.target_chapters" :min="1" :max="2000" :step="10" placeholder="e.g. 50, 100, 400" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.storyline_count')"><el-input-number v-model="form.storyline_count" :min="5" :max="10" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.title')"><el-input v-model="form.title" /></el-form-item>
               <el-form-item :label="t('autonomous.pref.author')"><el-input v-model="form.author" /></el-form-item>
@@ -304,6 +305,7 @@ const form = reactive<{
   ending_preference: string
   romance_level: string
   words_per_chapter: number | undefined
+  target_chapters: number | undefined
   storyline_count: number
   title: string
   author: string
@@ -313,7 +315,7 @@ const form = reactive<{
   tags: string
   similarity_to_original: string
 }>({
-  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', craft_preset: '', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '', similarity_to_original: 'moderate',
+  llm_config_id: undefined, mode: 'fully_automatic', quality_preset: 'balanced', craft_preset: '', genre: '', genre_intensity: '', content_rating: '', ending_preference: '', romance_level: '', words_per_chapter: undefined, target_chapters: undefined, storyline_count: 7, title: '', author: '', notes: '', protagonist_name: '', summary: '', tags: '', similarity_to_original: 'moderate',
 })
 
 const stepIndex = computed(() => ['upload', 'analysis', 'choose', 'generating', 'finished'].indexOf(auto.screen.value))
@@ -357,7 +359,7 @@ async function start() {
   if (form.craft_preset) params.craft_preset = form.craft_preset
   const spec = budgetSpec()
   if (spec) params.budget = spec
-  for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'title', 'author', 'notes', 'protagonist_name', 'summary', 'tags', 'similarity_to_original'] as const) {
+  for (const k of ['genre', 'genre_intensity', 'content_rating', 'ending_preference', 'romance_level', 'words_per_chapter', 'target_chapters', 'title', 'author', 'notes', 'protagonist_name', 'summary', 'tags', 'similarity_to_original'] as const) {
     if (form[k]) params[k] = form[k]
   }
   await auto.start(params as Omit<api.CreateJobRequest, 'filename' | 'content_base64'>)

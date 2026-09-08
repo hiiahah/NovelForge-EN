@@ -15,7 +15,7 @@
     "preferences": "Optional preferences",
     "pref": {
       "genre": "Genre", "genre_intensity": "Genre intensity", "content_rating": "Content rating", "ending_preference": "Ending preference", "romance_level": "Romance level",
-      "words_per_chapter": "Words per chapter", "storyline_count": "Storyline options", "title": "Working title", "author": "Author name", "notes": "Notes for the ideator",
+      "words_per_chapter": "Words per chapter", "target_chapters": "Target chapters (approx.)", "storyline_count": "Storyline options", "title": "Working title", "author": "Author name", "notes": "Notes for the ideator",
       "protagonist_name": "Main character name", "protagonist_placeholder": "e.g. Lucen Rooke",
       "summary": "Basic novel premise / summary", "summary_placeholder": "e.g. A corporate accountant transmigrates into an indebted noble heir and uses forensic ledger analysis...",
       "tags": "Tags / Tropes", "tags_placeholder": "e.g. Transmigration, Academy, Economics, Politics",

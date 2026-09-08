@@ -110,6 +110,9 @@ export function useAutonomousNovel(api: AutonomousApi, opts: { pollMs?: number }
     if ((res.job.options as any)?.words_per_chapter) {
       wordsPerChapter.value = Number((res.job.options as any).words_per_chapter)
     }
+    if ((res.job.options as any)?.target_chapters && chapterCount.value === 24) {
+      chapterCount.value = Number((res.job.options as any).target_chapters)
+    }
     const s = screenFor(res.job)
     if (s === 'choose' && storylines.value.length === 0) storylines.value = await api.listStorylines(res.job.id, true)
     if (s === 'generating' || s === 'finished') {
