@@ -63,10 +63,14 @@ def source_profile(session: Session, source_project_id: int) -> Optional[fw.Sour
     objects: List[str] = []
     for card in bible.cards_of_type(source_project_id, "Character Card"):
         c = _c(card)
-        n = str(c.get("name") or card.title)
-        names.append(n)
+        n = str(c.get("name") or card.title).strip()
+        if n.lower() not in fw._GENERIC_ENTITY_WORDS:
+            names.append(n)
         roles[n] = str(c.get("role_type") or "")
-        names += [str(a) for a in (c.get("aliases") or [])]
+        for a in (c.get("aliases") or []):
+            al = str(a).strip()
+            if al and al.lower() not in fw._GENERIC_ENTITY_WORDS:
+                names.append(al)
     for card in bible.cards_of_type(source_project_id, "Organization Card"):
         names.append(str(_c(card).get("name") or card.title))
     for card in bible.cards_of_type(source_project_id, "Scene Card"):

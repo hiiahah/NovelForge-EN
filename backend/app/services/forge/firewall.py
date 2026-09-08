@@ -44,6 +44,19 @@ _EN_STOP = {
     "Morning", "Night", "Day", "Evening", "Afternoon", "Today", "Tomorrow", "Yesterday", "Sir", "Madam", "Miss", "Mister", "Lord", "Lady",
 }
 _KO_COMMON = {"그리고", "그러나", "하지만", "그런데", "그래서", "그때", "지금", "여기", "거기", "저기", "우리", "너희", "당신", "사람", "시간", "순간", "이제", "다시", "정말", "너무", "아주", "조금", "모두", "누구", "무엇", "어디", "어떻게", "왜냐하면", "때문에", "그것", "이것", "저것", "오늘", "내일", "어제", "아침", "저녁", "밤에", "하나", "둘이", "셋이"}
+_GENERIC_ENTITY_WORDS = {
+    w.lower() for w in _EN_STOP
+} | {
+    "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
+    "last", "senior", "junior", "elder", "younger",
+    "empress", "emperor", "king", "queen", "prince", "princess", "monarch", "ruler",
+    "the empress", "the emperor", "the king", "the queen", "the prince", "the princess",
+    "master", "captain", "commander", "general", "soldier", "guard", "servant", "maid",
+    "duke", "duchess", "marquis", "marchioness", "earl", "count", "countess", "viscount", "baron", "baroness",
+    "priest", "priestess", "bishop", "pope", "saint", "hero", "villain", "extra", "protagonist", "antagonist",
+    "father", "mother", "brother", "sister", "son", "daughter", "uncle", "aunt", "cousin",
+    "man", "woman", "boy", "girl", "child", "person", "someone", "anyone", "everyone",
+}
 
 
 def _ngrams(tokens: Sequence[str], n: int) -> Set[Tuple[str, ...]]:
@@ -125,7 +138,7 @@ class SourceProfile:
         joined = "\n".join(str(t) for t in texts)
         lang = detect_language(joined)
         prof = cls(manuscript_id=manuscript_id, language=lang, phrase_window=phrase_window, ngram_n=ngram_n)
-        prof.entity_names = {e.strip().lower() for e in entity_names if e and e.strip()}
+        prof.entity_names = {e.strip().lower() for e in entity_names if e and e.strip() and e.strip().lower() not in _GENERIC_ENTITY_WORDS}
         terms = extract_candidate_terms(joined, lang)
         # A distinctive term recurs (>= 3) and is not a common word. For Latin
         # text a single capitalized word must occur at least once *inside* a
@@ -228,7 +241,7 @@ def check_text(
 
     # 1. named entities
     for name in sorted(profile.entity_names):
-        if name in allowed or len(name) < 3:
+        if name in allowed or len(name) < 3 or name in _GENERIC_ENTITY_WORDS:
             continue
         if re.search(rf"(?<![\w]){re.escape(name)}(?![\w])", lowered):
             findings.append(Finding("entity_overlap", "critical", f"Source entity name '{name}' appears in the text", _find_span(text, name), name))
