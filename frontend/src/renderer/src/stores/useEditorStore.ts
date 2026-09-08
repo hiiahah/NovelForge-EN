@@ -197,6 +197,26 @@ export const useEditorStore = defineStore('editor', () => {
     return await persistActiveChapterDraftRef.value()
   }
 
+  // Story Memory / Continuity: read the live draft and highlight a span in the editor.
+  const getActiveChapterDraftRef = ref<null | (() => string)>(null)
+  const selectChapterRangeRef = ref<null | ((from: number, to: number) => void)>(null)
+
+  function setGetActiveChapterDraft(fn: (() => string) | null) {
+    getActiveChapterDraftRef.value = fn
+  }
+
+  async function getActiveChapterDraft(): Promise<string> {
+    return getActiveChapterDraftRef.value ? getActiveChapterDraftRef.value() : ''
+  }
+
+  function setSelectChapterRange(fn: ((from: number, to: number) => void) | null) {
+    selectChapterRangeRef.value = fn
+  }
+
+  function selectChapterRange(from: number, to: number) {
+    selectChapterRangeRef.value?.(from, to)
+  }
+
   function setTriggerExtractDynamicInfo(fn: null | ((opts: ChapterExtractRunOptions) => Promise<void>)) {
     triggerExtractDynamicInfoRef.value = fn
   }
@@ -337,6 +357,10 @@ export const useEditorStore = defineStore('editor', () => {
     applyReplacements,
     setPersistActiveChapterDraft,
     persistActiveChapterDraft,
+    setGetActiveChapterDraft,
+    getActiveChapterDraft,
+    setSelectChapterRange,
+    selectChapterRange,
     setTriggerExtractDynamicInfo,
     triggerExtractDynamicInfo,
     setTriggerExtractRelations,

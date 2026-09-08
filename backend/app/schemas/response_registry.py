@@ -24,6 +24,7 @@ from app.schemas.bible import (
 	Evidence, HistoryEntry, SceneAnalysis, ChapterEmotion,
 )
 from app.schemas.bible_update import BibleUpdateProposal
+from app.schemas.story_memory import ChapterDigest, LlmContinuityFindings, StoryMemorySettings
 
 RESPONSE_MODEL_MAP: Dict[str, Any] = {
     "Text": Text,
@@ -76,6 +77,10 @@ RESPONSE_MODEL_MAP: Dict[str, Any] = {
 	'EntityResolutionPlan': EntityResolutionPlan,
 	'NarrativeGenome': NarrativeGenome,
 	'OriginalityTransformation': OriginalityTransformation,
+	# --- Story Memory ---
+	'ChapterDigest': ChapterDigest,
+	'LlmContinuityFindings': LlmContinuityFindings,
+	'StoryMemorySettings': StoryMemorySettings,
 	# Nested types exported for frontend $ref resolution
 	'Evidence': Evidence,
 	'HistoryEntry': HistoryEntry,

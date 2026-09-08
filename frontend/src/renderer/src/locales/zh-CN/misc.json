@@ -75,6 +75,13 @@
     "balancedHelp": "会按目标字数切分为多个轮次并分配预算，非最终轮带硬上限，结尾轮不强截断。",
     "balancedTokenNote": "该模式下创作可能会消耗更多 token；如果对字数要求没那么严格，可以使用提示词约束模式。",
     "startContinuation": "开始续写",
+    "storyMemorySection": "故事记忆",
+    "includeStoryMemory": "注入“故事至此”（所有已摘要章节的回顾）",
+    "includeChapterBrief": "注入“下一章简报”（必须处理 / 避免）",
+    "storyMemoryHelp": "两个区块由服务端根据章节摘要与圣经编译，使第 300 章仍能记住第 12 章。取消勾选仅影响本次运行。",
+    "memoryStatus": "已记住 {digested} / {written} 个此前章节",
+    "memoryMissing": "{n} 个未摘要",
+    "memoryOverdue": "{n} 个逾期钩子",
 
     "openContextDrawer": "打开上下文抽屉（Alt+K）",
     "contextInjection": "上下文注入",

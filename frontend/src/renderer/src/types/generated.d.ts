@@ -279,6 +279,316 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/autonomous/artifacts/{artifact_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download one export artifact (legacy path; redirects to the job-scoped URL)
+         * @deprecated
+         */
+        get: operations["download_api_autonomous_artifacts__artifact_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List autonomous jobs (newest first) */
+        get: operations["list_jobs_api_autonomous_jobs_get"];
+        put?: never;
+        /** Create Novel from EPUB: start the autonomous pipeline (ingest -> analysis -> fingerprint -> storyline options) */
+        post: operations["create_job_api_autonomous_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job status: stage, progress, cost, warnings, waiting_for */
+        get: operations["get_job_api_autonomous_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve the current gate (approval_gates mode) */
+        post: operations["approve_api_autonomous_jobs__job_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export artifacts available for download */
+        get: operations["artifacts_api_autonomous_jobs__job_id__artifacts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/artifacts/{artifact_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download one export artifact of a job (artifact must belong to the job) */
+        get: operations["download_scoped_api_autonomous_jobs__job_id__artifacts__artifact_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-provider-attempt telemetry (no prompts, no secrets) */
+        get: operations["attempts_api_autonomous_jobs__job_id__attempts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Usage versus configured limits */
+        get: operations["budget_api_autonomous_jobs__job_id__budget_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel the job */
+        post: operations["cancel_api_autonomous_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/chapters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Live chapter preview: committed chapters with summaries and validation status */
+        get: operations["chapters_api_autonomous_jobs__job_id__chapters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/invocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Model invocations (role, prompt version, usage, latency, retries, validation) */
+        get: operations["invocations_api_autonomous_jobs__job_id__invocations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pause after the current stage step */
+        post: operations["pause_api_autonomous_jobs__job_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recovery history: stage, attempt, failure category, action, models, outcome */
+        get: operations["recovery_history_api_autonomous_jobs__job_id__recovery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Quality / originality / cost report of a finished (or in-progress) job */
+        get: operations["report_api_autonomous_jobs__job_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resume a paused or recovered job from its persisted stage (idempotent; optionally raise the budget) */
+        post: operations["resume_api_autonomous_jobs__job_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select a storyline and the chapter count; the pipeline continues automatically */
+        post: operations["select_storyline_api_autonomous_jobs__job_id__select_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/jobs/{job_id}/storylines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generated storyline options with originality and similarity data */
+        get: operations["list_storylines_api_autonomous_jobs__job_id__storylines_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/autonomous/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Provider preflight: validate an LLM configuration (reachability, model availability, text + structured output, usage, fallback) before a long job */
+        post: operations["preflight_api_autonomous_preflight_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bible/audit": {
         parameters: {
             query?: never;
@@ -2093,6 +2403,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/story-memory/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Next Chapter Brief: must address / should consider / avoid */
+        post: operations["next_chapter_brief_api_story_memory_brief_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/continuity/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check a draft against the Bible and Story Memory */
+        post: operations["continuity_check_api_story_memory_continuity_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/digests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List chapter digests with coverage of written chapters */
+        get: operations["list_digests_api_story_memory_digests_get"];
+        put?: never;
+        /** Digest one chapter (LLM) into a Chapter Digest card */
+        post: operations["digest_chapter_api_story_memory_digests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/digests/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Digest many chapters (missing/stale by default) */
+        post: operations["digest_batch_api_story_memory_digests_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/digests/{chapter_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one chapter digest */
+        get: operations["get_digest_api_story_memory_digests__chapter_number__get"];
+        /** Save a hand-edited digest */
+        put: operations["put_digest_api_story_memory_digests__chapter_number__put"];
+        post?: never;
+        /** Delete a chapter digest */
+        delete: operations["delete_digest_api_story_memory_digests__chapter_number__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bible health score with dimensions */
+        get: operations["health_api_story_memory_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Story Memory settings for a project */
+        get: operations["read_settings_api_story_memory_settings_get"];
+        /** Update Story Memory settings for a project */
+        put: operations["write_settings_api_story_memory_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-memory/story-so-far": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compile the tiered Story So Far recap and carry-forward state */
+        post: operations["story_so_far_api_story_memory_story_so_far_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/workflow-agent/chat": {
         parameters: {
             query?: never;
@@ -2836,6 +3286,16 @@ export interface components {
              */
             facts_quota_chars?: number | null;
             /**
+             * Include Chapter Brief
+             * @description Force-include the Next Chapter Brief regardless of project settings (default false)
+             */
+            include_chapter_brief?: boolean | null;
+            /**
+             * Include Story Memory
+             * @description Include the Story So Far recap compiled from chapter digests (default true)
+             */
+            include_story_memory?: boolean | null;
+            /**
              * Max Chapter Id
              * @description Ignore relation events after this chapter
              */
@@ -2866,6 +3326,11 @@ export interface components {
              */
             relation_radius?: number | null;
             /**
+             * Story Memory Quota Chars
+             * @description Override the Story So Far budget (characters)
+             */
+            story_memory_quota_chars?: number | null;
+            /**
              * Volume Number
              * @description Volume number
              */
@@ -2882,6 +3347,8 @@ export interface components {
             budget_stats?: {
                 [key: string]: unknown;
             };
+            /** @description Next Chapter Brief (what to address / avoid) */
+            chapter_brief?: components["schemas"]["NextChapterBrief"] | null;
             /** @description Structured fact subgraph */
             facts_structured?: components["schemas"]["FactsStructured"] | null;
             /**
@@ -2890,6 +3357,8 @@ export interface components {
              * @default
              */
             facts_subgraph: string;
+            /** @description Story So Far recap compiled from chapter digests */
+            story_memory?: components["schemas"]["StorySoFar"] | null;
         };
         /**
          * AssistantChatRequest
@@ -3045,6 +3514,25 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** BibleHealth */
+        BibleHealth: {
+            /** Dimensions */
+            dimensions?: components["schemas"]["HealthDimension"][];
+            /**
+             * Grade
+             * @enum {string}
+             */
+            grade: "A" | "B" | "C" | "D" | "F";
+            /** Project Id */
+            project_id: number;
+            /** Score */
+            score: number;
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
         /** BibleUpdateApplyResult */
         BibleUpdateApplyResult: {
             /** Applied */
@@ -3177,6 +3665,101 @@ export interface components {
             updated_at: string;
             /** Volume Number */
             volume_number: number | null;
+        };
+        /** BriefItem */
+        BriefItem: {
+            /** Card Id */
+            card_id?: number | null;
+            /** Kind */
+            kind: string;
+            /**
+             * Priority
+             * @description Lower = more important
+             */
+            priority: number;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Text */
+            text: string;
+        };
+        /** BriefRequest */
+        BriefRequest: {
+            /** Chapter Number */
+            chapter_number?: number | null;
+            /** Participants */
+            participants?: string[];
+            /** Pov */
+            pov?: string | null;
+            /** Project Id */
+            project_id: number;
+        };
+        /** BudgetSpec */
+        BudgetSpec: {
+            /**
+             * Chapter Limits
+             * @description Optional {max_calls_per_chapter, max_total_tokens_per_chapter}
+             */
+            chapter_limits?: {
+                [key: string]: number;
+            };
+            /**
+             * Max Calls
+             * @default 0
+             */
+            max_calls: number;
+            /**
+             * Max Cost Usd
+             * @default 0
+             */
+            max_cost_usd: number;
+            /**
+             * Max Input Tokens
+             * @default 0
+             */
+            max_input_tokens: number;
+            /**
+             * Max Output Tokens
+             * @default 0
+             */
+            max_output_tokens: number;
+            /**
+             * Max Repair Calls
+             * @default 0
+             */
+            max_repair_calls: number;
+            /**
+             * Max Total Tokens
+             * @default 0
+             */
+            max_total_tokens: number;
+            /**
+             * Price Per Million
+             * @description Optional {'input': usd, 'output': usd} default price; without any price cost is reported as unknown
+             */
+            price_per_million?: {
+                [key: string]: number;
+            };
+            /**
+             * Prices
+             * @description Optional per-LLM-configuration prices {llm_config_id: {'input': usd, 'output': usd}} so a fallback model is costed correctly
+             */
+            prices?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /**
+             * Stage Limits
+             * @description Optional {stage: {max_calls, max_total_tokens}}
+             */
+            stage_limits?: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
         };
         /** CancelResponse */
         CancelResponse: {
@@ -3464,6 +4047,30 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** CarryForwardEntity */
+        CarryForwardEntity: {
+            /**
+             * Alive
+             * @default true
+             */
+            alive: boolean;
+            /** Entity */
+            entity: string;
+            /** Last Seen Chapter */
+            last_seen_chapter?: number | null;
+            /**
+             * Location
+             * @default
+             */
+            location: string;
+            /**
+             * States
+             * @description kind -> latest 'after' value
+             */
+            states?: {
+                [key: string]: string;
+            };
+        };
         /** ChangeDecision */
         ChangeDecision: {
             /**
@@ -3480,6 +4087,213 @@ export interface components {
             edited_value?: unknown;
             /** Note */
             note?: string | null;
+        };
+        /**
+         * ChapterDigest
+         * @description Compact structured memory of one written chapter.
+         */
+        ChapterDigest: {
+            /**
+             * Chapter Card Id
+             * @description Chapter Text card id
+             */
+            chapter_card_id?: number | null;
+            /**
+             * Chapter Number
+             * @description Book-wide chapter number
+             */
+            chapter_number: number;
+            /**
+             * Continuity Risks
+             * @description Things a careless next chapter would get wrong (e.g. 'Mira is unarmed', 'it is still night')
+             */
+            continuity_risks?: string[];
+            /**
+             * Digested At
+             * @description ISO timestamp
+             * @default
+             */
+            digested_at: string;
+            /**
+             * Dominant Function
+             * @description Dominant chapter function
+             * @default setup
+             * @enum {string}
+             */
+            dominant_function: "setup" | "escalation" | "discovery" | "reversal" | "decision" | "confrontation" | "payoff" | "recovery" | "transition" | "character_bonding" | "world_revelation" | "false_victory" | "disaster";
+            /**
+             * Ending State
+             * @description Exact situation at the end: where everyone is, what is in motion, what the last beat was
+             * @default
+             */
+            ending_state: string;
+            /**
+             * Events
+             * @description Events in order (5-15)
+             */
+            events?: components["schemas"]["DigestEvent"][];
+            /**
+             * Evidence
+             * @description Evidence for key conclusions
+             */
+            evidence?: components["schemas"]["Evidence"][];
+            /**
+             * Hook Strength
+             * @description How strongly the ending pulls the reader forward
+             * @default 5
+             */
+            hook_strength: number;
+            /**
+             * Hooks Closed
+             * @description Earlier hooks resolved or advanced
+             */
+            hooks_closed?: components["schemas"]["ClosedHook"][];
+            /**
+             * Hooks Opened
+             * @description Hooks left dangling at the end of this chapter
+             */
+            hooks_opened?: components["schemas"]["OpenHook"][];
+            /**
+             * Knowledge Deltas
+             * @description Who learned what
+             */
+            knowledge_deltas?: components["schemas"]["KnowledgeDelta"][];
+            /**
+             * Last Paragraph Gist
+             * @description Gist of the final paragraph so the next chapter can continue seamlessly
+             * @default
+             */
+            last_paragraph_gist: string;
+            /**
+             * Llm Config Id
+             * @description Model used
+             */
+            llm_config_id?: number | null;
+            /**
+             * Locations
+             * @description Locations visited, in order
+             */
+            locations?: string[];
+            /**
+             * Named Extras
+             * @description Minor named characters introduced (to prevent silent re-invention)
+             */
+            named_extras?: string[];
+            /**
+             * Objects Introduced
+             * @description Named objects/items that appeared for the first time
+             */
+            objects_introduced?: string[];
+            /**
+             * One Line
+             * @description The chapter in one sentence (<= 200 chars)
+             */
+            one_line: string;
+            /**
+             * Opening State
+             * @description Situation at the start
+             * @default
+             */
+            opening_state: string;
+            /**
+             * Participants
+             * @description Entities present (canonical names)
+             */
+            participants?: string[];
+            /**
+             * Pov
+             * @description POV character (canonical name)
+             * @default
+             */
+            pov: string;
+            /**
+             * Promises Made
+             * @description Explicit promises, vows, deals or deadlines made by characters
+             */
+            promises_made?: string[];
+            /**
+             * Quotable Lines
+             * @description Up to 3 lines worth a callback
+             */
+            quotable_lines?: components["schemas"]["QuotableLine"][];
+            /**
+             * Relationship Shifts
+             * @description Relationship changes, phrased 'A -> B: shift (why)'
+             */
+            relationship_shifts?: string[];
+            /**
+             * Rewards Delivered
+             * @description Reader rewards actually delivered
+             */
+            rewards_delivered?: ("competence" | "victory" | "reversal" | "revelation" | "romance_progress" | "power_gain" | "status_gain" | "revenge" | "mystery_answer" | "emotional_catharsis" | "exploration" | "humor" | "intimacy" | "horror_revelation")[];
+            /**
+             * Source Hash
+             * @description Hash of the chapter text this digest was built from
+             * @default
+             */
+            source_hash: string;
+            /**
+             * Stale
+             * @description True when the chapter text changed after digestion
+             * @default false
+             */
+            stale: boolean;
+            /**
+             * State Changes
+             * @description Persistent entity state changes
+             */
+            state_changes?: components["schemas"]["EntityStateChange"][];
+            /**
+             * Story Time
+             * @description In-story time span covered (e.g. 'dawn to noon, day 3 of the siege')
+             * @default
+             */
+            story_time: string;
+            /**
+             * Style Notes
+             * @description Notable voice/rhythm features to keep consistent (abstract, no quotes)
+             */
+            style_notes?: string[];
+            /**
+             * Summary
+             * @description Dense summary, 120-250 words: what happens, what changes, how it ends
+             */
+            summary: string;
+            /**
+             * Tension End
+             * @description Tension at the end, 0-10
+             * @default 5
+             */
+            tension_end: number;
+            /**
+             * Tension Start
+             * @description Tension at the start, 0-10
+             * @default 5
+             */
+            tension_start: number;
+            /**
+             * Time Elapsed
+             * @description How much story time passed since the previous chapter
+             * @default
+             */
+            time_elapsed: string;
+            /**
+             * Title
+             * @description Chapter title
+             * @default
+             */
+            title: string;
+            /**
+             * Volume Number
+             * @description Volume number if known
+             */
+            volume_number?: number | null;
+            /**
+             * Word Count
+             * @description Word count of the digested text
+             * @default 0
+             */
+            word_count: number;
         };
         /** ChapterPreview */
         ChapterPreview: {
@@ -3543,6 +4357,28 @@ export interface components {
             content: unknown;
             /** Role */
             role: string;
+        };
+        /**
+         * ClosedHook
+         * @description A previously open hook this chapter resolved or advanced.
+         */
+        ClosedHook: {
+            /**
+             * Complete
+             * @description True if fully resolved, False if only advanced
+             * @default true
+             */
+            complete: boolean;
+            /**
+             * Hook
+             * @description The hook that was addressed (quote or paraphrase of the original)
+             */
+            hook: string;
+            /**
+             * Resolution
+             * @description How it was resolved / advanced
+             */
+            resolution: string;
         };
         /** CompileContextRequest */
         CompileContextRequest: {
@@ -3698,6 +4534,16 @@ export interface components {
              */
             existing_word_count?: number | null;
             /**
+             * Include Chapter Brief
+             * @description Inject the Next Chapter Brief; None follows project settings
+             */
+            include_chapter_brief?: boolean | null;
+            /**
+             * Include Story Memory
+             * @description Inject the Story So Far recap; None follows project settings
+             */
+            include_story_memory?: boolean | null;
+            /**
              * Is Final Round Hint
              * @description Final round flag fed back by the budget runtime
              */
@@ -3711,6 +4557,11 @@ export interface components {
             max_tokens?: number | null;
             /** Participants */
             participants?: string[] | null;
+            /**
+             * Pov
+             * @description POV character for this chapter (drives knowledge boundaries)
+             */
+            pov?: string | null;
             /**
              * Previous Content
              * @description Already written chapter content
@@ -3762,6 +4613,100 @@ export interface components {
             /** Content */
             content: string;
         };
+        /** ContinuityCheckRequest */
+        ContinuityCheckRequest: {
+            /** Chapter Number */
+            chapter_number?: number | null;
+            /** Draft */
+            draft: string;
+            /** Llm Config Id */
+            llm_config_id?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Outline */
+            outline?: {
+                [key: string]: unknown;
+            } | null;
+            /** Participants */
+            participants?: string[];
+            /** Pov */
+            pov?: string | null;
+            /** Project Id */
+            project_id: number;
+            /** Temperature */
+            temperature?: number | null;
+            /** Timeout */
+            timeout?: number | null;
+            /**
+             * Use Llm
+             * @default false
+             */
+            use_llm: boolean;
+        };
+        /** ContinuityIssue */
+        ContinuityIssue: {
+            /** Card Id */
+            card_id?: number | null;
+            /**
+             * Code
+             * @description Stable code, e.g. prohibited_reveal, dead_entity, teleport, unknown_entity, dropped_hook
+             */
+            code: string;
+            /**
+             * Excerpt
+             * @description Offending text excerpt, if located
+             * @default
+             */
+            excerpt: string;
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "low" | "medium" | "high" | "critical";
+            /**
+             * Source
+             * @default deterministic
+             * @enum {string}
+             */
+            source: "deterministic" | "llm";
+            /**
+             * Span
+             * @description [start, end] offsets in the draft
+             */
+            span?: number[] | null;
+            /**
+             * Suggestion
+             * @default
+             */
+            suggestion: string;
+        };
+        /** ContinuityReport */
+        ContinuityReport: {
+            /** Chapter Number */
+            chapter_number: number;
+            /** Checked Chars */
+            checked_chars: number;
+            /** Checks Run */
+            checks_run?: string[];
+            /** Issues */
+            issues?: components["schemas"]["ContinuityIssue"][];
+            /** Project Id */
+            project_id: number;
+            /**
+             * Score
+             * @description 100 = no issues; each severity subtracts
+             * @default 100
+             */
+            score: number;
+            /**
+             * Verdict
+             * @default clean
+             * @enum {string}
+             */
+            verdict: "clean" | "review" | "block";
+        };
         /**
          * ConversationMessage
          * @description Conversation message
@@ -3778,6 +4723,88 @@ export interface components {
              * @enum {string}
              */
             role: "system" | "user" | "assistant";
+        };
+        /** CreateJobRequest */
+        CreateJobRequest: {
+            /** Author */
+            author?: string | null;
+            /** @description Hard job limits; 0 = unlimited */
+            budget?: components["schemas"]["BudgetSpec"] | null;
+            /**
+             * Content Base64
+             * @description EPUB (or TXT/DOCX/Markdown) bytes, base64 encoded; only files the user has the right to analyse
+             */
+            content_base64: string;
+            /** Content Rating */
+            content_rating?: string | null;
+            /** Ending Preference */
+            ending_preference?: string | null;
+            /** Fallback Llm Config Id */
+            fallback_llm_config_id?: number | null;
+            /** Filename */
+            filename: string;
+            /** Genre */
+            genre?: string | null;
+            /** Genre Intensity */
+            genre_intensity?: string | null;
+            /**
+             * Idempotency Key
+             * @description Client-supplied key; repeated identical requests return the existing job
+             */
+            idempotency_key?: string | null;
+            /**
+             * Llm Config Id
+             * @description Kimi K3 / AuthND configuration used for every role unless overridden
+             */
+            llm_config_id: number;
+            /**
+             * Mode
+             * @description fully_automatic | approval_gates | manual
+             * @default fully_automatic
+             */
+            mode: string;
+            /** Notes */
+            notes?: string | null;
+            /**
+             * Preflight Acknowledged
+             * @description Set when the user confirms starting without a passing preflight
+             * @default false
+             */
+            preflight_acknowledged: boolean;
+            /** Protagonist Name */
+            protagonist_name?: string | null;
+            /**
+             * Quality Preset
+             * @description economy | balanced | quality
+             * @default balanced
+             */
+            quality_preset: string;
+            /**
+             * Role Llm Config Ids
+             * @description Optional per-role LLM configuration overrides
+             */
+            role_llm_config_ids?: {
+                [key: string]: number;
+            };
+            /** Romance Level */
+            romance_level?: string | null;
+            /** Similarity To Original */
+            similarity_to_original?: string | null;
+            /**
+             * Storyline Count
+             * @default 7
+             */
+            storyline_count: number;
+            /** Summary */
+            summary?: string | null;
+            /** Tags */
+            tags?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Total Words */
+            total_words?: number | null;
+            /** Words Per Chapter */
+            words_per_chapter?: number | null;
         };
         /** CreateOriginalRequest */
         CreateOriginalRequest: {
@@ -3797,6 +4824,38 @@ export interface components {
              */
             template: string | null;
         };
+        /** DanglingHook */
+        DanglingHook: {
+            /**
+             * Chapters Open
+             * @default 0
+             */
+            chapters_open: number;
+            /**
+             * Expected Payoff Window
+             * @default
+             */
+            expected_payoff_window: string;
+            /** Hook */
+            hook: string;
+            /**
+             * Hook Type
+             * @default question
+             */
+            hook_type: string;
+            /** Opened Chapter */
+            opened_chapter: number;
+            /**
+             * Overdue
+             * @default false
+             */
+            overdue: boolean;
+            /**
+             * Strength
+             * @default medium
+             */
+            strength: string;
+        };
         /** DeletionInfo */
         DeletionInfo: {
             /**
@@ -3815,6 +4874,194 @@ export interface components {
              * @description Character name
              */
             name: string;
+        };
+        /** DigestBatchRequest */
+        DigestBatchRequest: {
+            /**
+             * Chapters
+             * @description Chapter numbers; default = every written chapter missing or stale
+             */
+            chapters?: number[] | null;
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Llm Config Id */
+            llm_config_id: number;
+            /**
+             * Max Chapters
+             * @default 50
+             */
+            max_chapters: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Project Id */
+            project_id: number;
+            /** Temperature */
+            temperature?: number | null;
+            /** Timeout */
+            timeout?: number | null;
+        };
+        /** DigestBatchResult */
+        DigestBatchResult: {
+            /** Digested */
+            digested?: number[];
+            /** Failed */
+            failed?: {
+                [key: string]: string;
+            };
+            /** Skipped */
+            skipped?: number[];
+        };
+        /** DigestChapterRequest */
+        DigestChapterRequest: {
+            /** Chapter Card Id */
+            chapter_card_id?: number | null;
+            /** Chapter Number */
+            chapter_number: number;
+            /**
+             * Force
+             * @description Re-digest even when the text hash is unchanged
+             * @default false
+             */
+            force: boolean;
+            /** Llm Config Id */
+            llm_config_id: number;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Participants */
+            participants?: string[];
+            /** Project Id */
+            project_id: number;
+            /** Temperature */
+            temperature?: number | null;
+            /**
+             * Text
+             * @description Chapter text; when omitted the Chapter Text card is read
+             */
+            text?: string | null;
+            /** Timeout */
+            timeout?: number | null;
+            /** Title */
+            title?: string | null;
+            /** Volume Number */
+            volume_number?: number | null;
+        };
+        /**
+         * DigestEvent
+         * @description One thing that happened, in order.
+         */
+        DigestEvent: {
+            /**
+             * Consequence
+             * @description Direct consequence that later chapters must honour
+             * @default
+             */
+            consequence: string;
+            /**
+             * Location
+             * @description Where it happened
+             * @default
+             */
+            location: string;
+            /**
+             * Participants
+             * @description Entities involved (canonical names)
+             */
+            participants?: string[];
+            /**
+             * Significance
+             * @description How much later chapters must respect this
+             * @default notable
+             * @enum {string}
+             */
+            significance: "minor" | "notable" | "major" | "pivotal";
+            /**
+             * Summary
+             * @description What happened, one sentence, concrete
+             */
+            summary: string;
+        };
+        /** DigestListItem */
+        DigestListItem: {
+            /** Card Id */
+            card_id: number;
+            /** Chapter Number */
+            chapter_number: number;
+            /**
+             * Digested At
+             * @default
+             */
+            digested_at: string;
+            /**
+             * Dominant Function
+             * @default
+             */
+            dominant_function: string;
+            /**
+             * Hook Strength
+             * @default 0
+             */
+            hook_strength: number;
+            /**
+             * Hooks Closed
+             * @default 0
+             */
+            hooks_closed: number;
+            /**
+             * Hooks Opened
+             * @default 0
+             */
+            hooks_opened: number;
+            /**
+             * One Line
+             * @default
+             */
+            one_line: string;
+            /**
+             * Pov
+             * @default
+             */
+            pov: string;
+            /** Rewards Delivered */
+            rewards_delivered?: string[];
+            /**
+             * Stale
+             * @default false
+             */
+            stale: boolean;
+            /**
+             * State Changes
+             * @default 0
+             */
+            state_changes: number;
+            /**
+             * Tension End
+             * @default 0
+             */
+            tension_end: number;
+            /**
+             * Title
+             * @default
+             */
+            title: string;
+            /** Volume Number */
+            volume_number?: number | null;
+            /**
+             * Word Count
+             * @default 0
+             */
+            word_count: number;
+        };
+        /** DigestListResponse */
+        DigestListResponse: {
+            /** Coverage */
+            coverage: {
+                [key: string]: unknown;
+            };
+            /** Items */
+            items: components["schemas"]["DigestListItem"][];
         };
         /** DynamicInfo */
         DynamicInfo: {
@@ -3844,6 +5091,41 @@ export interface components {
              * @description Brief description of the specific dynamic info
              */
             info: string;
+        };
+        /**
+         * EntityStateChange
+         * @description A persistent change to an entity that later chapters must respect.
+         */
+        EntityStateChange: {
+            /**
+             * After
+             * @description State after this chapter (this is what carries forward)
+             */
+            after: string;
+            /**
+             * Before
+             * @description State before this chapter
+             * @default
+             */
+            before: string;
+            /**
+             * Entity
+             * @description Canonical entity name
+             */
+            entity: string;
+            /**
+             * Kind
+             * @description Kind of state
+             * @default other
+             * @enum {string}
+             */
+            kind: "location" | "possession" | "injury" | "power" | "resource" | "status" | "goal" | "belief" | "relationship" | "knowledge" | "alive_dead" | "other";
+            /**
+             * Permanent
+             * @description False for temporary states (e.g. a mood) that should expire
+             * @default true
+             */
+            permanent: boolean;
         };
         /**
          * Evidence
@@ -4140,6 +5422,27 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HealthDimension */
+        HealthDimension: {
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Fix Hint
+             * @default
+             */
+            fix_hint: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Score */
+            score: number;
+            /** Weight */
+            weight: number;
+        };
         /** IngestRelationsFromPreviewRequest */
         IngestRelationsFromPreviewRequest: {
             /** Chapter Number */
@@ -4299,6 +5602,15 @@ export interface components {
              */
             power_or_effect?: string | null;
         };
+        /** JobResponse */
+        JobResponse: {
+            /** Active */
+            active: boolean;
+            /** Job */
+            job: {
+                [key: string]: unknown;
+            };
+        };
         /** KnowledgeCreate */
         KnowledgeCreate: {
             /** Content */
@@ -4307,6 +5619,34 @@ export interface components {
             description?: string | null;
             /** Name */
             name: string;
+        };
+        /**
+         * KnowledgeDelta
+         * @description Who learned what in this chapter (drives the prohibited-information list).
+         */
+        KnowledgeDelta: {
+            /**
+             * Entity
+             * @description Who learned (canonical name or 'reader')
+             */
+            entity: string;
+            /**
+             * How
+             * @description How they learned it
+             * @default
+             */
+            how: string;
+            /**
+             * Is False Belief
+             * @description True when they now believe something untrue
+             * @default false
+             */
+            is_false_belief: boolean;
+            /**
+             * Learned
+             * @description What they learned
+             */
+            learned: string;
         };
         /** KnowledgeMatrixResponse */
         KnowledgeMatrixResponse: {
@@ -5091,6 +6431,27 @@ export interface components {
             /** Items */
             items: components["schemas"]["MemoryExtractorInfo"][];
         };
+        /** NextChapterBrief */
+        NextChapterBrief: {
+            /** Avoid */
+            avoid?: components["schemas"]["BriefItem"][];
+            /** Chapter Number */
+            chapter_number: number;
+            /** Must Address */
+            must_address?: components["schemas"]["BriefItem"][];
+            /** Project Id */
+            project_id: number;
+            /** Rhythm Advice */
+            rhythm_advice?: string[];
+            /** Should Consider */
+            should_consider?: components["schemas"]["BriefItem"][];
+            /**
+             * Text
+             * @description Prompt-ready text
+             * @default
+             */
+            text: string;
+        };
         /**
          * NodeExecutionStatus
          * @description Node execution status
@@ -5143,12 +6504,66 @@ export interface components {
             /** Node Types */
             node_types: components["schemas"]["NodeTypeInfo"][];
         };
+        /**
+         * OpenHook
+         * @description A question, threat or promise the chapter leaves dangling.
+         */
+        OpenHook: {
+            /**
+             * Expected Payoff Window
+             * @description When the reader expects resolution (e.g. 'next chapter', 'within the arc', 'end of volume')
+             * @default
+             */
+            expected_payoff_window: string;
+            /**
+             * Hook
+             * @description The dangling element as the reader perceives it
+             */
+            hook: string;
+            /**
+             * Hook Type
+             * @description Hook type
+             * @default question
+             * @enum {string}
+             */
+            hook_type: "question" | "threat" | "promise" | "mystery" | "deadline" | "cliffhanger" | "emotional" | "reveal_pending" | "other";
+            /**
+             * Raised By
+             * @description Entity or event that raised it
+             * @default
+             */
+            raised_by: string;
+            /**
+             * Strength
+             * @description How much the reader will notice if it is dropped
+             * @default medium
+             * @enum {string}
+             */
+            strength: "weak" | "medium" | "strong";
+        };
         /** ParticipantTyped */
         ParticipantTyped: {
             /** Name */
             name: string;
             /** Type */
             type: string;
+        };
+        /** PreflightRequest */
+        PreflightRequest: {
+            /**
+             * Check Fallback
+             * @default true
+             */
+            check_fallback: boolean;
+            /** Fallback Llm Config Id */
+            fallback_llm_config_id?: number | null;
+            /** Llm Config Id */
+            llm_config_id: number;
+            /**
+             * Timeout Seconds
+             * @default 45
+             */
+            timeout_seconds: number;
         };
         /** ProjectCreate */
         ProjectCreate: {
@@ -5336,6 +6751,29 @@ export interface components {
             relation_summaries: {
                 [key: string]: unknown;
             }[];
+        };
+        /**
+         * QuotableLine
+         * @description A line worth calling back later (verbatim, short).
+         */
+        QuotableLine: {
+            /**
+             * Line
+             * @description Verbatim line, <= 160 characters
+             */
+            line: string;
+            /**
+             * Speaker
+             * @description Speaker, if dialogue
+             * @default
+             */
+            speaker: string;
+            /**
+             * Why Memorable
+             * @description Why it may be worth a callback
+             * @default
+             */
+            why_memorable: string;
         };
         /** RecentEventSummary */
         RecentEventSummary: {
@@ -5728,6 +7166,11 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** ResumeRequest */
+        ResumeRequest: {
+            /** @description Raise or set job limits when resuming after budget exhaustion */
+            budget?: components["schemas"]["BudgetSpec"] | null;
+        };
         /** ReviewCardUpsertRequest */
         ReviewCardUpsertRequest: {
             /** Content Snapshot */
@@ -5936,7 +7379,7 @@ export interface components {
             max_repairs: number;
             /**
              * Max Tokens
-             * @default 8192
+             * @default 65536
              */
             max_tokens: number;
             /** Outline Card Id */
@@ -5995,6 +7438,182 @@ export interface components {
             status: string;
             /** Workflow Id */
             workflow_id: number;
+        };
+        /** SelectStorylineRequest */
+        SelectStorylineRequest: {
+            /** Chapter Count */
+            chapter_count: number;
+            /** Storyline Id */
+            storyline_id: number;
+            /** Title */
+            title?: string | null;
+            /** Words Per Chapter */
+            words_per_chapter?: number | null;
+        };
+        /** SettingsResponse */
+        SettingsResponse: {
+            /** Project Id */
+            project_id: number;
+            settings: components["schemas"]["StoryMemorySettings"];
+        };
+        /** SettingsUpdateRequest */
+        SettingsUpdateRequest: {
+            /** Project Id */
+            project_id: number;
+            settings: components["schemas"]["StoryMemorySettings"];
+        };
+        /** StoryMemorySettings */
+        StoryMemorySettings: {
+            /**
+             * Auto Digest Min Words
+             * @description Minimum words before auto-digest runs
+             * @default 400
+             */
+            auto_digest_min_words: number;
+            /**
+             * Auto Digest On Save
+             * @description Digest a chapter automatically when its text is saved with enough content
+             * @default true
+             */
+            auto_digest_on_save: boolean;
+            /**
+             * Digest Llm Config Id
+             * @description Model for digests; falls back to the chapter's model
+             */
+            digest_llm_config_id?: number | null;
+            /**
+             * Guard Before Digest
+             * @description Run the continuity guard before digesting a saved chapter
+             * @default false
+             */
+            guard_before_digest: boolean;
+            /**
+             * Hook Overdue Chapters
+             * @description Chapters after which an open hook counts as overdue
+             * @default 8
+             */
+            hook_overdue_chapters: number;
+            /**
+             * Inject Brief Into Continuation
+             * @description Inject the Next Chapter Brief into continuation automatically
+             * @default true
+             */
+            inject_brief_into_continuation: boolean;
+            /**
+             * Inject Into Continuation
+             * @description Inject Story So Far into chapter continuation automatically
+             * @default true
+             */
+            inject_into_continuation: boolean;
+            /**
+             * Mid Window
+             * @description Chapters kept as compressed one-liners after the recent window
+             * @default 12
+             */
+            mid_window: number;
+            /**
+             * Recap Budget Chars
+             * @description Character budget for the Story So Far block
+             * @default 7000
+             */
+            recap_budget_chars: number;
+            /**
+             * Recent Window
+             * @description Chapters kept at full digest detail
+             * @default 3
+             */
+            recent_window: number;
+        };
+        /**
+         * StorySoFar
+         * @description Budgeted rolling recap produced without an LLM from the digests.
+         */
+        StorySoFar: {
+            /**
+             * Budget Chars
+             * @default 0
+             */
+            budget_chars: number;
+            /** Carry Forward */
+            carry_forward?: components["schemas"]["CarryForwardEntity"][];
+            /** Dangling Hooks */
+            dangling_hooks?: components["schemas"]["DanglingHook"][];
+            /** Digested Chapters */
+            digested_chapters?: number[];
+            /**
+             * Last Ending State
+             * @default
+             */
+            last_ending_state: string;
+            /**
+             * Last Paragraph Gist
+             * @default
+             */
+            last_paragraph_gist: string;
+            /**
+             * Missing Chapters
+             * @description Written chapters with no digest
+             */
+            missing_chapters?: number[];
+            /** Next Chapter */
+            next_chapter: number;
+            /** Project Id */
+            project_id: number;
+            /**
+             * Recent Knowledge
+             * @description Knowledge deltas from the recent window
+             */
+            recent_knowledge?: string[];
+            /**
+             * Stale Chapters
+             * @description Digests older than their chapter text
+             */
+            stale_chapters?: number[];
+            /**
+             * Story Clock
+             * @description Latest story time
+             * @default
+             */
+            story_clock: string;
+            /**
+             * Text
+             * @description Prompt-ready text
+             * @default
+             */
+            text: string;
+            /** Through Chapter */
+            through_chapter: number;
+            /** Tiers */
+            tiers?: components["schemas"]["StorySoFarTier"][];
+            /**
+             * Used Chars
+             * @default 0
+             */
+            used_chars: number;
+        };
+        /** StorySoFarRequest */
+        StorySoFarRequest: {
+            /** Budget Chars */
+            budget_chars?: number | null;
+            /** Next Chapter */
+            next_chapter?: number | null;
+            /** Project Id */
+            project_id: number;
+        };
+        /** StorySoFarTier */
+        StorySoFarTier: {
+            /** Chapter Range */
+            chapter_range?: number[];
+            /**
+             * Name
+             * @enum {string}
+             */
+            name: "recent" | "mid" | "distant";
+            /**
+             * Text
+             * @default
+             */
+            text: string;
         };
         /** SuggestRequest */
         SuggestRequest: {
@@ -6421,7 +8040,7 @@ export interface components {
             frequency_penalty?: number | null;
             /**
              * Max Tokens
-             * @default 32768
+             * @default 65536
              */
             max_tokens: number | null;
             /** Messages */
@@ -6459,7 +8078,7 @@ export interface components {
         app__api__endpoints__authnd__DirectPredictRequest: {
             /**
              * Max Tokens
-             * @default 32768
+             * @default 65536
              */
             max_tokens: number | null;
             /**
@@ -6961,6 +8580,638 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_api_autonomous_artifacts__artifact_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_api_autonomous_jobs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_job_api_autonomous_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_api_autonomous_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_autonomous_jobs__job_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    artifacts_api_autonomous_jobs__job_id__artifacts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_scoped_api_autonomous_jobs__job_id__artifacts__artifact_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                artifact_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempts_api_autonomous_jobs__job_id__attempts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    budget_api_autonomous_jobs__job_id__budget_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_autonomous_jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chapters_api_autonomous_jobs__job_id__chapters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    invocations_api_autonomous_jobs__job_id__invocations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_api_autonomous_jobs__job_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recovery_history_api_autonomous_jobs__job_id__recovery_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_api_autonomous_jobs__job_id__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_api_autonomous_jobs__job_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ResumeRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_storyline_api_autonomous_jobs__job_id__select_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectStorylineRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_storylines_api_autonomous_jobs__job_id__storylines_get: {
+        parameters: {
+            query?: {
+                include_rejected?: boolean;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preflight_api_autonomous_preflight_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreflightRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -10862,6 +13113,400 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkflowRunRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    next_chapter_brief_api_story_memory_brief_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BriefRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextChapterBrief"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    continuity_check_api_story_memory_continuity_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContinuityCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContinuityReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_digests_api_story_memory_digests_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    digest_chapter_api_story_memory_digests_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DigestChapterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    digest_batch_api_story_memory_digests_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DigestBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DigestBatchResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_digest_api_story_memory_digests__chapter_number__get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path: {
+                chapter_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterDigest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_digest_api_story_memory_digests__chapter_number__put: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path: {
+                chapter_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChapterDigest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_digest_api_story_memory_digests__chapter_number__delete: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path: {
+                chapter_number: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_api_story_memory_health_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BibleHealth"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_settings_api_story_memory_settings_get: {
+        parameters: {
+            query: {
+                project_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_settings_api_story_memory_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    story_so_far_api_story_memory_story_so_far_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StorySoFarRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorySoFar"];
                 };
             };
             /** @description Validation Error */

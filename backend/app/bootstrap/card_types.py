@@ -254,6 +254,9 @@ def create_default_card_types(session: Session) -> None:
         # Autonomous novel pipeline.
         "Novel Architecture": {"is_singleton": True, "is_ai_enabled": False, "description": "Complete original architecture (contract, cast, world, plot graph, timeline, setup/payoff schedule, chapter allocation) generated from the selected storyline", "default_ai_context_template": None},
         "Source Analysis Record": {"is_singleton": False, "is_ai_enabled": False, "description": "Intermediate source-analysis record (entity resolution, Bible reconstruction digest) kept in the source project for provenance", "default_ai_context_template": None},
+        # Story Memory (per-chapter digests + settings).
+        "Chapter Digest": {"is_singleton": False, "is_ai_enabled": False, "description": "Compact structured memory of one written chapter: events, state changes, hooks, knowledge deltas and ending state; compiled into the Story So Far block for generation", "default_ai_context_template": None},
+        "Story Memory Settings": {"is_singleton": True, "is_ai_enabled": False, "description": "Per-project Story Memory settings: auto-digest, recap windows and budgets, continuation injection", "default_ai_context_template": None},
     }
 
     # Default AI parameter presets per type (does not include llm_config_id)
@@ -297,6 +300,8 @@ def create_default_card_types(session: Session) -> None:
         "Chapter State Packet": None,
         "Novel Architecture": None,
         "Source Analysis Record": None,
+        "Chapter Digest": None,
+        "Story Memory Settings": None,
     }
 
     # Mapping from type name to built-in response model (used directly to generate json_schema)
@@ -338,6 +343,9 @@ def create_default_card_types(session: Session) -> None:
         "Emotional Rhythm": "EmotionalRhythm",
         "Narrative Genome": "NarrativeGenome",
         "Originality Transformation": "OriginalityTransformation",
+        # Story Memory
+        "Chapter Digest": "ChapterDigest",
+        "Story Memory Settings": "StoryMemorySettings",
     }
 
     overwrite_card_schemas = settings.bootstrap.should_overwrite_card_schemas

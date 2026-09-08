@@ -28,6 +28,9 @@ class ContextAssembleParams:
 	relation_radius: Optional[int] = None
 	edge_type_whitelist: Optional[List[str]] = None
 	max_chapter_id: Optional[int] = None
+	include_story_memory: bool = True
+	include_chapter_brief: bool = False
+	story_memory_quota_chars: Optional[int] = None
 
 
 class ContextAssemblyError(RuntimeError):
@@ -41,6 +44,9 @@ class AssembledContext:
 	facts_structured: Optional[Dict[str, Any]] = None
 	# Compiled Novel Bible slice (see services/bible/context_compiler.py)
 	bible_context: Optional[Dict[str, Any]] = None
+	# Story So Far recap + Next Chapter Brief (see services/story_memory)
+	story_memory: Optional[Dict[str, Any]] = None
+	chapter_brief: Optional[Dict[str, Any]] = None
 
 	def to_system_prompt_block(self) -> str:
 		parts: List[str] = []
@@ -49,6 +55,12 @@ class AssembledContext:
 		bible_text = (self.bible_context or {}).get("text") if isinstance(self.bible_context, dict) else None
 		if bible_text:
 			parts.append(f"[Novel Bible]\n{bible_text}")
+		memory_text = (self.story_memory or {}).get("text") if isinstance(self.story_memory, dict) else None
+		if memory_text:
+			parts.append(memory_text)
+		brief_text = (self.chapter_brief or {}).get("text") if isinstance(self.chapter_brief, dict) else None
+		if brief_text:
+			parts.append(brief_text)
 		return "\n\n".join(parts)
 
 
@@ -330,6 +342,33 @@ def assemble_context(session: Session, params: ContextAssembleParams) -> Assembl
 			logger.error("[Context] Bible context compilation failed: {}", exc)
 			raise ContextAssemblyError(f"Bible context compilation failed: {exc}") from exc
 
+	# Story Memory: rolling recap of every digested chapter + next-chapter brief.
+	# Degradable: a failure here logs and continues without memory rather than
+	# blocking generation, because the Bible slice above is still authoritative.
+	story_memory: Optional[Dict[str, Any]] = None
+	chapter_brief: Optional[Dict[str, Any]] = None
+	if params.project_id and params.include_story_memory:
+		try:
+			from app.services.story_memory.planner import NextChapterPlanner
+			from app.services.story_memory.settings import get_settings
+			from app.services.story_memory.story_so_far import StorySoFarCompiler
+
+			sm_cfg = get_settings(session, params.project_id)
+			recap = StorySoFarCompiler(session).compile(
+				params.project_id,
+				next_chapter=params.chapter_number,
+				budget_chars=params.story_memory_quota_chars or sm_cfg.recap_budget_chars,
+				settings=sm_cfg,
+			)
+			if recap.text:
+				story_memory = recap.model_dump(mode="json")
+			if sm_cfg.inject_brief_into_continuation or params.include_chapter_brief:
+				brief = NextChapterPlanner(session).brief(params.project_id, chapter_number=params.chapter_number, participants=eff_participants, pov=pov)
+				if brief.text:
+					chapter_brief = brief.model_dump(mode="json")
+		except Exception as exc:
+			logger.warning("[Context] Story Memory compilation failed (continuing without it): {}", exc)
+
 	return AssembledContext(
 		facts_subgraph=facts,
 		budget_stats={
@@ -337,10 +376,13 @@ def assemble_context(session: Session, params: ContextAssembleParams) -> Assembl
 			"facts_used": len(facts),
 			"bible_quota": bible_quota,
 			"bible_used": (bible_context or {}).get("used_chars", 0),
+			"story_memory_used": (story_memory or {}).get("used_chars", 0),
 			"relation_radius": radius,
 			"participants": eff_participants,
 			"pov": pov,
 		},
 		facts_structured=facts_structured,
 		bible_context=bible_context,
+		story_memory=story_memory,
+		chapter_brief=chapter_brief,
 	)

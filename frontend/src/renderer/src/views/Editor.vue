@@ -218,6 +218,21 @@
           <el-tab-pane :label="t('editorPage.tabExtract')" name="extract">
             <ChapterToolsPanel />
           </el-tab-pane>
+
+          <el-tab-pane :label="t('editorPage.tabContinuity')" name="continuity">
+            <ContinuityPanel
+              :project-id="projectStore.currentProject?.id"
+              :chapter-number="chapterChapterNumber"
+              :volume-number="chapterVolumeNumber"
+              :participants="chapterParticipants"
+              :pov="chapterPovForContinuity"
+              :outline="chapterOutlineForContinuity"
+              :chapter-card-id="activeCard?.id ?? null"
+              :refresh-seq="bibleRefreshSeq"
+              @jump="handleContinuityJump"
+              @digested="handleChapterDigested"
+            />
+          </el-tab-pane>
           
           <el-tab-pane :label="t('editorPage.tabOutline')" name="outline">
             <OutlinePanel 
@@ -400,6 +415,7 @@ import OutlinePanel from '@renderer/components/panels/OutlinePanel.vue'
 import ReviewHistoryPanel from '@renderer/components/panels/ReviewHistoryPanel.vue'
 import RelationGraphPanel from '@renderer/components/panels/RelationGraphPanel.vue'
 import BibleStudioPanel from '@renderer/components/bible/BibleStudioPanel.vue'
+import ContinuityPanel from '@renderer/components/panels/ContinuityPanel.vue'
 import { useCardStore } from '@renderer/stores/useCardStore'
 import { useEditorStore } from '@renderer/stores/useEditorStore'
 import { useProjectStore } from '@renderer/stores/useProjectStore'
@@ -1540,9 +1556,32 @@ const reviewTargetCardIdForSidebar = computed<number | null>(() => {
 
 const rightSidebarTabNames = computed(() => {
   if (!showRightSidebarTabs.value) return [] as string[]
-  if (isChapterContent.value) return ['assistant', 'context', 'extract', 'outline', 'review-history']
+  if (isChapterContent.value) return ['assistant', 'context', 'extract', 'continuity', 'outline', 'review-history']
   return ['assistant', 'review-history']
 })
+
+// Chapter outline for the active chapter (drives the Continuity Guard's forbidden outcomes / beats).
+const chapterOutlineForContinuity = computed<Record<string, unknown> | null>(() => {
+  if (!isChapterContent.value) return null
+  const n = chapterChapterNumber.value
+  if (n == null) return null
+  const outline = (cards.value || []).find((c: any) => c?.card_type?.name === 'Chapter Outline' && Number(c?.content?.chapter_number) === Number(n))
+  return outline ? { ...(outline.content as any), card_id: outline.id } : null
+})
+
+const chapterPovForContinuity = computed<string | null>(() => {
+  const o = chapterOutlineForContinuity.value as any
+  if (o?.pov) return String(o.pov)
+  return chapterParticipants.value[0] || null
+})
+
+function handleContinuityJump(span: [number, number]) {
+  editorStore.selectChapterRange(span[0], span[1])
+}
+
+function handleChapterDigested() {
+  bibleRefreshSeq.value += 1
+}
 
 // Chapter info extraction
 const chapterVolumeNumber = computed(() => {

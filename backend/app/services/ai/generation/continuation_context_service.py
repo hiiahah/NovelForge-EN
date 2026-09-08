@@ -123,7 +123,7 @@ def _format_facts_structured(facts_structured: Any) -> str:
 
 
 def enrich_continuation_context_info(session: Session, request: ContinuationRequest) -> str:
-    """Server-side auto-assembles the facts subgraph and merges it into the continuation context."""
+    """Server-side auto-assembles the facts subgraph, Bible slice and Story Memory and merges them into the continuation context."""
     participants = _normalize_participants(request.participants)
 
     if not request.project_id:
@@ -131,8 +131,8 @@ def enrich_continuation_context_info(session: Session, request: ContinuationRequ
         return (request.context_info or "").strip()
 
     if not participants:
-        logger.debug("[Continuation context] participants is empty, skip facts subgraph auto-assembly")
-        return (request.context_info or "").strip()
+        # Facts/Bible need participants, but Story Memory does not: still recap.
+        logger.debug("[Continuation context] participants is empty, assembling Story Memory only")
 
     try:
         assembled = assemble_context(
@@ -143,7 +143,10 @@ def enrich_continuation_context_info(session: Session, request: ContinuationRequ
                 chapter_number=request.chapter_number,
                 chapter_id=None,
                 participants=participants,
+                pov=getattr(request, "pov", None),
                 current_draft_tail=None,
+                include_story_memory=getattr(request, "include_story_memory", None) is not False,
+                include_chapter_brief=bool(getattr(request, "include_chapter_brief", None)),
             ),
         )
     except Exception as exc:
@@ -153,17 +156,38 @@ def enrich_continuation_context_info(session: Session, request: ContinuationRequ
     structured_facts = _format_facts_structured(assembled.facts_structured)
     merged_context = _merge_facts_into_context(
         request.context_info,
-        structured_facts or assembled.facts_subgraph,
+        (structured_facts or assembled.facts_subgraph) if participants else "",
     )
     bible_text = (assembled.bible_context or {}).get("text") if isinstance(assembled.bible_context, dict) else None
     if bible_text and "[Novel Bible]" not in merged_context:
         merged_context = f"{merged_context}\n\n[Novel Bible]\n{bible_text}" if merged_context else f"[Novel Bible]\n{bible_text}"
+
+    # Story Memory: the rolling recap of every digested chapter (so a chapter
+    # 300 continuation still knows what chapter 12 established) and the brief
+    # of what this chapter must address / avoid. Injection is governed by the
+    # project's Story Memory settings; the frontend may also pass a preview.
+    try:
+        from app.services.story_memory.settings import get_settings as _sm_settings
+
+        sm_cfg = _sm_settings(session, request.project_id)
+    except Exception:
+        sm_cfg = None
+    inject_memory = bool(getattr(request, "include_story_memory", None)) if getattr(request, "include_story_memory", None) is not None else bool(sm_cfg and sm_cfg.inject_into_continuation)
+    inject_brief = bool(getattr(request, "include_chapter_brief", None)) if getattr(request, "include_chapter_brief", None) is not None else bool(sm_cfg and sm_cfg.inject_brief_into_continuation)
+    memory_text = (assembled.story_memory or {}).get("text") if isinstance(assembled.story_memory, dict) else None
+    if inject_memory and memory_text and "[Story So Far" not in merged_context:
+        merged_context = f"{merged_context}\n\n{memory_text}" if merged_context else memory_text
+    brief_text = (assembled.chapter_brief or {}).get("text") if isinstance(assembled.chapter_brief, dict) else None
+    if inject_brief and brief_text and "[Next Chapter Brief" not in merged_context:
+        merged_context = f"{merged_context}\n\n{brief_text}" if merged_context else brief_text
     logger.debug(
-        "[Continuation context] facts subgraph auto-assembly complete project_id={} participants={} facts_len={} structured={} bible_len={}",
+        "[Continuation context] facts subgraph auto-assembly complete project_id={} participants={} facts_len={} structured={} bible_len={} memory_len={} brief_len={}",
         request.project_id,
         len(participants),
         len(structured_facts or assembled.facts_subgraph or ""),
         bool(structured_facts),
         len(bible_text or ""),
+        len(memory_text or "") if inject_memory else 0,
+        len(brief_text or "") if inject_brief else 0,
     )
     return merged_context
